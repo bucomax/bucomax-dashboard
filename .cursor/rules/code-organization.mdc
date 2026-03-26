@@ -1,0 +1,31 @@
+---
+description: Organização — types separados, utils, constants; nada solto em rotas/componentes
+alwaysApply: true
+---
+
+# Organização de código
+
+## Tipos e interfaces
+
+- **Não** declarar `interface` / `type` soltos em `app/api/**/route.ts`, páginas `page.tsx` ou componentes de UI — exceto tipos **realmente locais** de um único arquivo (ex.: estado interno de um hook no mesmo arquivo) e ainda assim preferir extrair se repetir.
+- **Onde colocar:**
+  - **`src/types/`** — contratos compartilhados; subdividir por domínio (`auth.ts`, `pathway.ts`, `api-v1.ts`, `index.ts` barrel opcional).
+  - **Por feature** (`src/features/<nome>/types.ts`) — só se os tipos forem **exclusivos** daquela feature; caso contrário, `src/types/`.
+- **DTOs de API:** tipos de request/response em `src/types/api/` ou ao lado dos schemas Zod em `src/lib/schemas/` / `src/application/<módulo>/schemas/` — manter **par** schema Zod ↔ tipo inferido (`z.infer<typeof schema>`) para uma única fonte de verdade.
+
+## Utilitários e constantes
+
+- **`src/lib/utils/`** — funções puras (formatação, parsing, máscaras, slugify). Um arquivo por tema (`format.ts`, `date.ts`) ou pasta se crescer.
+- **`src/lib/constants/`** — strings mágicas, limites, enums de UI (não duplicar enum de domínio do Prisma sem motivo).
+- Evitar funções utilitárias genéricas dentro de `components/`; se precisar, mover para `src/lib/utils/`.
+
+## Rotas e componentes
+
+- **`route.ts`:** imports, chamada ao use case, **mapeamento** DTO → HTTP; validação via **schema Zod** importado de arquivo dedicado, não inline gigante.
+- **Componentes:** só JSX + hooks + props tipadas importando tipos de `@/types/...` ou do `types.ts` da feature.
+- **Barrel exports:** `src/types/index.ts` pode reexportar; evitar barrels profundos que escondem dependências circulares.
+
+## Nomenclatura de arquivos
+
+- `*.types.ts` opcional para agrupar só tipos quando o módulo crescer.
+- Manter **inglês** nos nomes de arquivos e símbolos exportados, salvo domínio de negócio acordado em português na UI.

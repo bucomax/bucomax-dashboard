@@ -1,0 +1,30 @@
+---
+description: SOLID, clean code, testes e assincronismo
+alwaysApply: true
+---
+
+# SOLID e clean code
+
+## SOLID (aplicação prática)
+
+- **S** — Um use case = um fluxo de negócio coeso; separar `PublishPathwayVersion` de `TransitionPatientStage`.
+- **O** — Novo canal (e-mail) = nova implementação de port, sem editar núcleo da transição.
+- **L** — Implementações de repositório intercambiáveis em testes (in-memory vs Prisma).
+- **I** — Ports pequenos (`dispatch(payload)` vs interface gigante “faz tudo”).
+- **D** — Use case depende de `IWhatsAppOutbound`, não de `axios` direto.
+
+## Clean code
+
+- **Nomes** que reflitam o domínio (`currentStageId`, não `step`).
+- **Funções** curtas; um nível de abstração por função; early return.
+- **DRY** com critério — duplicação de **regra de negócio** sim; duplicação de boilerplate de mapeamento pode virar helper.
+- **Async:** evitar misturar `async` desnecessário; tratar `Promise.all` só quando independente; não silenciar rejeições.
+
+## Testes
+
+- Prioridade: **transição de etapa** (permissão, etapa inválida, bundle completo), **presença de tenantId** nos repositórios, mapeamento de erros de domínio.
+- Nomes de teste descritivos: `should reject transition when stage belongs to another version`.
+
+## Tipagem
+
+- Evitar `any`; `unknown` + narrowing onde necessário; tipos de erro discriminados.

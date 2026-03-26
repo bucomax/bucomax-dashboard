@@ -1,0 +1,30 @@
+---
+description: Infrastructure — Prisma, R2, clientes HTTP, webhooks
+globs: src/infrastructure/**/*.ts,packages/**/*.prisma
+alwaysApply: false
+---
+
+# Infrastructure
+
+## Prisma
+
+- Schema em `packages/prisma` (ou estrutura equivalente); **migrations** versionadas; nunca `db push` em produção sem processo.
+- Índices compostos onde a §8 indica: `(tenantId, …)`, `(pathwayVersionId, order)` único em etapas, etc.
+- **Soft delete** só se produto exigir; caso contrário preferir constraints claras e auditoria em `StageTransition`.
+
+## R2 (object storage)
+
+- Chaves: `tenants/{tenantId}/...` (e opcionalmente `clients/{clientId}/`); nunca bucket público sem controle.
+- **Presign:** expiração curta; gerar em lote no bundle da transição para reduzir round-trips.
+- Metadados sempre na tabela `File` (mime, size, `tenantId`).
+
+## Clientes HTTP externos
+
+- **Timeouts** explícitos; **retries** com backoff e limite (idempotência no servidor do parceiro quando existir).
+- **WhatsAppChannelClient:** não logar corpo completo com PII; logar `correlationId`, status HTTP, duração.
+- **AiClient:** propagar `tenantId`, `idempotencyKey`; tratar `202` + `jobId`.
+
+## Webhooks de entrada (`/webhooks/ai`, `/webhooks/chatbot`)
+
+- Validar **assinatura** ou secret compartilhado antes de processar.
+- Responder rápido (200) após enfileirar ou persistir; processamento pesado em job se necessário.

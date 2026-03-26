@@ -1,0 +1,39 @@
+---
+description: Jornada clínica — múltiplos fluxos, XYFlow, templates, transição e dispatch
+alwaysApply: true
+---
+
+# Domínio: jornada e canais
+
+## Vocabulário
+
+- **`PathwayTemplate`** (plataforma) — jornadas **padrão** clonáveis (ex.: sequência cirúrgica típica).
+- **`CarePathway`** — **vários** por `tenantId`; nome/slug únicos no tenant.
+- **`PathwayVersion`** — `graphJson` (**@xyflow/react**: `nodes`, `edges`) persistido + **`PathwayStage`** sincronizado para docs e FKs.
+- **`PathwayStage`**, **`StageDocument`**, **`PatientPathway`**, **`StageTransition`**, **`ChannelDispatch`** — como na arquitetura §8.
+
+## Ordem operacional
+
+1. **Cadastro** `Client` — WhatsApp, nome, descrição do caso, etc.  
+2. **Escolha de fluxo** — `StartPatientPathway` (se 1 fluxo no tenant, auto).  
+3. **Próximas etapas** — `TransitionPatientStage` (repetível).
+
+**UI:** wizard com passos (dados → fluxo → **Salvar** tudo junto no final); estado local até o submit ou endpoint único `onboard`.
+
+## UX: escolha de fluxo no paciente
+
+- **Mais de um** `CarePathway` publicado → ao **iniciar** jornada para o paciente, UI **obriga escolher** o fluxo; API recebe `pathwayId` explícito.
+- **Exatamente um** fluxo → **associação automática** a esse `pathwayId` (sem passo de escolha).
+
+## Editor
+
+- Usar **`@xyflow/react`**; estado serializado compatível com o JSON salvo em `PathwayVersion.graphJson`.
+- Ao **salvar/publicar**, sincronizar **etapas** (nodes de tipo etapa) com `PathwayStage` e `StageDocument`.
+
+## Regra: pacote de documentos
+
+- Ao **entrar** na etapa: `documents[]` completo via `StageDocument` ordenado.
+
+## Transição
+
+- `toStageId` no mesmo `pathwayVersionId` do paciente; pipeline transição → `ChannelDispatch` (+ IA opcional); `correlationId` para idempotência.

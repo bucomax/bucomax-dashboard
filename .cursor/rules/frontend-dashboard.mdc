@@ -1,0 +1,40 @@
+---
+description: Frontend — dashboard, jornada, TanStack Query, UX
+globs: "**/*.tsx"
+alwaysApply: false
+---
+
+# Frontend
+
+- Props e tipos de dados: importar de **`src/types/`** ou `features/<nome>/types.ts`; **não** definir interfaces soltas no mesmo arquivo do componente (salvo estado mínimo local). Utilitários de **`src/lib/utils/`**.
+
+## Layout
+
+- **Sidebar fixa** + área principal (`flex-1`, `min-w-0`); mobile: **Sheet/Drawer** para menu.
+- **Tenant:** super admin com banner de contexto (“operando em [Clínica X]”); alinhar chamadas API ao `tenantId` do token.
+
+## Stack
+
+- **shadcn/ui** + Tailwind + **Lucide**; **TanStack Query** para server state; **Axios** com interceptors (Bearer, refresh, erro global).
+- Formulários: **React Hook Form** + Zod quando houver validação complexa (alinhado ao backend).
+
+## Telas do produto
+
+| Área | Comportamento |
+|------|----------------|
+| **Editor de jornada** | **@xyflow/react** (nodes/edges); salvar `graphJson`; painel por etapa → `StageDocument`; listar templates e **vários** fluxos por tenant. |
+| **Novo paciente (wizard)** | Stepper: **(1)** dados (nome, WhatsApp, descrição do caso…) → **(2)** escolha do fluxo (omitir ou pré-selecionar se só 1) → **(3)** **Salvar** criando `Client` + `PatientPathway` de uma vez (ou sequência de APIs só no final). |
+| **Ficha do paciente** | Após onboarding: etapa atual; “Mover para…”; preview opcional do pacote. |
+| **Timeline** | Lista `StageTransition` + status de `ChannelDispatch` / jobs IA — loading skeleton + empty state. |
+
+## Estados de UI
+
+- **Loading:** skeletons ou spinners localizados; não bloquear sidebar inteira sem necessidade.
+- **Erro:** toast ou inline com ação de retry quando for falha de rede.
+- **Mutations:** `onSuccess` invalida queries (`queryClient.invalidateQueries`) das chaves afetadas (`patients`, `pathways`, `timeline`).
+
+## Componentização
+
+- Estrutura sugerida: `app/(dashboard)/`, `components/ui/` (shadcn), `features/<domínio>/` (ex.: `pathway-editor`, `patient-stage`), `components/layout/` (sidebar, shell).
+- Hooks por feature (`useTransitionStage`) encapsulam mutation + invalidação.
+- **Sem** lógica de negócio duplicada que deveria estar no backend (ex.: “pode avançar?” só no servidor; UI pode espelhar para UX).
