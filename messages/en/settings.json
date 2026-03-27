@@ -1,0 +1,20 @@
+{
+  "title": "Settings",
+  "description": "Team and tenant permission management.",
+  "invites": {
+    "title": "Invite user",
+    "description": "Creates the tenant account and sends an email link to set a password.",
+    "loadingSession": "Loading session context...",
+    "forbidden": "You must be tenant_admin (or super_admin) with an active tenant to send invites.",
+    "email": "Email",
+    "name": "Name",
+    "namePlaceholder": "Optional",
+    "role": "Tenant role",
+    "roleAdmin": "Administrator",
+    "roleUser": "User",
+    "submit": "Send invite",
+    "success": "Invite sent successfully.",
+    "sentTo": "Invite sent to {email}.",
+    "genericError": "Could not send invite."
+  }
+}

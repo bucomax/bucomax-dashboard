@@ -1,0 +1,59 @@
+{
+  "list": {
+    "title": "Pathways",
+    "description": "Tenant clinical flows: edit the graph, publish versions, and use them for patients.",
+    "newPathway": "New pathway",
+    "name": "Name",
+    "namePlaceholder": "e.g. Pre-operative",
+    "create": "Create",
+    "createSuccess": "Pathway created.",
+    "creating": "Creating…",
+    "open": "Open editor",
+    "columnPathway": "Pathway",
+    "columnPublish": "Publication",
+    "published": "Published: v{version}",
+    "noPublished": "No published version",
+    "loadError": "Could not load pathways.",
+    "retry": "Try again",
+    "empty": "No pathways yet."
+  },
+  "detail": {
+    "title": "Pathway editor",
+    "description": "React Flow canvas — nodes become stages when published.",
+    "back": "Back"
+  },
+  "editor": {
+    "loadError": "Could not load the editor.",
+    "save": "Save draft",
+    "saveSuccess": "Draft saved.",
+    "saveError": "Could not save.",
+    "publish": "Publish version",
+    "publishSuccess": "Version published. Stages synchronized.",
+    "publishError": "Could not publish.",
+    "addStage": "Add stage",
+    "defaultStageLabel": "Stage",
+    "metaTitle": "Editing version",
+    "versionLabel": "Version",
+    "draftHint": "Save the draft before publishing. Publishing materializes stages for patients.",
+    "stagePropsTitle": "Selected stage",
+    "stagePropsDescription": "Name and patient message (stored in the graph).",
+    "selectNode": "Click a node on the canvas.",
+    "stageName": "Stage name",
+    "patientMessage": "Patient message"
+  },
+  "patient": {
+    "title": "Patient journey",
+    "description": "Current stage and transition to the next published stage.",
+    "loadError": "Could not load journey.",
+    "retry": "Try again",
+    "client": "Patient",
+    "pathway": "Pathway",
+    "currentStage": "Current stage",
+    "toStage": "Move to",
+    "toStagePlaceholder": "Select stage",
+    "note": "Note (optional)",
+    "submit": "Record transition",
+    "success": "Stage updated.",
+    "sameStage": "Pick a stage different from the current one."
+  }
+}

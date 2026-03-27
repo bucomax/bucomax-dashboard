@@ -1,5 +1,5 @@
 import { AccountPage } from "@/features/dashboard/app/pages/account-page";
 
-export default function Page() {
+export default async function Page() {
   return <AccountPage />;
 }

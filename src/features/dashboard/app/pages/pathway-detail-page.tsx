@@ -1,37 +1,31 @@
-import { Button } from "@/shared/components/ui/button";
+import { PathwayEditor } from "@/features/pathways/app/components/pathway-editor";
 import { DashboardPage } from "@/shared/components/layout/dashboard-page";
 import { Link } from "@/i18n/navigation";
+import { Button } from "@/shared/components/ui/button";
+import { getTranslations } from "next-intl/server";
 
 type PathwayDetailPageProps = {
   pathwayId: string;
 };
 
-export function PathwayDetailPage({ pathwayId }: PathwayDetailPageProps) {
+export async function PathwayDetailPage({ pathwayId }: PathwayDetailPageProps) {
+  const t = await getTranslations("pathways.detail");
+
   return (
     <DashboardPage
-      title="Editor de jornada"
+      title={t("title")}
       description={
         <>
-          ID: <code className="bg-muted rounded px-1 py-0.5 text-xs">{pathwayId}</code> — canvas XYFlow e{" "}
-          <code className="bg-muted rounded px-1 py-0.5 text-xs">graphJson</code> no backend.
+          ID: <code className="bg-muted rounded px-1 py-0.5 text-xs">{pathwayId}</code> — {t("description")}
         </>
       }
       actions={
-        <Button
-          nativeButton={false}
-          variant="outline"
-          size="sm"
-          render={<Link href="/dashboard/pathways" />}
-        >
-          Voltar às jornadas
+        <Button nativeButton={false} variant="outline" size="sm" render={<Link href="/dashboard/pathways" />}>
+          {t("back")}
         </Button>
       }
     >
-      <div className="bg-card text-card-foreground rounded-xl border p-6 shadow-sm">
-        <p className="text-muted-foreground text-sm">
-          Área do editor (nodes/edges), painel por etapa e publicação de versão.
-        </p>
-      </div>
+      <PathwayEditor pathwayId={pathwayId} />
     </DashboardPage>
   );
 }

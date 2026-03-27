@@ -9,6 +9,9 @@ async function loadMessages(locale: string) {
         auth: (await import("../../messages/pt-BR/auth.json")).default,
         dashboard: (await import("../../messages/pt-BR/dashboard.json")).default,
         clients: (await import("../../messages/pt-BR/clients.json")).default,
+        account: (await import("../../messages/pt-BR/account.json")).default,
+        settings: (await import("../../messages/pt-BR/settings.json")).default,
+        pathways: (await import("../../messages/pt-BR/pathways.json")).default,
       };
     case "en":
       return {
@@ -16,6 +19,9 @@ async function loadMessages(locale: string) {
         auth: (await import("../../messages/en/auth.json")).default,
         dashboard: (await import("../../messages/en/dashboard.json")).default,
         clients: (await import("../../messages/en/clients.json")).default,
+        account: (await import("../../messages/en/account.json")).default,
+        settings: (await import("../../messages/en/settings.json")).default,
+        pathways: (await import("../../messages/en/pathways.json")).default,
       };
     default:
       return {
@@ -23,6 +29,9 @@ async function loadMessages(locale: string) {
         auth: (await import("../../messages/pt-BR/auth.json")).default,
         dashboard: (await import("../../messages/pt-BR/dashboard.json")).default,
         clients: (await import("../../messages/pt-BR/clients.json")).default,
+        account: (await import("../../messages/pt-BR/account.json")).default,
+        settings: (await import("../../messages/pt-BR/settings.json")).default,
+        pathways: (await import("../../messages/pt-BR/pathways.json")).default,
       };
   }
 }

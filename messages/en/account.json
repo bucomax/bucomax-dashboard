@@ -1,0 +1,58 @@
+{
+  "title": "Account",
+  "description": "Profile, password, and tenant team (when you are an administrator).",
+  "profile": {
+    "title": "Profile",
+    "description": "Name and photo shown in the app.",
+    "email": "Email",
+    "name": "Name",
+    "image": "Image URL",
+    "imageHint": "Optional. Leave blank to remove.",
+    "save": "Save changes",
+    "success": "Profile updated.",
+    "loadError": "Could not load profile.",
+    "retry": "Try again"
+  },
+  "password": {
+    "title": "Password",
+    "description": "Change the password used to sign in with email and password.",
+    "current": "Current password",
+    "new": "New password",
+    "confirm": "Confirm new password",
+    "submit": "Update password",
+    "success": "Password updated.",
+    "hintNoPassword": "Accounts created via invite or without a local password cannot use this until they set a password from the link."
+  },
+  "danger": {
+    "title": "Danger zone",
+    "description": "Deactivating your account ends the session and blocks future logins.",
+    "confirmLabel": "Deactivate my account",
+    "confirmHelp": "This soft-deletes your access. Recovery may require support.",
+    "openConfirm": "Deactivate account",
+    "cancel": "Cancel",
+    "confirm": "Yes, deactivate",
+    "success": "Account deactivated.",
+    "pending": "Deactivating…"
+  },
+  "members": {
+    "title": "Tenant team",
+    "description": "Roles of users linked to this tenant.",
+    "loadError": "Could not load members.",
+    "retry": "Try again",
+    "empty": "No members listed.",
+    "columns": {
+      "member": "Member",
+      "email": "Email",
+      "role": "Role"
+    },
+    "roleAdmin": "Administrator",
+    "roleUser": "User",
+    "you": "You",
+    "saveRole": "Save",
+    "remove": "Remove",
+    "removeConfirm": "Remove this member from the tenant?",
+    "roleUpdated": "Role updated.",
+    "memberRemoved": "Member removed.",
+    "conflict": "Operation not allowed (e.g. last administrator)."
+  }
+}

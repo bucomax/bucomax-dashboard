@@ -1,0 +1,20 @@
+{
+  "title": "Configurações",
+  "description": "Gestão de equipe e permissões do tenant.",
+  "invites": {
+    "title": "Convidar usuário",
+    "description": "Cria a conta no tenant e envia o link por e-mail para definir senha.",
+    "loadingSession": "Carregando contexto da sessão...",
+    "forbidden": "Você precisa ser tenant_admin (ou super_admin) e ter um tenant ativo para enviar convites.",
+    "email": "E-mail",
+    "name": "Nome",
+    "namePlaceholder": "Opcional",
+    "role": "Papel no tenant",
+    "roleAdmin": "Administrador",
+    "roleUser": "Usuário",
+    "submit": "Enviar convite",
+    "success": "Convite enviado com sucesso.",
+    "sentTo": "Convite enviado para {email}.",
+    "genericError": "Não foi possível enviar o convite."
+  }
+}

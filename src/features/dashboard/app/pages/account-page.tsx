@@ -1,15 +1,20 @@
+import { AccountProfileCard } from "@/features/account/app/components/account-profile-card";
+import { ChangePasswordCard } from "@/features/account/app/components/change-password-card";
+import { DeleteAccountCard } from "@/features/account/app/components/delete-account-card";
+import { TenantMembersCard } from "@/features/account/app/components/tenant-members-card";
 import { DashboardPage } from "@/shared/components/layout/dashboard-page";
+import { getTranslations } from "next-intl/server";
 
-export function AccountPage() {
+export async function AccountPage() {
+  const t = await getTranslations("account");
+
   return (
-    <DashboardPage
-      title="Conta"
-      description="Perfil, e-mail e senha — alinhado a GET/PATCH /api/v1/me e POST /api/v1/me/password (fase F3)."
-    >
-      <div className="bg-card text-card-foreground rounded-xl border p-6 shadow-sm">
-        <p className="text-muted-foreground text-sm">
-          Formulário de dados pessoais e alteração de senha.
-        </p>
+    <DashboardPage title={t("title")} description={t("description")}>
+      <div className="space-y-6">
+        <AccountProfileCard />
+        <ChangePasswordCard />
+        <TenantMembersCard />
+        <DeleteAccountCard />
       </div>
     </DashboardPage>
   );

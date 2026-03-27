@@ -45,6 +45,7 @@ export async function GET(request: Request) {
         documentId: true,
         createdAt: true,
         updatedAt: true,
+        patientPathway: { select: { id: true } },
       },
     }),
     prisma.client.count({ where }),
@@ -52,7 +53,12 @@ export async function GET(request: Request) {
 
   return jsonSuccess({
     clients: items.map((c) => ({
-      ...c,
+      id: c.id,
+      name: c.name,
+      phone: c.phone,
+      caseDescription: c.caseDescription,
+      documentId: c.documentId,
+      patientPathwayId: c.patientPathway?.id ?? null,
       createdAt: c.createdAt.toISOString(),
       updatedAt: c.updatedAt.toISOString(),
     })),

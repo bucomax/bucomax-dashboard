@@ -4,6 +4,7 @@ export type ClientDto = {
   phone: string;
   caseDescription: string | null;
   documentId: string | null;
+  patientPathwayId: string | null;
   createdAt: string;
   updatedAt: string;
 };

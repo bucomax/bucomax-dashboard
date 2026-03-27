@@ -36,6 +36,7 @@
     "empty": "Nenhum paciente cadastrado ainda.",
     "loadError": "Erro ao carregar pacientes.",
     "retry": "Tentar novamente",
+    "journey": "Jornada",
     "columns": {
       "name": "Nome",
       "phone": "Telefone",

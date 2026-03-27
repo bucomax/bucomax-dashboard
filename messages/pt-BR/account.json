@@ -1,0 +1,58 @@
+{
+  "title": "Conta",
+  "description": "Perfil, senha e equipe do tenant (quando você for administrador).",
+  "profile": {
+    "title": "Perfil",
+    "description": "Nome e foto exibidos na aplicação.",
+    "email": "E-mail",
+    "name": "Nome",
+    "image": "URL da imagem",
+    "imageHint": "Opcional. Deixe em branco para remover.",
+    "save": "Salvar alterações",
+    "success": "Perfil atualizado.",
+    "loadError": "Não foi possível carregar o perfil.",
+    "retry": "Tentar de novo"
+  },
+  "password": {
+    "title": "Senha",
+    "description": "Altere a senha usada para entrar com e-mail e senha.",
+    "current": "Senha atual",
+    "new": "Nova senha",
+    "confirm": "Confirmar nova senha",
+    "submit": "Atualizar senha",
+    "success": "Senha atualizada.",
+    "hintNoPassword": "Contas criadas por convite ou sem senha local não podem usar esta opção até definirem senha pelo link recebido."
+  },
+  "danger": {
+    "title": "Zona de risco",
+    "description": "Desativar sua conta encerra a sessão e impede novos logins.",
+    "confirmLabel": "Desativar minha conta",
+    "confirmHelp": "Esta ação desativa o acesso (soft delete). Para voltar, será preciso suporte.",
+    "openConfirm": "Desativar conta",
+    "cancel": "Cancelar",
+    "confirm": "Sim, desativar",
+    "success": "Conta desativada.",
+    "pending": "Desativando…"
+  },
+  "members": {
+    "title": "Equipe do tenant",
+    "description": "Papéis dos usuários vinculados a este tenant.",
+    "loadError": "Não foi possível carregar os membros.",
+    "retry": "Tentar de novo",
+    "empty": "Nenhum membro listado.",
+    "columns": {
+      "member": "Membro",
+      "email": "E-mail",
+      "role": "Papel"
+    },
+    "roleAdmin": "Administrador",
+    "roleUser": "Usuário",
+    "you": "Você",
+    "saveRole": "Salvar",
+    "remove": "Remover",
+    "removeConfirm": "Remover este membro do tenant?",
+    "roleUpdated": "Papel atualizado.",
+    "memberRemoved": "Membro removido.",
+    "conflict": "Operação não permitida (ex.: último administrador)."
+  }
+}

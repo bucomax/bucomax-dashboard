@@ -33,12 +33,12 @@ Ordem geral: **todo o backend necessário** (APIs, dados, e-mail, storage) → *
 |------|--------|-----------|
 | F1 | ✅ | **Login** + **esqueci senha** (feature `auth`, `POST /auth/forgot-password`) |
 | F2 | ✅ | **Redefinir senha** + **definir senha** (convite) — rotas `/auth/reset-password`, `/auth/invite` · *confirmar e-mail (opcional): ainda não* |
-| F3 | ⬜ | **Perfil**: visualizar e atualizar; **permissões** (admin editando outro usuário no tenant) |
-| F4 | ⬜ | **Soft delete** (UI + alinhado à API `deletedAt`) |
-| F5 | ⬜ | **Admin**: criar conta de usuário → envio de **link de confirmação** (Resend) para o usuário definir senha |
+| F3 | ✅ | **Perfil** (`/dashboard/account`): visualizar/atualizar dados, trocar senha; **permissões** de membros no tenant (admin/super_admin altera papel e remove membership) |
+| F4 | ✅ | **Soft delete**: UI de desativação da própria conta + integração com `DELETE /api/v1/me` (alinhado a `deletedAt`) |
+| F5 | ✅ | **Admin**: convite de usuário no frontend (`/dashboard/settings`) com envio de **link de definição de senha** (Resend) |
 | F6 | ✅ | Shell: shadcn (base-nova), sidebar + rotas, tema (`next-themes`), **tenant switcher** (`/tenants` + `/auth/context`) |
 | F7 | ✅ | Wizard **novo paciente** (dados → jornada publicada → `POST /clients` + `POST /patient-pathways`) |
-| F8 | ⬜ | Editor XYFlow + ficha / transição de etapa |
+| F8 | ✅ | **Editor XYFlow** (`/dashboard/pathways/[id]`), lista/criação em `/dashboard/pathways`; **ficha/transição** em `/dashboard/patient-pathways/[id]` + link na lista de pacientes |
 
 ---
 
@@ -148,16 +148,20 @@ Ordem geral: **todo o backend necessário** (APIs, dados, e-mail, storage) → *
 
 ### F3 — Perfil e permissões
 
-- **Perfil:** ver dados, editar, atualizar senha.
-- **Admin editando outro usuário:** tela ou modal no tenant para alterar **papel** (`tenant_admin` / `tenant_user`) e dados permitidos pela API.
+- **Status:** ✅
+- **Perfil:** tela `/dashboard/account` com leitura de `GET /api/v1/me`, edição via `PATCH /api/v1/me` e troca de senha via `POST /api/v1/me/password`.
+- **Permissões:** listagem de membros do tenant para `tenant_admin`/`super_admin`, com alteração de papel (`tenant_admin` / `tenant_user`) e remoção de membership.
 
 ### F4 — Soft delete
 
-- Ações de “desativar” / “remover” conforme API (soft delete); listagens filtram.
+- **Status:** ✅
+- Ação de “desativar minha conta” na tela de conta com confirmação e chamada de `DELETE /api/v1/me`; após sucesso, encerra sessão.
 
 ### F5 — Admin cria usuário + e-mail confirmação
 
-- Formulário de convite (email + papel); após sucesso, mensagem **“link enviado”**; alinhado ao fluxo B8 + template convite.
+- **Status:** ✅
+- Formulário de convite em `/dashboard/settings` (email, nome opcional, papel), integração com `POST /api/v1/admin/invites`.
+- Exibe feedback de sucesso (“link enviado”) e respeita permissão de `tenant_admin`/`super_admin` com tenant ativo.
 
 ### F6 — Shell do produto ✅
 
@@ -174,9 +178,12 @@ Ordem geral: **todo o backend necessário** (APIs, dados, e-mail, storage) → *
 - Passos: dados (`POST /api/v1/clients`) → jornada com versão publicada → confirmação → `POST /api/v1/patient-pathways`.
 - Lista em `/dashboard/clients` via `GET /api/v1/clients`.
 
-### F8 — Jornada no canvas
+### F8 — Jornada no canvas ✅
 
-- XYFlow + ficha + transição (B11).
+- **Status:** ✅
+- **Editor:** `@xyflow/react` em `/dashboard/pathways/[pathwayId]` — salvar rascunho (`PATCH .../versions/[versionId]`), publicar (`POST .../publish`); criação automática de rascunho a partir da última versão publicada quando não há draft.
+- **Lista:** `/dashboard/pathways` com criação e lista; `GET /api/v1/pathways` + `POST /api/v1/pathways`.
+- **Paciente:** `/dashboard/patient-pathways/[patientPathwayId]` — etapa atual e transição (`POST /api/v1/patient-pathways/.../transition`); lista de pacientes inclui `patientPathwayId` quando existir.
 
 ---
 
@@ -194,7 +201,7 @@ Ordem geral: **todo o backend necessário** (APIs, dados, e-mail, storage) → *
 
 **Backend:** B0–B11 ✅  
 
-**Frontend:** F1–F2 ✅ · F6 ✅ · F7 ✅ · F3–F5 ⬜ · F8 ⬜  
+**Frontend:** F1–F2 ✅ · F3–F5 ✅ · F6 ✅ · F7 ✅ · F8 ✅  
 
 **Integrações:** I1–I3 ⬜  
 
@@ -215,6 +222,4 @@ npm run dev
 
 ## Próximo passo imediato
 
-**F8** — editor **XYFlow** + ficha / transição de etapa (B11).
-
-Em paralelo: **F3** (perfil / membros), **F4–F5**, ou **I1** (WhatsApp real no lugar do stub).
+**I1** — WhatsApp real no lugar do stub (`dispatch` em transição de etapa).

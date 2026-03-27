@@ -1,0 +1,59 @@
+{
+  "list": {
+    "title": "Jornadas",
+    "description": "Fluxos clínicos do tenant: edite o grafo, publique versões e use em pacientes.",
+    "newPathway": "Nova jornada",
+    "name": "Nome",
+    "namePlaceholder": "Ex.: Pré-operatório",
+    "create": "Criar",
+    "createSuccess": "Jornada criada.",
+    "creating": "Criando…",
+    "open": "Abrir editor",
+    "columnPathway": "Jornada",
+    "columnPublish": "Publicação",
+    "published": "Publicada: v{version}",
+    "noPublished": "Sem versão publicada",
+    "loadError": "Não foi possível carregar as jornadas.",
+    "retry": "Tentar de novo",
+    "empty": "Nenhuma jornada cadastrada."
+  },
+  "detail": {
+    "title": "Editor de jornada",
+    "description": "Canvas React Flow — nós viram etapas ao publicar.",
+    "back": "Voltar"
+  },
+  "editor": {
+    "loadError": "Não foi possível carregar o editor.",
+    "save": "Salvar rascunho",
+    "saveSuccess": "Rascunho salvo.",
+    "saveError": "Não foi possível salvar.",
+    "publish": "Publicar versão",
+    "publishSuccess": "Versão publicada. Etapas sincronizadas.",
+    "publishError": "Não foi possível publicar.",
+    "addStage": "Adicionar etapa",
+    "defaultStageLabel": "Etapa",
+    "metaTitle": "Versão em edição",
+    "versionLabel": "Versão",
+    "draftHint": "Salve o rascunho antes de publicar. Ao publicar, as etapas são materializadas para pacientes.",
+    "stagePropsTitle": "Etapa selecionada",
+    "stagePropsDescription": "Nome e mensagem ao paciente (persistidos no grafo).",
+    "selectNode": "Clique em um nó no canvas.",
+    "stageName": "Nome da etapa",
+    "patientMessage": "Mensagem ao paciente"
+  },
+  "patient": {
+    "title": "Jornada do paciente",
+    "description": "Etapa atual e transição para a próxima etapa publicada.",
+    "loadError": "Não foi possível carregar a jornada.",
+    "retry": "Tentar de novo",
+    "client": "Paciente",
+    "pathway": "Fluxo",
+    "currentStage": "Etapa atual",
+    "toStage": "Mover para",
+    "toStagePlaceholder": "Selecione a etapa",
+    "note": "Observação (opcional)",
+    "submit": "Registrar transição",
+    "success": "Etapa atualizada.",
+    "sameStage": "Escolha uma etapa diferente da atual."
+  }
+}

@@ -1,0 +1,49 @@
+import { normalizeApiError } from "@/lib/api/axios-error";
+import { apiClient } from "@/lib/api/http-client";
+import type { TenantMemberRow } from "@/features/account/app/types/api";
+import type { ApiEnvelope } from "@/shared/types/api/v1";
+
+type ListPayload = { members: TenantMemberRow[] };
+
+export async function listTenantMembers(tenantId: string): Promise<TenantMemberRow[]> {
+  try {
+    const res = await apiClient.get<ApiEnvelope<ListPayload>>(`/api/v1/admin/tenants/${tenantId}/members`);
+    if (!res.data.success) {
+      throw new Error(res.data.error.message);
+    }
+    return res.data.data.members;
+  } catch (e) {
+    throw normalizeApiError(e);
+  }
+}
+
+export async function patchMemberRole(
+  tenantId: string,
+  userId: string,
+  role: "tenant_admin" | "tenant_user",
+): Promise<void> {
+  try {
+    const res = await apiClient.patch<ApiEnvelope<{ member: { userId: string; tenantId: string; role: string } }>>(
+      `/api/v1/admin/tenants/${tenantId}/members/${userId}`,
+      { role },
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.error.message);
+    }
+  } catch (e) {
+    throw normalizeApiError(e);
+  }
+}
+
+export async function removeTenantMember(tenantId: string, userId: string): Promise<void> {
+  try {
+    const res = await apiClient.delete<ApiEnvelope<{ message: string }>>(
+      `/api/v1/admin/tenants/${tenantId}/members/${userId}`,
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.error.message);
+    }
+  } catch (e) {
+    throw normalizeApiError(e);
+  }
+}

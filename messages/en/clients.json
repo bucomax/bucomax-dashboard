@@ -36,6 +36,7 @@
     "empty": "No patients yet.",
     "loadError": "Failed to load patients.",
     "retry": "Try again",
+    "journey": "Journey",
     "columns": {
       "name": "Name",
       "phone": "Phone",

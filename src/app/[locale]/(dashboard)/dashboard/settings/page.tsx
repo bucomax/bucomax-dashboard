@@ -1,5 +1,5 @@
 import { SettingsPage } from "@/features/dashboard/app/pages/settings-page";
 
-export default function Page() {
+export default async function Page() {
   return <SettingsPage />;
 }

@@ -14,6 +14,10 @@ export const postPathwayVersionBodySchema = z.object({
   graphJson: z.any(),
 });
 
+export const patchPathwayVersionBodySchema = z.object({
+  graphJson: z.any(),
+});
+
 export const postPatientPathwayBodySchema = z.object({
   clientId: z.string().cuid(),
   pathwayId: z.string().cuid(),

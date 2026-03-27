@@ -20,7 +20,16 @@ export async function GET(_request: Request, ctx: RouteCtx) {
     include: {
       client: { select: { id: true, name: true, phone: true, caseDescription: true } },
       pathway: { select: { id: true, name: true, description: true } },
-      pathwayVersion: { select: { id: true, version: true } },
+      pathwayVersion: {
+        select: {
+          id: true,
+          version: true,
+          stages: {
+            orderBy: { sortOrder: "asc" },
+            select: { id: true, name: true, stageKey: true, sortOrder: true },
+          },
+        },
+      },
       currentStage: true,
       transitions: {
         orderBy: { createdAt: "desc" },
