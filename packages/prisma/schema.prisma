@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum GlobalRole {
+  user
+  super_admin
+}
+
+enum TenantRole {
+  tenant_admin
+  tenant_user
+}
+
+enum AuthTokenPurpose {
+  PASSWORD_RESET
+  INVITE_SET_PASSWORD
+}
+
+model User {
+  id               String    @id @default(cuid())
+  name             String?
+  email            String    @unique
+  emailVerified    DateTime?
+  image            String?
+  passwordHash     String?
+  globalRole       GlobalRole @default(user)
+  activeTenantId   String?
+  activeTenant     Tenant?   @relation("UserActiveTenant", fields: [activeTenantId], references: [id], onDelete: SetNull)
+  accounts         Account[]
+  sessions         Session[]
+  memberships      TenantMembership[]
+  authTokens         UserAuthToken[]
+  fileAssets         FileAsset[]
+  stageTransitions   StageTransition[]
+  deletedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model UserAuthToken {
+  id        String           @id @default(cuid())
+  token     String           @unique
+  userId    String
+  tenantId  String?
+  purpose   AuthTokenPurpose
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant?          @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Tenant {
+  id           String               @id @default(cuid())
+  name         String
+  slug         String               @unique
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  memberships  TenantMembership[]
+  activeUsers    User[]               @relation("UserActiveTenant")
+  authTokens     UserAuthToken[]
+  clients      Client[]
+  fileAssets   FileAsset[]
+  carePathways   CarePathway[]
+  patientPathways PatientPathway[]
+}
+
+/** Paciente / cliente da clínica (escopo por tenant). */
+model Client {
+  id              String    @id @default(cuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  phone           String
+  caseDescription String?   @db.Text
+  documentId      String?
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  files           FileAsset[]
+  patientPathway  PatientPathway?
+
+  @@index([tenantId])
+  @@index([tenantId, deletedAt])
+}
+
+/** Jornada clínica (modelo por tenant). */
+model CarePathway {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  versions    PathwayVersion[]
+  patients    PatientPathway[]
+
+  @@index([tenantId])
+}
+
+/** Versão do grafo (React Flow) + publicação. */
+model PathwayVersion {
+  id        String   @id @default(cuid())
+  pathwayId String
+  pathway   CarePathway @relation(fields: [pathwayId], references: [id], onDelete: Cascade)
+  version   Int
+  graphJson Json
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  stages    PathwayStage[]
+  patientCases PatientPathway[]
+
+  @@unique([pathwayId, version])
+  @@index([pathwayId, published])
+}
+
+/** Etapa materializada (sincronizada ao publicar versão). */
+model PathwayStage {
+  id               String   @id @default(cuid())
+  pathwayVersionId String
+  pathwayVersion   PathwayVersion @relation(fields: [pathwayVersionId], references: [id], onDelete: Cascade)
+  stageKey         String
+  name             String
+  sortOrder        Int      @default(0)
+  patientMessage   String?  @db.Text
+
+  currentPatients PatientPathway[] @relation("PatientCurrentStage")
+  transitionsFrom StageTransition[] @relation("TransitionFrom")
+  transitionsTo   StageTransition[] @relation("TransitionTo")
+
+  @@unique([pathwayVersionId, stageKey])
+  @@index([pathwayVersionId, sortOrder])
+}
+
+/** Paciente vinculado a uma versão publicada + etapa atual. */
+model PatientPathway {
+  id               String   @id @default(cuid())
+  tenantId         String
+  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId         String   @unique
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  pathwayId        String
+  pathway          CarePathway @relation(fields: [pathwayId], references: [id], onDelete: Restrict)
+  pathwayVersionId String
+  pathwayVersion   PathwayVersion @relation(fields: [pathwayVersionId], references: [id], onDelete: Restrict)
+  currentStageId   String
+  currentStage     PathwayStage @relation("PatientCurrentStage", fields: [currentStageId], references: [id], onDelete: Restrict)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  transitions      StageTransition[]
+
+  @@index([tenantId])
+  @@index([pathwayId])
+}
+
+/** Auditoria de mudança de etapa + stub de dispatch (WhatsApp / IA). */
+model StageTransition {
+  id               String   @id @default(cuid())
+  patientPathwayId String
+  patientPathway   PatientPathway @relation(fields: [patientPathwayId], references: [id], onDelete: Cascade)
+  fromStageId      String?
+  fromStage        PathwayStage? @relation("TransitionFrom", fields: [fromStageId], references: [id], onDelete: SetNull)
+  toStageId        String
+  toStage          PathwayStage @relation("TransitionTo", fields: [toStageId], references: [id], onDelete: Restrict)
+  actorUserId      String
+  actor            User @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+  note             String? @db.Text
+  dispatchStub     Json?
+
+  createdAt DateTime @default(now())
+
+  @@index([patientPathwayId])
+}
+
+/** Metadados de arquivo no R2 (upload via URL pré-assinada). */
+model FileAsset {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  r2Key        String   @unique
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  clientId     String?
+  client       Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([clientId])
+}
+
+model TenantMembership {
+  id        String     @id @default(cuid())
+  userId    String
+  tenantId  String
+  role      TenantRole @default(tenant_user)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+}

@@ -1,0 +1,668 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "iDoctor API",
+    "version": "0.5.0",
+    "description": "API REST v1. Autenticação: cookie de sessão NextAuth. Tenant ativo: `User.activeTenantId` + sessão. Respostas JSON: `{ success, data, meta }` (sucesso) ou `{ success, error, meta }` (erro)."
+  },
+  "servers": [{ "url": "/", "description": "Mesma origem (Next.js)" }],
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "summary": "Saúde do serviço e do banco",
+        "tags": ["System"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": { "type": "string", "example": "ok" },
+                        "database": { "type": "string", "example": "up" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": { "description": "Banco indisponível" }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "summary": "Usuário e tenant ativo da sessão",
+        "tags": ["Auth"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "id": { "type": "string" },
+                            "email": { "type": "string", "format": "email" },
+                            "name": { "type": "string", "nullable": true },
+                            "image": { "type": "string", "nullable": true },
+                            "globalRole": { "type": "string" },
+                            "tenantId": { "type": "string", "nullable": true },
+                            "tenantRole": { "type": "string", "nullable": true },
+                            "emailVerified": { "type": "string", "format": "date-time", "nullable": true },
+                            "createdAt": { "type": "string", "format": "date-time" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Não autenticado" }
+        }
+      },
+      "patch": {
+        "summary": "Atualiza nome e/ou imagem do usuário logado",
+        "tags": ["Auth"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "maxLength": 120 },
+                  "image": { "type": "string", "nullable": true, "description": "URL ou null/vazio para limpar" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "description": "Não autenticado" },
+          "422": { "description": "Validação" }
+        }
+      },
+      "delete": {
+        "summary": "Soft delete da própria conta",
+        "tags": ["Auth"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Conta desativada" },
+          "401": { "description": "Não autenticado" }
+        }
+      }
+    },
+    "/api/v1/me/password": {
+      "post": {
+        "summary": "Altera senha (credenciais)",
+        "tags": ["Auth"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["currentPassword", "newPassword"],
+                "properties": {
+                  "currentPassword": { "type": "string" },
+                  "newPassword": { "type": "string", "minLength": 8 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Senha atualizada" },
+          "401": { "description": "Senha atual incorreta ou não autenticado" },
+          "403": { "description": "Conta sem senha local" },
+          "422": { "description": "Validação" }
+        }
+      }
+    },
+    "/api/v1/tenants": {
+      "get": {
+        "summary": "Lista tenants do usuário (memberships)",
+        "tags": ["Tenants"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "tenants": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": { "type": "string" },
+                              "name": { "type": "string" },
+                              "slug": { "type": "string" },
+                              "role": { "type": "string" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": { "description": "Não autenticado" }
+        }
+      }
+    },
+    "/api/v1/auth/context": {
+      "post": {
+        "summary": "Define tenant ativo",
+        "tags": ["Auth"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["tenantId"],
+                "properties": {
+                  "tenantId": { "type": "string", "description": "ID do tenant (cuid)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Contexto atualizado" },
+          "403": { "description": "Sem acesso ao tenant" },
+          "404": { "description": "Tenant inexistente" },
+          "422": { "description": "Validação" },
+          "401": { "description": "Não autenticado" }
+        }
+      }
+    },
+    "/api/v1/admin/tenants": {
+      "post": {
+        "summary": "Cria tenant (super_admin)",
+        "tags": ["Admin"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "slug"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Criado" },
+          "403": { "description": "Não é super_admin" },
+          "409": { "description": "Slug duplicado" },
+          "401": { "description": "Não autenticado" }
+        }
+      }
+    },
+    "/api/v1/admin/tenants/{tenantId}/members": {
+      "get": {
+        "summary": "Lista membros do tenant (super_admin ou tenant_admin)",
+        "tags": ["Admin"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Lista de membros" },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Sem permissão" },
+          "404": { "description": "Tenant inexistente" }
+        }
+      }
+    },
+    "/api/v1/admin/tenants/{tenantId}/members/{userId}": {
+      "patch": {
+        "summary": "Altera papel do membro no tenant",
+        "tags": ["Admin"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          { "name": "tenantId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["role"],
+                "properties": {
+                  "role": { "type": "string", "enum": ["tenant_admin", "tenant_user"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Sem permissão" },
+          "404": { "description": "Não encontrado" },
+          "409": { "description": "Único admin" }
+        }
+      },
+      "delete": {
+        "summary": "Remove membership (não apaga o usuário global)",
+        "tags": ["Admin"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          { "name": "tenantId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "userId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Removido" },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Sem permissão" },
+          "404": { "description": "Não encontrado" },
+          "409": { "description": "Único admin" }
+        }
+      }
+    },
+    "/api/v1/clients": {
+      "get": {
+        "summary": "Lista pacientes (tenant ativo)",
+        "tags": ["Clients"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "q", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Lista paginada" },
+          "400": { "description": "Tenant não selecionado" },
+          "401": { "description": "Não autenticado" }
+        }
+      },
+      "post": {
+        "summary": "Cria paciente",
+        "tags": ["Clients"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "phone"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "phone": { "type": "string" },
+                  "caseDescription": { "type": "string" },
+                  "documentId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Criado" },
+          "400": { "description": "Tenant não selecionado" },
+          "401": { "description": "Não autenticado" },
+          "422": { "description": "Validação" }
+        }
+      }
+    },
+    "/api/v1/clients/{clientId}": {
+      "get": {
+        "summary": "Detalhe do paciente",
+        "tags": ["Clients"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "clientId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "OK" },
+          "404": { "description": "Não encontrado" }
+        }
+      },
+      "patch": {
+        "summary": "Atualiza paciente",
+        "tags": ["Clients"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "clientId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "OK" },
+          "404": { "description": "Não encontrado" },
+          "422": { "description": "Validação" }
+        }
+      },
+      "delete": {
+        "summary": "Soft delete do paciente",
+        "tags": ["Clients"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "clientId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Removido" },
+          "404": { "description": "Não encontrado" }
+        }
+      }
+    },
+    "/api/v1/files/presign": {
+      "post": {
+        "summary": "URL pré-assinada (PUT) para upload no R2",
+        "tags": ["Files"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fileName", "mimeType"],
+                "properties": {
+                  "fileName": { "type": "string" },
+                  "mimeType": { "type": "string" },
+                  "clientId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "uploadUrl + key" },
+          "503": { "description": "R2 não configurado" },
+          "401": { "description": "Não autenticado" }
+        }
+      }
+    },
+    "/api/v1/files": {
+      "post": {
+        "summary": "Registra metadados após upload",
+        "tags": ["Files"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["key", "fileName", "mimeType", "sizeBytes"],
+                "properties": {
+                  "key": { "type": "string" },
+                  "fileName": { "type": "string" },
+                  "mimeType": { "type": "string" },
+                  "sizeBytes": { "type": "integer" },
+                  "clientId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Registrado" },
+          "403": { "description": "Chave inválida" },
+          "409": { "description": "Já registrado" },
+          "401": { "description": "Não autenticado" }
+        }
+      }
+    },
+    "/api/v1/pathways": {
+      "get": {
+        "summary": "Lista jornadas (pathways) do tenant com versão publicada resumida",
+        "tags": ["Pathways"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Lista `pathways` + `publishedVersion` opcional" },
+          "400": { "description": "Tenant não selecionado" },
+          "401": { "description": "Não autenticado" }
+        }
+      },
+      "post": {
+        "summary": "Cria jornada (template)",
+        "tags": ["Pathways"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string", "maxLength": 200 },
+                  "description": { "type": "string", "maxLength": 10000 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Criado (`pathway`)" },
+          "400": { "description": "Tenant não selecionado" },
+          "401": { "description": "Não autenticado" },
+          "422": { "description": "Validação" }
+        }
+      }
+    },
+    "/api/v1/pathways/{pathwayId}": {
+      "get": {
+        "summary": "Detalhe da jornada com versões",
+        "tags": ["Pathways"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "pathwayId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "description": "Não autenticado" },
+          "404": { "description": "Não encontrado" }
+        }
+      },
+      "patch": {
+        "summary": "Atualiza nome/descrição",
+        "tags": ["Pathways"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "pathwayId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "maxLength": 200 },
+                  "description": { "type": "string", "nullable": true, "maxLength": 10000 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "description": "Não autenticado" },
+          "404": { "description": "Não encontrado" },
+          "422": { "description": "Validação ou nenhum campo" }
+        }
+      },
+      "delete": {
+        "summary": "Remove jornada (bloqueado se houver pacientes matriculados)",
+        "tags": ["Pathways"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "pathwayId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "Removido" },
+          "401": { "description": "Não autenticado" },
+          "404": { "description": "Não encontrado" },
+          "409": { "description": "Pacientes na jornada" }
+        }
+      }
+    },
+    "/api/v1/pathways/{pathwayId}/versions": {
+      "post": {
+        "summary": "Nova versão rascunho com grafo (React Flow / XYFlow JSON)",
+        "tags": ["Pathways"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "pathwayId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["graphJson"],
+                "properties": {
+                  "graphJson": {
+                    "type": "object",
+                    "description": "Grafo XYFlow: `nodes` com id e data.label (opcional patientMessage)"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Versão criada" },
+          "401": { "description": "Não autenticado" },
+          "404": { "description": "Jornada não encontrada" },
+          "422": { "description": "Validação" }
+        }
+      }
+    },
+    "/api/v1/pathways/{pathwayId}/versions/{versionId}/publish": {
+      "post": {
+        "summary": "Publica versão (materializa etapas; despublica outras)",
+        "tags": ["Pathways"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          { "name": "pathwayId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "versionId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Publicado com `stages`" },
+          "401": { "description": "Não autenticado" },
+          "404": { "description": "Jornada ou versão não encontrada" },
+          "422": { "description": "Grafo sem nodes" }
+        }
+      }
+    },
+    "/api/v1/patient-pathways": {
+      "get": {
+        "summary": "Lista pacientes em jornada (tenant ativo)",
+        "tags": ["PatientPathways"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Lista `patientPathways`" },
+          "400": { "description": "Tenant não selecionado" },
+          "401": { "description": "Não autenticado" }
+        }
+      },
+      "post": {
+        "summary": "Matricula paciente na versão publicada da jornada",
+        "tags": ["PatientPathways"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["clientId", "pathwayId"],
+                "properties": {
+                  "clientId": { "type": "string" },
+                  "pathwayId": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Matriculado na primeira etapa" },
+          "400": { "description": "Tenant não selecionado" },
+          "401": { "description": "Não autenticado" },
+          "404": { "description": "Paciente ou jornada" },
+          "409": { "description": "Paciente já em jornada ou sem versão publicada" },
+          "422": { "description": "Validação" }
+        }
+      }
+    },
+    "/api/v1/patient-pathways/{patientPathwayId}": {
+      "get": {
+        "summary": "Detalhe da jornada do paciente + transições recentes",
+        "tags": ["PatientPathways"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "patientPathwayId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "OK" },
+          "401": { "description": "Não autenticado" },
+          "404": { "description": "Não encontrado" }
+        }
+      }
+    },
+    "/api/v1/patient-pathways/{patientPathwayId}/transition": {
+      "post": {
+        "summary": "Transição de etapa (grava stub de dispatch)",
+        "tags": ["PatientPathways"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "patientPathwayId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["toStageId"],
+                "properties": {
+                  "toStageId": { "type": "string" },
+                  "note": { "type": "string", "maxLength": 2000 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Etapa atualizada" },
+          "401": { "description": "Não autenticado" },
+          "404": { "description": "Instância ou etapa inválida" },
+          "422": { "description": "Validação ou já na etapa" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "next-auth.session-token",
+        "description": "Sessão NextAuth (cookie após login no mesmo site)."
+      }
+    }
+  }
+}

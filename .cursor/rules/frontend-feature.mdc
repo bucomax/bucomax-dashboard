@@ -1,0 +1,33 @@
+---
+description: Criar ou estender features no front — pastas, páginas finas, services/hooks
+globs: ["src/features/**/*", "src/app/**/page.tsx"]
+alwaysApply: false
+---
+
+# Nova feature no frontend (iDoctor)
+
+## Estrutura
+
+- Colocar em **`src/features/<nomeDaFeature>/app/`** (ou **`admin/`** para back-office).
+- Subpastas: **`components/`**, **`hooks/`**, **`pages/`**, **`services/`**, **`types/`**, **`utils/`** (schemas Zod em `utils/schemas.ts`).
+- Referência viva: **`src/features/auth/app/`**.
+
+## Rotas Next.js
+
+- **`src/app/<route>/page.tsx`** deve ser **fina**: só `import` da página em `features/.../pages/` e `export default function Page() { return <...Page />; }`.
+- **Sem** lógica de negócio, formulários grandes ou `fetch` na `page.tsx` da rota.
+
+## Responsabilidades
+
+- **Services:** HTTP (`fetch` / `apiClient`), parsing de **`ApiEnvelope`** (`src/lib/api/envelope.ts`).
+- **Hooks:** formulários, estado, orquestração; chamam services.
+- **Components:** UI + hooks; props tipadas a partir de `types/`.
+- **`pages/` (feature):** composição (shell, Suspense, títulos), não reimplementar serviços.
+
+## Compartilhado
+
+- UI genérica: `@/components/...`; cliente HTTP: `@/lib/api/http-client`; envelope: `@/types/api/v1`.
+
+## Nomenclatura
+
+- Arquivos **kebab-case**; componentes React **PascalCase**; tipos em **`types/`** da feature ou `src/types/` se forem globais.
