@@ -1,6 +1,6 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { getAccessToken, getRefreshToken, setAuthTokens } from "@/lib/api/token-storage";
-import type { ApiErrorEnvelope } from "@/types/api/v1";
+import type { ApiErrorEnvelope } from "@/shared/types/api/v1";
 
 /**
  * Cliente HTTP da aplicação (browser e futuros usos server com cuidado).

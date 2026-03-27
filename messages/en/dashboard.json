@@ -1,0 +1,28 @@
+{
+  "shell": {
+    "superAdminBanner": "Super admin — active tenant context for APIs and screens.",
+    "tenantFooter": "Multi-tenant clinical platform",
+    "signOut": "Sign out",
+    "account": "Account"
+  },
+  "nav": {
+    "principal": "Main",
+    "operacao": "Operations",
+    "conta": "Account",
+    "home": "Home",
+    "clients": "Patients",
+    "pathways": "Pathways",
+    "attendance": "Attendance",
+    "files": "Files",
+    "accountPage": "Account",
+    "settings": "Settings"
+  },
+  "home": {
+    "title": "Home",
+    "loggedInAs": "Signed in as",
+    "shortcuts": "Shortcuts:",
+    "apiDocLink": "API documentation (Scalar)",
+    "meEndpoint": "GET /api/v1/me",
+    "withSession": "(with session)"
+  }
+}

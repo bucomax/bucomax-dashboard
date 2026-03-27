@@ -1,4 +1,4 @@
-import type { ApiErrorEnvelope, ApiSuccessEnvelope } from "@/types/api/v1";
+import type { ApiErrorEnvelope, ApiSuccessEnvelope } from "@/shared/types/api/v1";
 
 /**
  * `POST /api/v1/auth/forgot-password`

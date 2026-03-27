@@ -1,17 +1,28 @@
 import { Suspense } from "react";
-import { AuthPageShell } from "../components/auth-page-shell";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/shared/components/ui/card";
 import { AuthSuspenseFallback } from "../components/auth-suspense-fallback";
 import { SetPasswordForm } from "../components/set-password-form";
 
 export function InviteSetPasswordPage() {
   return (
-    <AuthPageShell>
-      <Suspense fallback={<AuthSuspenseFallback />}>
-        <SetPasswordForm
-          title="Definir senha"
-          subtitle="Você foi convidado para o iDoctor. Crie sua senha para continuar."
-        />
-      </Suspense>
-    </AuthPageShell>
+    <Suspense fallback={<AuthSuspenseFallback />}>
+      <Card className="w-full shadow-sm">
+        <CardHeader>
+          <CardTitle>Definir senha</CardTitle>
+          <CardDescription>
+            Você foi convidado para o iDoctor. Crie sua senha para continuar.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <SetPasswordForm successMessage="Conta criada." />
+        </CardContent>
+      </Card>
+    </Suspense>
   );
 }

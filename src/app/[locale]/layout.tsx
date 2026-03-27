@@ -1,0 +1,75 @@
+import { routing } from "@/i18n/routing";
+import { AuthSessionProvider } from "@/shared/components/providers/session-provider";
+import { ThemeProvider } from "@/shared/components/providers/theme-provider";
+import { Toaster } from "@/shared/components/ui/sonner";
+import { TooltipProvider } from "@/shared/components/ui/tooltip";
+import type { Metadata } from "next";
+import { NextIntlClientProvider } from "next-intl";
+import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
+import { Geist, Geist_Mono } from "next/font/google";
+import { notFound } from "next/navigation";
+import "../globals.css";
+
+const geistSans = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: "global" });
+  return {
+    title: t("meta.title"),
+    description: t("meta.description"),
+  };
+}
+
+export default async function LocaleLayout({
+  children,
+  params,
+}: Readonly<{
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}>) {
+  const { locale } = await params;
+  if (!routing.locales.includes(locale as "en" | "pt-BR")) {
+    notFound();
+  }
+
+  setRequestLocale(locale);
+  const messages = await getMessages();
+
+  return (
+    <html
+      lang={locale}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+    >
+      <body className="flex min-h-full flex-col">
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <AuthSessionProvider>
+            <ThemeProvider>
+              <TooltipProvider>
+                {children}
+                <Toaster position="top-right" richColors closeButton />
+              </TooltipProvider>
+            </ThemeProvider>
+          </AuthSessionProvider>
+        </NextIntlClientProvider>
+      </body>
+    </html>
+  );
+}

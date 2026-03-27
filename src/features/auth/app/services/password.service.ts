@@ -1,6 +1,6 @@
 import axios from "axios";
 import { apiClient } from "@/lib/api/http-client";
-import type { ApiEnvelope, ApiErrorEnvelope } from "@/types/api/v1";
+import type { ApiEnvelope, ApiErrorEnvelope } from "@/shared/types/api/v1";
 import type { ResetPasswordRequest } from "../types/auth";
 
 export type ResetPasswordResult =

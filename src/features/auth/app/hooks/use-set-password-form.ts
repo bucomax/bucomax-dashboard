@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { resetPasswordWithToken } from "../services/password.service";
@@ -9,14 +9,12 @@ import type { SetPasswordFormValues } from "../types/auth";
 import { setPasswordFormSchema } from "../utils/schemas";
 
 export type UseSetPasswordFormOptions = {
-  /** Após sucesso, redirecionar para (default `/login`). */
+  /** Rota após o countdown (default `/login`). */
   redirectTo?: string;
-  redirectDelayMs?: number;
 };
 
 export function useSetPasswordForm(options: UseSetPasswordFormOptions = {}) {
-  const { redirectTo = "/login", redirectDelayMs = 2000 } = options;
-  const router = useRouter();
+  const { redirectTo = "/login" } = options;
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
 
@@ -44,12 +42,12 @@ export function useSetPasswordForm(options: UseSetPasswordFormOptions = {}) {
       return;
     }
     setDone(true);
-    setTimeout(() => router.push(redirectTo), redirectDelayMs);
   }
 
   return {
     form,
     done,
+    redirectTo,
     tokenMissing: !token,
     onSubmit: form.handleSubmit(onSubmit),
     isSubmitting: form.formState.isSubmitting,

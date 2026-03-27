@@ -1,0 +1,46 @@
+{
+  "wizard": {
+    "title": "Novo paciente",
+    "description": "Dados do paciente → escolha da jornada publicada → confirmação.",
+    "name": "Nome",
+    "phone": "Telefone",
+    "step1": "Dados",
+    "step2": "Jornada",
+    "step3": "Confirmar",
+    "caseDescription": "Descrição do caso",
+    "caseDescriptionHint": "Opcional. Contexto clínico ou observações.",
+    "documentId": "Documento (CPF, RG, prontuário…)",
+    "documentIdHint": "Opcional.",
+    "pathwayLabel": "Jornada clínica",
+    "pathwayPlaceholder": "Selecione uma jornada com versão publicada",
+    "pathwayHelp": "Só aparecem jornadas com pelo menos uma versão publicada e com etapas.",
+    "pathwayEmpty": "Nenhuma jornada disponível. Publique uma versão em Jornadas antes de matricular pacientes.",
+    "pathwayLoading": "Carregando jornadas…",
+    "reviewTitle": "Resumo",
+    "reviewName": "Nome",
+    "reviewPhone": "Telefone",
+    "reviewPathway": "Jornada",
+    "reviewVersion": "Versão publicada",
+    "back": "Voltar",
+    "backToList": "Voltar à lista",
+    "next": "Continuar",
+    "submit": "Salvar paciente e iniciar jornada",
+    "submitting": "Salvando…",
+    "success": "Paciente criado e jornada iniciada.",
+    "errorGeneric": "Não foi possível concluir. Tente novamente."
+  },
+  "list": {
+    "title": "Pacientes",
+    "description": "Lista de pacientes do tenant ativo.",
+    "newPatient": "Novo paciente",
+    "empty": "Nenhum paciente cadastrado ainda.",
+    "loadError": "Erro ao carregar pacientes.",
+    "retry": "Tentar novamente",
+    "columns": {
+      "name": "Nome",
+      "phone": "Telefone",
+      "document": "Documento",
+      "updated": "Atualizado"
+    }
+  }
+}

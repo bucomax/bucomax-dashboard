@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "title": "iDoctor",
+    "description": "Multi-tenant clinical platform"
+  },
+  "brand": "iDoctor",
+  "home": {
+    "title": "iDoctor",
+    "subtitle": "Platform under development. Sign in to access the dashboard or open the API documentation.",
+    "login": "Sign in",
+    "apiDocs": "API (Scalar)",
+    "healthLink": "GET /api/v1/health"
+  },
+  "locale": {
+    "ptBR": "Portuguese (Brazil)",
+    "en": "English"
+  }
+}

@@ -19,9 +19,15 @@ Padrão **feature-based**: cada domínio de telas fica em `src/features/<nomeDaF
 
 **Compartilhado (não é feature):**
 
-- `src/components/` — formulários genéricos (`FormInput`, `FormPassword`…), providers.
-- `src/lib/api/` — `http-client`, envelope de API.
-- `src/types/api/v1.ts` — tipos do envelope de resposta.
+- `src/shared/components/ui/` — shadcn (Button, Card, …).
+- `src/shared/components/forms/` — `Form`, `FormInput`, `FormPassword`, etc.
+- `src/shared/components/layout/` — layouts transversais: `AuthLayout` (rotas públicas de login), `AppShell` (sidebar + header do app autenticado), `AppSidebar`, `TenantSwitcher`, `ThemeToggle`.
+- `src/shared/components/providers/` — `SessionProvider`, tema.
+- `src/shared/hooks/` — ex.: `use-mobile` (sidebar).
+- `src/shared/services/` — HTTP usado por mais de uma área (ex.: `tenant.service` para troca de tenant).
+- `src/shared/types/` — tipos globais de front (ex.: envelope `api/v1`, `AppShellUser`, `TenantListItem`).
+- `src/lib/api/` — `http-client`, definição do envelope em `lib/api/envelope.ts`.
+- **Rotas:** grupos `src/app/(auth)/` (login, `/auth/*` públicos) e `src/app/(dashboard)/` (área logada com `AppShell`). URLs não mudam; os parênteses não aparecem na rota.
 
 ---
 

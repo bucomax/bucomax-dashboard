@@ -26,7 +26,8 @@ alwaysApply: false
 
 ## Compartilhado
 
-- UI genérica: `@/components/...`; cliente HTTP: `@/lib/api/http-client`; envelope: `@/types/api/v1`.
+- Layout (auth vs app): `src/shared/components/layout/` (`AuthLayout`, `AppShell`, sidebar, tema, tenant). Rotas: grupos `(auth)` e `(dashboard)` em `src/app/`.
+- UI (shadcn): `@/shared/components/ui/`; formulários RHF: `@/shared/components/forms/`; cliente HTTP: `@/lib/api/http-client`; envelope API: `@/shared/types/api/v1`.
 
 ## Nomenclatura
 

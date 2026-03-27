@@ -1,0 +1,35 @@
+import { apiClient } from "@/lib/api/http-client";
+import type { ApiEnvelope } from "@/shared/types/api/v1";
+import type { TenantListItem } from "@/shared/types/tenant";
+
+type TenantsPayload = { tenants: TenantListItem[] };
+
+type ContextPayload = {
+  tenantId: string;
+  tenantRole: string | null;
+  user?: {
+    id: string;
+    email: string | null;
+    globalRole: string;
+    tenantId?: string | null;
+    tenantRole?: string | null;
+  };
+};
+
+export async function listTenants(): Promise<TenantListItem[]> {
+  const res = await apiClient.get<ApiEnvelope<TenantsPayload>>("/api/v1/tenants");
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data.tenants;
+}
+
+export async function setActiveTenant(tenantId: string): Promise<ContextPayload> {
+  const res = await apiClient.post<ApiEnvelope<ContextPayload>>("/api/v1/auth/context", {
+    tenantId,
+  });
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data;
+}
