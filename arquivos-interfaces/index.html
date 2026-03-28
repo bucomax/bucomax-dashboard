@@ -1,0 +1,1582 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BucoMax - Sistema de Gestão de Pacientes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--gray-100);
+            color: var(--gray-800);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .main-nav {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .nav-link {
+            padding: 0.5rem 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .stat-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .stat-icon.blue {
+            background: #dbeafe;
+            color: var(--primary);
+        }
+
+        .stat-icon.green {
+            background: #d1fae5;
+            color: var(--success);
+        }
+
+        .stat-icon.yellow {
+            background: #fef3c7;
+            color: var(--warning);
+        }
+
+        .stat-icon.red {
+            background: #fee2e2;
+            color: var(--danger);
+        }
+
+        .stat-info h3 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .stat-info p {
+            font-size: 0.875rem;
+            color: var(--gray-500);
+        }
+
+        /* Action Buttons */
+        .actions-bar {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: white;
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+        }
+
+        .btn-outline:hover {
+            background: var(--gray-50);
+            border-color: var(--gray-400);
+        }
+
+        /* Filters */
+        .filters-section {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-group label {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        .filter-group select,
+        .filter-group input {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            background: white;
+            min-width: 150px;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        .search-box::before {
+            content: "🔍";
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.875rem;
+        }
+
+        /* Pipeline View */
+        .pipeline-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .pipeline {
+            display: flex;
+            gap: 1rem;
+            overflow-x: auto;
+            padding-bottom: 1rem;
+        }
+
+        .pipeline-column {
+            min-width: 280px;
+            background: var(--gray-50);
+            border-radius: 12px;
+            padding: 1rem;
+            transition: all 0.2s;
+        }
+
+        .column-content {
+            min-height: 100px;
+        }
+
+        .column-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        .column-title {
+            font-weight: 600;
+            color: var(--gray-700);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .column-count {
+            background: var(--gray-200);
+            color: var(--gray-700);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .column-count.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .column-count.danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        /* Patient Card */
+        .patient-card {
+            background: white;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+            cursor: grab;
+            transition: all 0.2s;
+            border-left: 4px solid var(--gray-300);
+        }
+
+        .patient-card:active {
+            cursor: grabbing;
+        }
+
+        .patient-card.dragging {
+            opacity: 0.5;
+            transform: rotate(3deg);
+        }
+
+        .pipeline-column.drag-over {
+            background: #e0f2fe;
+            border: 2px dashed var(--primary);
+        }
+
+        .patient-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+            transform: translateY(-1px);
+        }
+
+        .patient-card.status-ok {
+            border-left-color: var(--success);
+        }
+
+        .patient-card.status-warning {
+            border-left-color: var(--warning);
+        }
+
+        .patient-card.status-danger {
+            border-left-color: var(--danger);
+        }
+
+        .patient-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .patient-name {
+            font-weight: 600;
+            color: var(--gray-800);
+            font-size: 0.95rem;
+        }
+
+        .patient-flow {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            background: #dbeafe;
+            color: var(--primary);
+        }
+
+        .patient-meta {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            margin-bottom: 0.5rem;
+        }
+
+        .patient-days {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .days-badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .days-badge.ok {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .days-badge.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .days-badge.danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .patient-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-small {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-advance {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-advance:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-view {
+            background: var(--gray-100);
+            color: var(--gray-600);
+        }
+
+        .btn-view:hover {
+            background: var(--gray-200);
+        }
+
+        /* Alerts Section */
+        .alerts-section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+        }
+
+        .alert-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .alert-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .alert-danger {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+        }
+
+        .alert-warning {
+            background: #fffbeb;
+            border: 1px solid #fde68a;
+            color: #92400e;
+        }
+
+        .alert-icon {
+            font-size: 1.25rem;
+        }
+
+        .alert-content {
+            flex: 1;
+        }
+
+        .alert-action {
+            padding: 0.4rem 0.75rem;
+            background: white;
+            border: 1px solid currentColor;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-400);
+            padding: 0.25rem;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: var(--gray-600);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .flow-options {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .flow-option {
+            padding: 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .flow-option:hover {
+            border-color: var(--primary);
+            background: #f0f7ff;
+        }
+
+        .flow-option.selected {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .flow-option h4 {
+            font-size: 0.95rem;
+            color: var(--gray-800);
+            margin-bottom: 0.25rem;
+        }
+
+        .flow-option p {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        /* Phase Change Modal */
+        .phase-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .phase-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .phase-item:hover {
+            border-color: var(--primary);
+            background: #f0f7ff;
+        }
+
+        .phase-item.current {
+            border-color: var(--success);
+            background: #f0fdf4;
+        }
+
+        .phase-item.selected {
+            border-color: var(--primary);
+            background: #eff6ff;
+        }
+
+        .phase-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            background: var(--gray-100);
+        }
+
+        .phase-info h4 {
+            font-size: 0.95rem;
+            color: var(--gray-800);
+        }
+
+        .phase-info p {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .documents-preview {
+            margin-top: 1.25rem;
+            padding: 1rem;
+            background: #f0f7ff;
+            border-radius: 10px;
+            border: 1px solid #bfdbfe;
+        }
+
+        .documents-preview h4 {
+            font-size: 0.9rem;
+            color: var(--primary-dark);
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .document-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            color: var(--gray-700);
+            padding: 0.4rem 0;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--gray-800);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            z-index: 1001;
+        }
+
+        .toast.show {
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success {
+            background: var(--success);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .filters-section {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group select,
+            .filter-group input {
+                width: 100%;
+            }
+
+            .flow-options {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">B</div>
+            <span>BucoMax</span>
+        </div>
+        <nav class="main-nav">
+            <a href="index.html" class="nav-link active">📊 Dashboard</a>
+            <a href="pacientes.html" class="nav-link">👥 Pacientes</a>
+            <a href="relatorios.html" class="nav-link">📈 Relatórios</a>
+            <a href="configuracoes.html" class="nav-link">⚙️ Configurações</a>
+        </nav>
+        <div class="user-info">
+            <span>Dr. João Silva</span>
+            <div class="user-avatar">👤</div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card" onclick="filterByStatus('all')">
+                <div class="stat-icon blue">📋</div>
+                <div class="stat-info">
+                    <h3>47</h3>
+                    <p>Total de Pacientes</p>
+                </div>
+            </div>
+            <div class="stat-card" onclick="filterByStatus('ok')">
+                <div class="stat-icon green">✓</div>
+                <div class="stat-info">
+                    <h3>32</h3>
+                    <p>Em dia</p>
+                </div>
+            </div>
+            <div class="stat-card" onclick="filterByStatus('warning')">
+                <div class="stat-icon yellow">⚠️</div>
+                <div class="stat-info">
+                    <h3>10</h3>
+                    <p>Atenção (&gt;7 dias)</p>
+                </div>
+            </div>
+            <div class="stat-card" onclick="filterByStatus('danger')">
+                <div class="stat-icon red">🚨</div>
+                <div class="stat-info">
+                    <h3>5</h3>
+                    <p>Críticos (&gt;15 dias)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts Section -->
+        <section class="alerts-section">
+            <h2 class="section-title">⚠️ Alertas Ativos</h2>
+            <div class="alert-item alert-danger">
+                <span class="alert-icon">🚨</span>
+                <div class="alert-content">
+                    <strong>Maria Santos</strong> está há 22 dias na fase "Exames" sem atualização
+                </div>
+                <button class="alert-action" onclick="openPatientModal('maria')">Ver paciente</button>
+            </div>
+            <div class="alert-item alert-danger">
+                <span class="alert-icon">🚨</span>
+                <div class="alert-content">
+                    <strong>Carlos Oliveira</strong> está há 18 dias na fase "Pré-operatório" sem atualização
+                </div>
+                <button class="alert-action" onclick="openPatientModal('carlos')">Ver paciente</button>
+            </div>
+            <div class="alert-item alert-warning">
+                <span class="alert-icon">⏰</span>
+                <div class="alert-content">
+                    <strong>Ana Costa</strong> - Prazo do convênio vence em 5 dias
+                </div>
+                <button class="alert-action" onclick="openPatientModal('ana')">Ver paciente</button>
+            </div>
+            <div class="alert-item alert-warning">
+                <span class="alert-icon">📋</span>
+                <div class="alert-content">
+                    <strong>3 pacientes</strong> aguardando resposta de exames há mais de 10 dias
+                </div>
+                <button class="alert-action">Ver lista</button>
+            </div>
+        </section>
+
+        <!-- Actions Bar -->
+        <div class="actions-bar">
+            <button class="btn btn-primary" onclick="openNewPatientModal()">
+                ➕ Novo Paciente
+            </button>
+            <a href="relatorios.html" class="btn btn-outline">
+                📊 Relatórios
+            </a>
+            <button class="btn btn-outline" onclick="exportData()">
+                📤 Exportar
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-section">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Buscar paciente por nome ou telefone..."
+                    oninput="filterPatients()">
+            </div>
+            <div class="filter-group">
+                <label>Fluxo:</label>
+                <select id="filterFlow" onchange="filterPatients()">
+                    <option value="">Todos os fluxos</option>
+                    <option value="Completo">Completo (Orto+Cirurgia)</option>
+                    <option value="Direto">Direto para Cirurgia</option>
+                    <option value="Convênio">Via Convênio</option>
+                    <option value="Judicial">Via Judicial</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Status:</label>
+                <select id="filterStatus" onchange="filterPatients()">
+                    <option value="">Todos</option>
+                    <option value="ok">Em dia</option>
+                    <option value="warning">Atenção</option>
+                    <option value="danger">Crítico</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>OPME:</label>
+                <select id="filterOPME" onchange="filterPatients()">
+                    <option value="">Todos</option>
+                    <option value="Art Fix">Art Fix</option>
+                    <option value="Evolve">Evolve</option>
+                    <option value="CPMH">CPMH</option>
+                    <option value="Patrocinado">Patrocinado</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Pipeline View -->
+        <section class="pipeline-section">
+            <h2 class="section-title">📊 Visão por Etapas (Pipeline)</h2>
+            <div class="pipeline">
+                <!-- Rendered dynamically by JavaScript -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal: Novo Paciente -->
+    <div class="modal-overlay" id="newPatientModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">➕ Cadastrar Novo Paciente</h3>
+                <button class="modal-close" onclick="closeModal('newPatientModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Nome Completo</label>
+                    <input type="text" placeholder="Digite o nome do paciente">
+                </div>
+                <div class="form-group">
+                    <label>Telefone (WhatsApp)</label>
+                    <input type="tel" placeholder="(11) 99999-9999">
+                </div>
+                <div class="form-group">
+                    <label>E-mail</label>
+                    <input type="email" placeholder="paciente@email.com">
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Fluxo</label>
+                    <div class="flow-options">
+                        <div class="flow-option selected" onclick="selectFlow(this)">
+                            <h4>🔄 Completo (Orto + Cirurgia)</h4>
+                            <p>Ortodontia → Exames → Pré-op → Cirurgia → Pós-op</p>
+                        </div>
+                        <div class="flow-option" onclick="selectFlow(this)">
+                            <h4>⚡ Direto para Cirurgia</h4>
+                            <p>Exames → Pré-op → Cirurgia → Pós-op</p>
+                        </div>
+                        <div class="flow-option" onclick="selectFlow(this)">
+                            <h4>🏥 Via Convênio</h4>
+                            <p>Inclui etapa de solicitação e aprovação</p>
+                        </div>
+                        <div class="flow-option" onclick="selectFlow(this)">
+                            <h4>⚖️ Via Judicial</h4>
+                            <p>Inclui etapas do processo jurídico</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Fornecedor OPME</label>
+                    <select>
+                        <option value="">Selecione...</option>
+                        <option value="artfix">Art Fix</option>
+                        <option value="evolve">Evolve</option>
+                        <option value="cpmh">CPMH</option>
+                        <option value="patrocinado">Patrocinado</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Responsável</label>
+                    <select>
+                        <option value="">Selecione...</option>
+                        <option value="dr-joao">Dr. João Silva</option>
+                        <option value="dra-maria">Dra. Maria Santos</option>
+                        <option value="secretaria">Secretaria</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('newPatientModal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="savePatient()">Cadastrar Paciente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Alterar Fase -->
+    <div class="modal-overlay" id="phaseModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">🔄 Alterar Fase do Paciente</h3>
+                <button class="modal-close" onclick="closeModal('phaseModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="background: var(--gray-50); padding: 1rem; border-radius: 10px; margin-bottom: 1.25rem;">
+                    <strong id="modalPatientName">Maria Santos</strong>
+                    <p style="font-size: 0.875rem; color: var(--gray-500); margin-top: 0.25rem;">
+                        Fluxo: Completo (Orto + Cirurgia) • Fase atual: <span id="modalCurrentPhase">Exames</span>
+                    </p>
+                </div>
+
+                <label style="font-weight: 500; color: var(--gray-700); margin-bottom: 0.75rem; display: block;">
+                    Selecione a nova fase:
+                </label>
+                <div class="phase-list">
+                    <div class="phase-item" onclick="selectPhase(this, 'avaliacao')">
+                        <div class="phase-icon">📋</div>
+                        <div class="phase-info">
+                            <h4>Avaliação e Planejamento</h4>
+                            <p>Consulta inicial, anamnese e planejamento</p>
+                        </div>
+                    </div>
+                    <div class="phase-item current" onclick="selectPhase(this, 'exames')">
+                        <div class="phase-icon">🔬</div>
+                        <div class="phase-info">
+                            <h4>Exames</h4>
+                            <p>Realização de exames necessários ✓ Atual</p>
+                        </div>
+                    </div>
+                    <div class="phase-item" onclick="selectPhase(this, 'ortodontia')">
+                        <div class="phase-icon">🦷</div>
+                        <div class="phase-info">
+                            <h4>Ortodontia</h4>
+                            <p>Preparação ortodôntica pré-cirúrgica</p>
+                        </div>
+                    </div>
+                    <div class="phase-item" onclick="selectPhase(this, 'preop')">
+                        <div class="phase-icon">📝</div>
+                        <div class="phase-info">
+                            <h4>Pré-operatório</h4>
+                            <p>Preparação para a cirurgia</p>
+                        </div>
+                    </div>
+                    <div class="phase-item" onclick="selectPhase(this, 'cirurgia')">
+                        <div class="phase-icon">🏥</div>
+                        <div class="phase-info">
+                            <h4>Cirurgia</h4>
+                            <p>Procedimento cirúrgico</p>
+                        </div>
+                    </div>
+                    <div class="phase-item" onclick="selectPhase(this, 'posop')">
+                        <div class="phase-icon">🩹</div>
+                        <div class="phase-info">
+                            <h4>Pós-operatório</h4>
+                            <p>Acompanhamento pós-cirúrgico</p>
+                        </div>
+                    </div>
+                    <div class="phase-item" onclick="selectPhase(this, 'conclusao')">
+                        <div class="phase-icon">✅</div>
+                        <div class="phase-info">
+                            <h4>Conclusão</h4>
+                            <p>Alta e finalização do tratamento</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="documents-preview" id="documentsPreview" style="display: none;">
+                    <h4>📄 Documentos que serão enviados automaticamente:</h4>
+                    <div id="documentsList">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('phaseModal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="confirmPhaseChange()">Confirmar Alteração</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span>✓</span>
+        <span id="toastMessage">Operação realizada com sucesso!</span>
+    </div>
+
+    <script>
+        // ========================================
+        // MOCK DATA - 47 Pacientes
+        // ========================================
+        const mockPatients = [
+            // Avaliação (8 pacientes)
+            { id: 1, name: 'Pedro Souza', phone: '(11) 99999-0001', flow: 'Completo', phase: 'avaliacao', days: 3, status: 'ok', opme: 'Art Fix' },
+            { id: 2, name: 'Lucia Mendes', phone: '(11) 99999-0002', flow: 'Convênio', phase: 'avaliacao', days: 1, status: 'ok', opme: 'Evolve' },
+            { id: 3, name: 'Gabriel Torres', phone: '(11) 99999-0013', flow: 'Direto', phase: 'avaliacao', days: 5, status: 'ok', opme: 'CPMH' },
+            { id: 4, name: 'Patrícia Lima', phone: '(11) 99999-0014', flow: 'Judicial', phase: 'avaliacao', days: 2, status: 'ok', opme: 'Art Fix' },
+            { id: 5, name: 'Henrique Castro', phone: '(11) 99999-0015', flow: 'Completo', phase: 'avaliacao', days: 4, status: 'ok', opme: 'Evolve' },
+            { id: 6, name: 'Bianca Rocha', phone: '(11) 99999-0016', flow: 'Convênio', phase: 'avaliacao', days: 6, status: 'ok', opme: 'Patrocinado' },
+            { id: 7, name: 'Thiago Martins', phone: '(11) 99999-0017', flow: 'Direto', phase: 'avaliacao', days: 8, status: 'warning', opme: 'CPMH' },
+            { id: 8, name: 'Amanda Souza', phone: '(11) 99999-0018', flow: 'Completo', phase: 'avaliacao', days: 2, status: 'ok', opme: 'Art Fix' },
+
+            // Exames (12 pacientes)
+            { id: 9, name: 'Maria Santos', phone: '(11) 99999-0003', flow: 'Completo', phase: 'exames', days: 22, status: 'danger', opme: 'Evolve' },
+            { id: 10, name: 'José Lima', phone: '(11) 99999-0004', flow: 'Judicial', phase: 'exames', days: 12, status: 'warning', opme: 'Art Fix' },
+            { id: 11, name: 'Fernanda Alves', phone: '(11) 99999-0005', flow: 'Direto', phase: 'exames', days: 4, status: 'ok', opme: 'CPMH' },
+            { id: 12, name: 'Rodrigo Pinto', phone: '(11) 99999-0019', flow: 'Completo', phase: 'exames', days: 9, status: 'warning', opme: 'Evolve' },
+            { id: 13, name: 'Camila Nunes', phone: '(11) 99999-0020', flow: 'Convênio', phase: 'exames', days: 16, status: 'danger', opme: 'Patrocinado' },
+            { id: 14, name: 'Felipe Barros', phone: '(11) 99999-0021', flow: 'Direto', phase: 'exames', days: 3, status: 'ok', opme: 'Art Fix' },
+            { id: 15, name: 'Larissa Costa', phone: '(11) 99999-0022', flow: 'Judicial', phase: 'exames', days: 7, status: 'ok', opme: 'CPMH' },
+            { id: 16, name: 'Bruno Silva', phone: '(11) 99999-0023', flow: 'Completo', phase: 'exames', days: 5, status: 'ok', opme: 'Evolve' },
+            { id: 17, name: 'Juliana Ramos', phone: '(11) 99999-0024', flow: 'Convênio', phase: 'exames', days: 11, status: 'warning', opme: 'Art Fix' },
+            { id: 18, name: 'Diego Ferreira', phone: '(11) 99999-0025', flow: 'Direto', phase: 'exames', days: 2, status: 'ok', opme: 'Patrocinado' },
+            { id: 19, name: 'Renata Gomes', phone: '(11) 99999-0026', flow: 'Completo', phase: 'exames', days: 6, status: 'ok', opme: 'CPMH' },
+            { id: 20, name: 'Marcelo Dias', phone: '(11) 99999-0027', flow: 'Judicial', phase: 'exames', days: 14, status: 'warning', opme: 'Evolve' },
+
+            // Ortodontia (6 pacientes)
+            { id: 21, name: 'Roberto Dias', phone: '(11) 99999-0006', flow: 'Completo', phase: 'ortodontia', days: 5, status: 'ok', opme: 'Art Fix' },
+            { id: 22, name: 'Carolina Melo', phone: '(11) 99999-0028', flow: 'Completo', phase: 'ortodontia', days: 10, status: 'warning', opme: 'Evolve' },
+            { id: 23, name: 'André Santos', phone: '(11) 99999-0029', flow: 'Convênio', phase: 'ortodontia', days: 3, status: 'ok', opme: 'CPMH' },
+            { id: 24, name: 'Vanessa Lima', phone: '(11) 99999-0030', flow: 'Completo', phase: 'ortodontia', days: 18, status: 'danger', opme: 'Art Fix' },
+            { id: 25, name: 'Ricardo Costa', phone: '(11) 99999-0031', flow: 'Judicial', phase: 'ortodontia', days: 7, status: 'ok', opme: 'Patrocinado' },
+            { id: 26, name: 'Aline Pereira', phone: '(11) 99999-0032', flow: 'Completo', phase: 'ortodontia', days: 4, status: 'ok', opme: 'Evolve' },
+
+            // Pré-operatório (9 pacientes)
+            { id: 27, name: 'Carlos Oliveira', phone: '(11) 99999-0007', flow: 'Convênio', phase: 'preop', days: 18, status: 'danger', opme: 'CPMH' },
+            { id: 28, name: 'Ana Costa', phone: '(11) 99999-0008', flow: 'Completo', phase: 'preop', days: 10, status: 'warning', opme: 'Art Fix' },
+            { id: 29, name: 'Lucas Ribeiro', phone: '(11) 99999-0033', flow: 'Direto', phase: 'preop', days: 5, status: 'ok', opme: 'Evolve' },
+            { id: 30, name: 'Marina Torres', phone: '(11) 99999-0034', flow: 'Judicial', phase: 'preop', days: 16, status: 'danger', opme: 'Patrocinado' },
+            { id: 31, name: 'Paulo Henrique', phone: '(11) 99999-0035', flow: 'Completo', phase: 'preop', days: 8, status: 'warning', opme: 'CPMH' },
+            { id: 32, name: 'Natalia Souza', phone: '(11) 99999-0036', flow: 'Convênio', phase: 'preop', days: 3, status: 'ok', opme: 'Art Fix' },
+            { id: 33, name: 'Eduardo Lima', phone: '(11) 99999-0037', flow: 'Direto', phase: 'preop', days: 6, status: 'ok', opme: 'Evolve' },
+            { id: 34, name: 'Isabela Martins', phone: '(11) 99999-0038', flow: 'Completo', phase: 'preop', days: 12, status: 'warning', opme: 'CPMH' },
+            { id: 35, name: 'Gustavo Alves', phone: '(11) 99999-0039', flow: 'Judicial', phase: 'preop', days: 4, status: 'ok', opme: 'Patrocinado' },
+
+            // Cirurgia (4 pacientes)
+            { id: 36, name: 'Marcos Pereira', phone: '(11) 99999-0009', flow: 'Completo', phase: 'cirurgia', days: 0, status: 'ok', opme: 'Art Fix', surgeryDate: '15/02' },
+            { id: 37, name: 'Fernanda Rocha', phone: '(11) 99999-0040', flow: 'Direto', phase: 'cirurgia', days: 0, status: 'ok', opme: 'Evolve', surgeryDate: '18/02' },
+            { id: 38, name: 'Rafael Gomes', phone: '(11) 99999-0041', flow: 'Convênio', phase: 'cirurgia', days: 0, status: 'ok', opme: 'CPMH', surgeryDate: '20/02' },
+            { id: 39, name: 'Tatiana Nunes', phone: '(11) 99999-0042', flow: 'Completo', phase: 'cirurgia', days: 0, status: 'ok', opme: 'Patrocinado', surgeryDate: '22/02' },
+
+            // Pós-operatório (5 pacientes)
+            { id: 40, name: 'Julia Santos', phone: '(11) 99999-0010', flow: 'Direto', phase: 'posop', days: 7, status: 'ok', opme: 'Art Fix' },
+            { id: 41, name: 'Leonardo Pinto', phone: '(11) 99999-0043', flow: 'Completo', phase: 'posop', days: 14, status: 'ok', opme: 'Evolve' },
+            { id: 42, name: 'Priscila Barros', phone: '(11) 99999-0044', flow: 'Convênio', phase: 'posop', days: 21, status: 'ok', opme: 'CPMH' },
+            { id: 43, name: 'Vinícius Costa', phone: '(11) 99999-0045', flow: 'Judicial', phase: 'posop', days: 5, status: 'ok', opme: 'Patrocinado' },
+            { id: 44, name: 'Daniela Lima', phone: '(11) 99999-0046', flow: 'Direto', phase: 'posop', days: 10, status: 'ok', opme: 'Art Fix' },
+
+            // Conclusão (3 pacientes)
+            { id: 45, name: 'Ricardo Nunes', phone: '(11) 99999-0011', flow: 'Completo', phase: 'conclusao', days: 0, status: 'ok', opme: 'Evolve', altaDate: '10/01' },
+            { id: 46, name: 'Amanda Ferreira', phone: '(11) 99999-0047', flow: 'Direto', phase: 'conclusao', days: 0, status: 'ok', opme: 'CPMH', altaDate: '05/01' },
+            { id: 47, name: 'Thiago Oliveira', phone: '(11) 99999-0048', flow: 'Convênio', phase: 'conclusao', days: 0, status: 'ok', opme: 'Art Fix', altaDate: '12/01' }
+        ];
+
+        const phaseNames = {
+            'avaliacao': { name: 'Avaliação', icon: '📋' },
+            'exames': { name: 'Exames', icon: '🔬' },
+            'ortodontia': { name: 'Ortodontia', icon: '🦷' },
+            'preop': { name: 'Pré-operatório', icon: '📝' },
+            'cirurgia': { name: 'Cirurgia', icon: '🏥' },
+            'posop': { name: 'Pós-operatório', icon: '🩹' },
+            'conclusao': { name: 'Conclusão', icon: '✅' }
+        };
+
+        const phaseDocuments = {
+            avaliacao: ['📄 Ficha de Anamnese', '📄 Termo de Consentimento Inicial', '📄 Guia de Preparo para Exames'],
+            exames: ['📄 Lista de Exames Necessários', '📄 Orientações para Exames Laboratoriais', '📄 Solicitação de Exames de Imagem'],
+            ortodontia: ['📄 Guia de Cuidados com Aparelho', '📄 Cronograma de Consultas Ortodônticas', '📄 Orientações Alimentares'],
+            preop: ['📄 Orientações Pré-Operatórias', '📄 Lista de Medicamentos a Suspender', '📄 Checklist de Preparação', '📄 Termo de Consentimento Cirúrgico'],
+            cirurgia: ['📄 Orientações do Dia da Cirurgia', '📄 Contatos de Emergência', '📄 Informações sobre Internação'],
+            posop: ['📄 Guia de Cuidados Pós-Operatórios', '📄 Receituário e Medicações', '📄 Dieta Líquida/Pastosa', '📄 Sinais de Alerta', '📄 Cronograma de Retornos'],
+            conclusao: ['📄 Relatório Final do Tratamento', '📄 Orientações de Manutenção', '📄 Fotos Antes/Depois (se autorizado)']
+        };
+
+        let patients = [...mockPatients];
+        let selectedPhase = null;
+        let currentPatient = null;
+        let draggedCard = null;
+
+        // ========================================
+        // INIT - Render Pipeline
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            renderPipeline();
+            updateStats();
+            setupDragAndDrop();
+        });
+
+        function renderPipeline() {
+            const phases = ['avaliacao', 'exames', 'ortodontia', 'preop', 'cirurgia', 'posop', 'conclusao'];
+            const pipeline = document.querySelector('.pipeline');
+
+            // Get current filter values
+            const searchTerm = document.getElementById('searchInput')?.value?.toLowerCase() || '';
+            const flowFilter = document.getElementById('filterFlow')?.value || '';
+            const statusFilter = document.getElementById('filterStatus')?.value || '';
+            const opmeFilter = document.getElementById('filterOPME')?.value || '';
+
+            // Filter patients
+            const filteredPatients = patients.filter(p => {
+                const matchesSearch = p.name.toLowerCase().includes(searchTerm) || p.phone.includes(searchTerm);
+                const matchesFlow = !flowFilter || p.flow === flowFilter;
+                const matchesStatus = !statusFilter || p.status === statusFilter;
+                const matchesOPME = !opmeFilter || p.opme === opmeFilter;
+                return matchesSearch && matchesFlow && matchesStatus && matchesOPME;
+            });
+
+            pipeline.innerHTML = phases.map(phase => {
+                const phasePatients = filteredPatients.filter(p => p.phase === phase);
+                const countClass = phasePatients.some(p => p.status === 'danger') ? 'danger' :
+                    phasePatients.some(p => p.status === 'warning') ? 'warning' : '';
+
+                return `
+                    <div class="pipeline-column" data-phase="${phase}">
+                        <div class="column-header">
+                            <span class="column-title">${phaseNames[phase].icon} ${phaseNames[phase].name}</span>
+                            <span class="column-count ${countClass}">${phasePatients.length}</span>
+                        </div>
+                        <div class="column-content" data-phase="${phase}">
+                            ${phasePatients.map(p => renderPatientCard(p)).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            setupDragAndDrop();
+        }
+
+        function renderPatientCard(patient) {
+            let daysText = '';
+            if (patient.phase === 'cirurgia' && patient.surgeryDate) {
+                daysText = `Cirurgia: ${patient.surgeryDate}`;
+            } else if (patient.phase === 'conclusao' && patient.altaDate) {
+                daysText = `Alta em ${patient.altaDate}`;
+            } else if (patient.phase === 'posop') {
+                daysText = `Dia ${patient.days} pós-op`;
+            } else {
+                const statusIcon = patient.status === 'danger' ? '🚨 ' : patient.status === 'warning' ? '⚠️ ' : '';
+                daysText = `${statusIcon}${patient.days} dias nesta fase`;
+            }
+
+            const showAdvance = patient.phase !== 'conclusao';
+
+            return `
+                <div class="patient-card status-${patient.status}" 
+                     draggable="true" 
+                     data-patient-id="${patient.id}"
+                     onclick="openPhaseModal(${patient.id})">
+                    <div class="patient-header">
+                        <span class="patient-name">${patient.name}</span>
+                        <span class="patient-flow">${patient.flow}</span>
+                    </div>
+                    <div class="patient-meta">📱 ${patient.phone}</div>
+                    <div class="patient-days">
+                        <span class="days-badge ${patient.status}">${daysText}</span>
+                    </div>
+                    <div class="patient-actions">
+                        ${showAdvance ? `<button class="btn-small btn-advance" onclick="event.stopPropagation(); advancePhase(${patient.id})">Avançar ➡️</button>` : ''}
+                        <button class="btn-small btn-view" onclick="event.stopPropagation(); viewPatient(${patient.id})">Ver</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ========================================
+        // DRAG AND DROP
+        // ========================================
+        function setupDragAndDrop() {
+            const cards = document.querySelectorAll('.patient-card');
+            const columns = document.querySelectorAll('.column-content');
+
+            cards.forEach(card => {
+                card.addEventListener('dragstart', handleDragStart);
+                card.addEventListener('dragend', handleDragEnd);
+            });
+
+            columns.forEach(column => {
+                column.addEventListener('dragover', handleDragOver);
+                column.addEventListener('dragleave', handleDragLeave);
+                column.addEventListener('drop', handleDrop);
+            });
+        }
+
+        function handleDragStart(e) {
+            draggedCard = e.target;
+            e.target.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', e.target.dataset.patientId);
+        }
+
+        function handleDragEnd(e) {
+            e.target.classList.remove('dragging');
+            document.querySelectorAll('.pipeline-column').forEach(col => col.classList.remove('drag-over'));
+            draggedCard = null;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            e.currentTarget.closest('.pipeline-column').classList.add('drag-over');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.closest('.pipeline-column').classList.remove('drag-over');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            const column = e.currentTarget.closest('.pipeline-column');
+            column.classList.remove('drag-over');
+
+            const patientId = parseInt(e.dataTransfer.getData('text/plain'));
+            const newPhase = e.currentTarget.dataset.phase;
+
+            const patient = patients.find(p => p.id === patientId);
+            if (patient && patient.phase !== newPhase) {
+                const oldPhase = patient.phase;
+                patient.phase = newPhase;
+                patient.days = 0;
+                patient.status = 'ok';
+
+                renderPipeline();
+                updateStats();
+
+                const docs = phaseDocuments[newPhase] || [];
+                showToast(`${patient.name} movido para ${phaseNames[newPhase].name}. ${docs.length} documentos enviados!`);
+            }
+        }
+
+        // ========================================
+        // FILTERS
+        // ========================================
+        function filterPatients() {
+            renderPipeline();
+            updateStats();
+        }
+
+        function filterByStatus(status) {
+            const statusSelect = document.getElementById('filterStatus');
+            if (status === 'all') {
+                statusSelect.value = '';
+            } else {
+                statusSelect.value = status;
+            }
+            filterPatients();
+        }
+
+        // ========================================
+        // STATS
+        // ========================================
+        function updateStats() {
+            const total = patients.length;
+            const ok = patients.filter(p => p.status === 'ok').length;
+            const warning = patients.filter(p => p.status === 'warning').length;
+            const danger = patients.filter(p => p.status === 'danger').length;
+
+            const statCards = document.querySelectorAll('.stat-card .stat-info h3');
+            if (statCards.length >= 4) {
+                statCards[0].textContent = total;
+                statCards[1].textContent = ok;
+                statCards[2].textContent = warning;
+                statCards[3].textContent = danger;
+            }
+        }
+
+        // ========================================
+        // MODALS
+        // ========================================
+        function openNewPatientModal() {
+            document.getElementById('newPatientModal').classList.add('active');
+        }
+
+        function openPhaseModal(patientId) {
+            currentPatient = patients.find(p => p.id === patientId);
+            if (!currentPatient) return;
+
+            document.getElementById('modalPatientName').textContent = currentPatient.name;
+            document.getElementById('modalCurrentPhase').textContent = phaseNames[currentPatient.phase].name;
+            document.getElementById('phaseModal').classList.add('active');
+            document.getElementById('documentsPreview').style.display = 'none';
+            selectedPhase = null;
+
+            // Reset and mark current phase
+            document.querySelectorAll('.phase-item').forEach(item => {
+                item.classList.remove('selected', 'current');
+                if (item.dataset.phase === currentPatient.phase) {
+                    item.classList.add('current');
+                }
+            });
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+            currentPatient = null;
+            selectedPhase = null;
+        }
+
+        function selectFlow(element) {
+            document.querySelectorAll('.flow-option').forEach(opt => opt.classList.remove('selected'));
+            element.classList.add('selected');
+        }
+
+        function selectPhase(element, phase) {
+            if (element.classList.contains('current')) return;
+
+            document.querySelectorAll('.phase-item').forEach(item => item.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedPhase = phase;
+
+            const preview = document.getElementById('documentsPreview');
+            const list = document.getElementById('documentsList');
+
+            if (phaseDocuments[phase]) {
+                list.innerHTML = phaseDocuments[phase].map(doc => `<div class="document-item">${doc}</div>`).join('');
+                preview.style.display = 'block';
+            }
+        }
+
+        function confirmPhaseChange() {
+            if (!selectedPhase || !currentPatient) {
+                alert('Por favor, selecione uma nova fase.');
+                return;
+            }
+
+            currentPatient.phase = selectedPhase;
+            currentPatient.days = 0;
+            currentPatient.status = 'ok';
+
+            closeModal('phaseModal');
+            renderPipeline();
+            updateStats();
+
+            const docs = phaseDocuments[selectedPhase] || [];
+            showToast(`Fase alterada para ${phaseNames[selectedPhase].name}! ${docs.length} documentos enviados.`);
+        }
+
+        function savePatient() {
+            const nameInput = document.querySelector('#newPatientModal input[type="text"]');
+            const phoneInput = document.querySelector('#newPatientModal input[type="tel"]');
+            const flowOption = document.querySelector('.flow-option.selected h4');
+            const opmeSelect = document.querySelector('#newPatientModal select');
+
+            const name = nameInput?.value || 'Novo Paciente';
+            const phone = phoneInput?.value || '(11) 99999-9999';
+            const flowText = flowOption?.textContent || 'Completo';
+            const flow = flowText.includes('Completo') ? 'Completo' :
+                flowText.includes('Direto') ? 'Direto' :
+                    flowText.includes('Convênio') ? 'Convênio' : 'Judicial';
+            const opme = opmeSelect?.value || 'Art Fix';
+
+            const newPatient = {
+                id: patients.length + 1,
+                name: name,
+                phone: phone,
+                flow: flow,
+                phase: 'avaliacao',
+                days: 0,
+                status: 'ok',
+                opme: opme
+            };
+
+            patients.push(newPatient);
+            closeModal('newPatientModal');
+            renderPipeline();
+            updateStats();
+            showToast(`Paciente ${name} cadastrado com sucesso!`);
+
+            // Clear form
+            if (nameInput) nameInput.value = '';
+            if (phoneInput) phoneInput.value = '';
+        }
+
+        function advancePhase(patientId) {
+            const patient = patients.find(p => p.id === patientId);
+            if (!patient) return;
+
+            const phases = ['avaliacao', 'exames', 'ortodontia', 'preop', 'cirurgia', 'posop', 'conclusao'];
+            const currentIndex = phases.indexOf(patient.phase);
+
+            if (currentIndex < phases.length - 1) {
+                const newPhase = phases[currentIndex + 1];
+                patient.phase = newPhase;
+                patient.days = 0;
+                patient.status = 'ok';
+
+                renderPipeline();
+                updateStats();
+
+                const docs = phaseDocuments[newPhase] || [];
+                showToast(`${patient.name} avançou para ${phaseNames[newPhase].name}! ${docs.length} documentos enviados.`);
+            }
+        }
+
+        function viewPatient(patientId) {
+            // Store patient ID for detail page
+            localStorage.setItem('selectedPatientId', patientId);
+            window.location.href = 'paciente.html';
+        }
+
+        function openPatientModal(patientId) {
+            viewPatient(patientId);
+        }
+
+        // ========================================
+        // UTILITIES
+        // ========================================
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            toast.classList.add('show', 'success');
+
+            setTimeout(() => {
+                toast.classList.remove('show', 'success');
+            }, 3000);
+        }
+
+        function exportData() {
+            const data = JSON.stringify(patients, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'bucomax-pacientes.json';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Dados exportados com sucesso!');
+        }
+
+        // Close modal when clicking outside
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+
+        // Add data-phase to phase items in modal
+        document.querySelectorAll('.phase-item').forEach((item, index) => {
+            const phases = ['avaliacao', 'exames', 'ortodontia', 'preop', 'cirurgia', 'posop', 'conclusao'];
+            item.dataset.phase = phases[index];
+        });
+    </script>
+</body>
+
+</html>

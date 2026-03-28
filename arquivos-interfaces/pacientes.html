@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BucoMax - Lista de Pacientes</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--gray-100);
+            color: var(--gray-800);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .main-nav {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .nav-link {
+            padding: 0.5rem 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* Page Header */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .page-subtitle {
+            color: var(--gray-500);
+            font-size: 0.95rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: white;
+            border: 1px solid var(--gray-300);
+            color: var(--gray-700);
+        }
+
+        .btn-outline:hover {
+            background: var(--gray-50);
+        }
+
+        .btn-small {
+            padding: 0.4rem 0.75rem;
+            font-size: 0.8rem;
+        }
+
+        /* Filter Bar */
+        .filter-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 250px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 2.5rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        .search-box::before {
+            content: "🔍";
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1rem;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-group label {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            font-weight: 500;
+        }
+
+        .filter-group select {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        /* Patients Grid */
+        .patients-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1rem;
+        }
+
+        .patient-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            transition: all 0.2s;
+            border-left: 4px solid var(--gray-300);
+        }
+
+        .patient-card:hover {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+            transform: translateY(-2px);
+        }
+
+        .patient-card.status-ok {
+            border-left-color: var(--success);
+        }
+
+        .patient-card.status-warning {
+            border-left-color: var(--warning);
+        }
+
+        .patient-card.status-danger {
+            border-left-color: var(--danger);
+        }
+
+        .patient-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .patient-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .patient-info {
+            flex: 1;
+            margin-left: 0.75rem;
+        }
+
+        .patient-name {
+            font-weight: 600;
+            color: var(--gray-800);
+            font-size: 1rem;
+        }
+
+        .patient-phone {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+        }
+
+        .patient-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-flow {
+            background: #dbeafe;
+            color: var(--primary);
+        }
+
+        .badge-phase {
+            background: #f3e8ff;
+            color: #7c3aed;
+        }
+
+        .badge-opme {
+            background: #ecfdf5;
+            color: #059669;
+        }
+
+        .patient-status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--gray-100);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-badge.ok {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-badge.danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .days-text {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        /* View Toggle */
+        .view-toggle {
+            display: flex;
+            gap: 0.25rem;
+            background: var(--gray-100);
+            padding: 0.25rem;
+            border-radius: 8px;
+        }
+
+        .view-btn {
+            padding: 0.5rem 0.75rem;
+            border: none;
+            background: transparent;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .view-btn.active {
+            background: white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Table View */
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            display: none;
+        }
+
+        .table-container.active {
+            display: block;
+        }
+
+        .patients-grid.active {
+            display: grid;
+        }
+
+        .patients-grid:not(.active) {
+            display: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 1rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            background: var(--gray-50);
+            border-bottom: 2px solid var(--gray-200);
+        }
+
+        tbody td {
+            padding: 1rem;
+            font-size: 0.9rem;
+            color: var(--gray-700);
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            background: var(--gray-50);
+        }
+
+        .table-patient-name {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .table-avatar {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .pagination-btn {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--gray-300);
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .pagination-btn:hover {
+            background: var(--gray-50);
+        }
+
+        .pagination-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .pagination-info {
+            font-size: 0.9rem;
+            color: var(--gray-500);
+            margin: 0 1rem;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--gray-800);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            z-index: 1001;
+        }
+
+        .toast.show {
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success {
+            background: var(--success);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .main-nav {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .page-header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .patients-grid {
+                grid-template-columns: 1fr;
+            }
+
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">B</div>
+            <span>BucoMax</span>
+        </div>
+        <nav class="main-nav">
+            <a href="index.html" class="nav-link">📊 Dashboard</a>
+            <a href="pacientes.html" class="nav-link active">👥 Pacientes</a>
+            <a href="relatorios.html" class="nav-link">📈 Relatórios</a>
+            <a href="configuracoes.html" class="nav-link">⚙️ Configurações</a>
+        </nav>
+        <div class="user-info">
+            <span>Dr. João Silva</span>
+            <div class="user-avatar">👤</div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Page Header -->
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">👥 Lista de Pacientes</h1>
+                <p class="page-subtitle">Gerencie todos os seus pacientes em um só lugar</p>
+            </div>
+            <button class="btn btn-primary" onclick="openNewPatient()">➕ Novo Paciente</button>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Buscar por nome, telefone ou email..."
+                    oninput="filterPatients()">
+            </div>
+            <div class="filter-group">
+                <label>Fase:</label>
+                <select id="filterPhase" onchange="filterPatients()">
+                    <option value="">Todas as fases</option>
+                    <option value="avaliacao">Avaliação</option>
+                    <option value="exames">Exames</option>
+                    <option value="ortodontia">Ortodontia</option>
+                    <option value="preop">Pré-operatório</option>
+                    <option value="cirurgia">Cirurgia</option>
+                    <option value="posop">Pós-operatório</option>
+                    <option value="conclusao">Conclusão</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Status:</label>
+                <select id="filterStatus" onchange="filterPatients()">
+                    <option value="">Todos</option>
+                    <option value="ok">Em dia</option>
+                    <option value="warning">Atenção</option>
+                    <option value="danger">Crítico</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Fluxo:</label>
+                <select id="filterFlow" onchange="filterPatients()">
+                    <option value="">Todos</option>
+                    <option value="Completo">Completo</option>
+                    <option value="Direto">Direto</option>
+                    <option value="Convênio">Convênio</option>
+                    <option value="Judicial">Judicial</option>
+                </select>
+            </div>
+            <div class="view-toggle">
+                <button class="view-btn active" onclick="setView('grid')" id="gridViewBtn">📊 Cards</button>
+                <button class="view-btn" onclick="setView('table')" id="tableViewBtn">📋 Tabela</button>
+            </div>
+        </div>
+
+        <!-- Grid View -->
+        <div class="patients-grid active" id="patientsGrid">
+            <!-- Rendered by JavaScript -->
+        </div>
+
+        <!-- Table View -->
+        <div class="table-container" id="patientsTable">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Paciente</th>
+                        <th>Telefone</th>
+                        <th>Tipo de Fluxo</th>
+                        <th>Fase Atual</th>
+                        <th>Dias na Fase</th>
+                        <th>OPME</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="patientsTableBody">
+                    <!-- Rendered by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination">
+            <button class="pagination-btn" onclick="changePage(-1)">← Anterior</button>
+            <button class="pagination-btn active" id="page1">1</button>
+            <button class="pagination-btn" id="page2">2</button>
+            <button class="pagination-btn" id="page3">3</button>
+            <span class="pagination-info" id="paginationInfo">Mostrando 1-20 de 47</span>
+            <button class="pagination-btn" onclick="changePage(1)">Próximo →</button>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span>✓</span>
+        <span id="toastMessage">Operação realizada com sucesso!</span>
+    </div>
+
+    <script>
+        // ========================================
+        // MOCK DATA - 47 Pacientes
+        // ========================================
+        const mockPatients = [
+            { id: 1, name: 'Pedro Souza', phone: '(11) 99999-0001', email: 'pedro@email.com', flow: 'Completo', phase: 'avaliacao', days: 3, status: 'ok', opme: 'Art Fix' },
+            { id: 2, name: 'Lucia Mendes', phone: '(11) 99999-0002', email: 'lucia@email.com', flow: 'Convênio', phase: 'avaliacao', days: 1, status: 'ok', opme: 'Evolve' },
+            { id: 3, name: 'Gabriel Torres', phone: '(11) 99999-0013', email: 'gabriel@email.com', flow: 'Direto', phase: 'avaliacao', days: 5, status: 'ok', opme: 'CPMH' },
+            { id: 4, name: 'Patrícia Lima', phone: '(11) 99999-0014', email: 'patricia@email.com', flow: 'Judicial', phase: 'avaliacao', days: 2, status: 'ok', opme: 'Art Fix' },
+            { id: 5, name: 'Henrique Castro', phone: '(11) 99999-0015', email: 'henrique@email.com', flow: 'Completo', phase: 'avaliacao', days: 4, status: 'ok', opme: 'Evolve' },
+            { id: 6, name: 'Bianca Rocha', phone: '(11) 99999-0016', email: 'bianca@email.com', flow: 'Convênio', phase: 'avaliacao', days: 6, status: 'ok', opme: 'Patrocinado' },
+            { id: 7, name: 'Thiago Martins', phone: '(11) 99999-0017', email: 'thiago@email.com', flow: 'Direto', phase: 'avaliacao', days: 8, status: 'warning', opme: 'CPMH' },
+            { id: 8, name: 'Amanda Souza', phone: '(11) 99999-0018', email: 'amanda@email.com', flow: 'Completo', phase: 'avaliacao', days: 2, status: 'ok', opme: 'Art Fix' },
+            { id: 9, name: 'Maria Santos', phone: '(11) 99999-0003', email: 'maria@email.com', flow: 'Completo', phase: 'exames', days: 22, status: 'danger', opme: 'Evolve' },
+            { id: 10, name: 'José Lima', phone: '(11) 99999-0004', email: 'jose@email.com', flow: 'Judicial', phase: 'exames', days: 12, status: 'warning', opme: 'Art Fix' },
+            { id: 11, name: 'Fernanda Alves', phone: '(11) 99999-0005', email: 'fernanda@email.com', flow: 'Direto', phase: 'exames', days: 4, status: 'ok', opme: 'CPMH' },
+            { id: 12, name: 'Rodrigo Pinto', phone: '(11) 99999-0019', email: 'rodrigo@email.com', flow: 'Completo', phase: 'exames', days: 9, status: 'warning', opme: 'Evolve' },
+            { id: 13, name: 'Camila Nunes', phone: '(11) 99999-0020', email: 'camila@email.com', flow: 'Convênio', phase: 'exames', days: 16, status: 'danger', opme: 'Patrocinado' },
+            { id: 14, name: 'Felipe Barros', phone: '(11) 99999-0021', email: 'felipe@email.com', flow: 'Direto', phase: 'exames', days: 3, status: 'ok', opme: 'Art Fix' },
+            { id: 15, name: 'Larissa Costa', phone: '(11) 99999-0022', email: 'larissa@email.com', flow: 'Judicial', phase: 'exames', days: 7, status: 'ok', opme: 'CPMH' },
+            { id: 16, name: 'Bruno Silva', phone: '(11) 99999-0023', email: 'bruno@email.com', flow: 'Completo', phase: 'exames', days: 5, status: 'ok', opme: 'Evolve' },
+            { id: 17, name: 'Juliana Ramos', phone: '(11) 99999-0024', email: 'juliana@email.com', flow: 'Convênio', phase: 'exames', days: 11, status: 'warning', opme: 'Art Fix' },
+            { id: 18, name: 'Diego Ferreira', phone: '(11) 99999-0025', email: 'diego@email.com', flow: 'Direto', phase: 'exames', days: 2, status: 'ok', opme: 'Patrocinado' },
+            { id: 19, name: 'Renata Gomes', phone: '(11) 99999-0026', email: 'renata@email.com', flow: 'Completo', phase: 'exames', days: 6, status: 'ok', opme: 'CPMH' },
+            { id: 20, name: 'Marcelo Dias', phone: '(11) 99999-0027', email: 'marcelo@email.com', flow: 'Judicial', phase: 'exames', days: 14, status: 'warning', opme: 'Evolve' },
+            { id: 21, name: 'Roberto Dias', phone: '(11) 99999-0006', email: 'roberto@email.com', flow: 'Completo', phase: 'ortodontia', days: 5, status: 'ok', opme: 'Art Fix' },
+            { id: 22, name: 'Carolina Melo', phone: '(11) 99999-0028', email: 'carolina@email.com', flow: 'Completo', phase: 'ortodontia', days: 10, status: 'warning', opme: 'Evolve' },
+            { id: 23, name: 'André Santos', phone: '(11) 99999-0029', email: 'andre@email.com', flow: 'Convênio', phase: 'ortodontia', days: 3, status: 'ok', opme: 'CPMH' },
+            { id: 24, name: 'Vanessa Lima', phone: '(11) 99999-0030', email: 'vanessa@email.com', flow: 'Completo', phase: 'ortodontia', days: 18, status: 'danger', opme: 'Art Fix' },
+            { id: 25, name: 'Ricardo Costa', phone: '(11) 99999-0031', email: 'ricardo.c@email.com', flow: 'Judicial', phase: 'ortodontia', days: 7, status: 'ok', opme: 'Patrocinado' },
+            { id: 26, name: 'Aline Pereira', phone: '(11) 99999-0032', email: 'aline@email.com', flow: 'Completo', phase: 'ortodontia', days: 4, status: 'ok', opme: 'Evolve' },
+            { id: 27, name: 'Carlos Oliveira', phone: '(11) 99999-0007', email: 'carlos@email.com', flow: 'Convênio', phase: 'preop', days: 18, status: 'danger', opme: 'CPMH' },
+            { id: 28, name: 'Ana Costa', phone: '(11) 99999-0008', email: 'ana@email.com', flow: 'Completo', phase: 'preop', days: 10, status: 'warning', opme: 'Art Fix' },
+            { id: 29, name: 'Lucas Ribeiro', phone: '(11) 99999-0033', email: 'lucas@email.com', flow: 'Direto', phase: 'preop', days: 5, status: 'ok', opme: 'Evolve' },
+            { id: 30, name: 'Marina Torres', phone: '(11) 99999-0034', email: 'marina@email.com', flow: 'Judicial', phase: 'preop', days: 16, status: 'danger', opme: 'Patrocinado' },
+            { id: 31, name: 'Paulo Henrique', phone: '(11) 99999-0035', email: 'paulo@email.com', flow: 'Completo', phase: 'preop', days: 8, status: 'warning', opme: 'CPMH' },
+            { id: 32, name: 'Natalia Souza', phone: '(11) 99999-0036', email: 'natalia@email.com', flow: 'Convênio', phase: 'preop', days: 3, status: 'ok', opme: 'Art Fix' },
+            { id: 33, name: 'Eduardo Lima', phone: '(11) 99999-0037', email: 'eduardo@email.com', flow: 'Direto', phase: 'preop', days: 6, status: 'ok', opme: 'Evolve' },
+            { id: 34, name: 'Isabela Martins', phone: '(11) 99999-0038', email: 'isabela@email.com', flow: 'Completo', phase: 'preop', days: 12, status: 'warning', opme: 'CPMH' },
+            { id: 35, name: 'Gustavo Alves', phone: '(11) 99999-0039', email: 'gustavo@email.com', flow: 'Judicial', phase: 'preop', days: 4, status: 'ok', opme: 'Patrocinado' },
+            { id: 36, name: 'Marcos Pereira', phone: '(11) 99999-0009', email: 'marcos@email.com', flow: 'Completo', phase: 'cirurgia', days: 0, status: 'ok', opme: 'Art Fix' },
+            { id: 37, name: 'Fernanda Rocha', phone: '(11) 99999-0040', email: 'fernanda.r@email.com', flow: 'Direto', phase: 'cirurgia', days: 0, status: 'ok', opme: 'Evolve' },
+            { id: 38, name: 'Rafael Gomes', phone: '(11) 99999-0041', email: 'rafael@email.com', flow: 'Convênio', phase: 'cirurgia', days: 0, status: 'ok', opme: 'CPMH' },
+            { id: 39, name: 'Tatiana Nunes', phone: '(11) 99999-0042', email: 'tatiana@email.com', flow: 'Completo', phase: 'cirurgia', days: 0, status: 'ok', opme: 'Patrocinado' },
+            { id: 40, name: 'Julia Santos', phone: '(11) 99999-0010', email: 'julia@email.com', flow: 'Direto', phase: 'posop', days: 7, status: 'ok', opme: 'Art Fix' },
+            { id: 41, name: 'Leonardo Pinto', phone: '(11) 99999-0043', email: 'leonardo@email.com', flow: 'Completo', phase: 'posop', days: 14, status: 'ok', opme: 'Evolve' },
+            { id: 42, name: 'Priscila Barros', phone: '(11) 99999-0044', email: 'priscila@email.com', flow: 'Convênio', phase: 'posop', days: 21, status: 'ok', opme: 'CPMH' },
+            { id: 43, name: 'Vinícius Costa', phone: '(11) 99999-0045', email: 'vinicius@email.com', flow: 'Judicial', phase: 'posop', days: 5, status: 'ok', opme: 'Patrocinado' },
+            { id: 44, name: 'Daniela Lima', phone: '(11) 99999-0046', email: 'daniela@email.com', flow: 'Direto', phase: 'posop', days: 10, status: 'ok', opme: 'Art Fix' },
+            { id: 45, name: 'Ricardo Nunes', phone: '(11) 99999-0011', email: 'ricardo@email.com', flow: 'Completo', phase: 'conclusao', days: 0, status: 'ok', opme: 'Evolve' },
+            { id: 46, name: 'Amanda Ferreira', phone: '(11) 99999-0047', email: 'amanda.f@email.com', flow: 'Direto', phase: 'conclusao', days: 0, status: 'ok', opme: 'CPMH' },
+            { id: 47, name: 'Thiago Oliveira', phone: '(11) 99999-0048', email: 'thiago.o@email.com', flow: 'Convênio', phase: 'conclusao', days: 0, status: 'ok', opme: 'Art Fix' }
+        ];
+
+        const phaseNames = {
+            'avaliacao': 'Avaliação',
+            'exames': 'Exames',
+            'ortodontia': 'Ortodontia',
+            'preop': 'Pré-operatório',
+            'cirurgia': 'Cirurgia',
+            'posop': 'Pós-operatório',
+            'conclusao': 'Conclusão'
+        };
+
+        let currentView = 'grid';
+        let currentPage = 1;
+        const itemsPerPage = 20;
+        let filteredPatients = [...mockPatients];
+
+        // ========================================
+        // INIT
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check for URL params
+            const urlParams = new URLSearchParams(window.location.search);
+            const statusParam = urlParams.get('status');
+            if (statusParam) {
+                document.getElementById('filterStatus').value = statusParam;
+            }
+
+            filterPatients();
+        });
+
+        // ========================================
+        // RENDER FUNCTIONS
+        // ========================================
+        function renderGrid() {
+            const grid = document.getElementById('patientsGrid');
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pagePatients = filteredPatients.slice(start, end);
+
+            grid.innerHTML = pagePatients.map(patient => {
+                const initials = patient.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+                const statusText = patient.status === 'ok' ? 'Em dia' :
+                    patient.status === 'warning' ? 'Atenção' : 'Crítico';
+
+                return `
+                    <div class="patient-card status-${patient.status}" onclick="viewPatient(${patient.id})">
+                        <div class="patient-card-header">
+                            <div class="patient-avatar">${initials}</div>
+                            <div class="patient-info">
+                                <div class="patient-name">${patient.name}</div>
+                                <div class="patient-phone">📱 ${patient.phone}</div>
+                            </div>
+                        </div>
+                        <div class="patient-badges">
+                            <span class="badge badge-flow">${patient.flow}</span>
+                            <span class="badge badge-phase">${phaseNames[patient.phase]}</span>
+                            <span class="badge badge-opme">${patient.opme}</span>
+                        </div>
+                        <div class="patient-status">
+                            <span class="status-badge ${patient.status}">${statusText}</span>
+                            <span class="days-text">${patient.days} dias na fase</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('patientsTableBody');
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pagePatients = filteredPatients.slice(start, end);
+
+            tbody.innerHTML = pagePatients.map(patient => {
+                const initials = patient.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+                const statusText = patient.status === 'ok' ? 'Em dia' :
+                    patient.status === 'warning' ? 'Atenção' : 'Crítico';
+
+                return `
+                    <tr onclick="viewPatient(${patient.id})">
+                        <td>
+                            <div class="table-patient-name">
+                                <div class="table-avatar">${initials}</div>
+                                <div>
+                                    <strong>${patient.name}</strong><br>
+                                    <small style="color: var(--gray-500)">${patient.email}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>${patient.phone}</td>
+                        <td>${patient.flow}</td>
+                        <td>${phaseNames[patient.phase]}</td>
+                        <td>${patient.days} dias</td>
+                        <td>${patient.opme}</td>
+                        <td><span class="status-badge ${patient.status}">${statusText}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
+            const start = (currentPage - 1) * itemsPerPage + 1;
+            const end = Math.min(currentPage * itemsPerPage, filteredPatients.length);
+
+            document.getElementById('paginationInfo').textContent =
+                `Mostrando ${start}-${end} de ${filteredPatients.length}`;
+
+            // Update page buttons
+            for (let i = 1; i <= 3; i++) {
+                const btn = document.getElementById(`page${i}`);
+                if (btn) {
+                    btn.textContent = i;
+                    btn.classList.toggle('active', i === currentPage);
+                    btn.style.display = i <= totalPages ? 'inline-block' : 'none';
+                }
+            }
+        }
+
+        // ========================================
+        // FILTERS
+        // ========================================
+        function filterPatients() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const phaseFilter = document.getElementById('filterPhase').value;
+            const statusFilter = document.getElementById('filterStatus').value;
+            const flowFilter = document.getElementById('filterFlow').value;
+
+            filteredPatients = mockPatients.filter(patient => {
+                const matchesSearch = patient.name.toLowerCase().includes(searchTerm) ||
+                    patient.phone.includes(searchTerm) ||
+                    patient.email.toLowerCase().includes(searchTerm);
+                const matchesPhase = !phaseFilter || patient.phase === phaseFilter;
+                const matchesStatus = !statusFilter || patient.status === statusFilter;
+                const matchesFlow = !flowFilter || patient.flow === flowFilter;
+
+                return matchesSearch && matchesPhase && matchesStatus && matchesFlow;
+            });
+
+            currentPage = 1;
+            renderGrid();
+            renderTable();
+            updatePagination();
+        }
+
+        // ========================================
+        // VIEW TOGGLE
+        // ========================================
+        function setView(view) {
+            currentView = view;
+
+            document.getElementById('gridViewBtn').classList.toggle('active', view === 'grid');
+            document.getElementById('tableViewBtn').classList.toggle('active', view === 'table');
+
+            document.getElementById('patientsGrid').classList.toggle('active', view === 'grid');
+            document.getElementById('patientsTable').classList.toggle('active', view === 'table');
+        }
+
+        // ========================================
+        // PAGINATION
+        // ========================================
+        function changePage(delta) {
+            const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
+            const newPage = currentPage + delta;
+
+            if (newPage >= 1 && newPage <= totalPages) {
+                currentPage = newPage;
+                renderGrid();
+                renderTable();
+                updatePagination();
+            }
+        }
+
+        // ========================================
+        // ACTIONS
+        // ========================================
+        function viewPatient(patientId) {
+            localStorage.setItem('selectedPatientId', patientId);
+            window.location.href = 'paciente.html';
+        }
+
+        function openNewPatient() {
+            window.location.href = 'index.html';
+            setTimeout(() => {
+                // The index.html will handle opening the modal
+            }, 100);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            toast.classList.add('show', 'success');
+
+            setTimeout(() => {
+                toast.classList.remove('show', 'success');
+            }, 3000);
+        }
+    </script>
+</body>
+
+</html>

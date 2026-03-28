@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BucoMax - Detalhes do Paciente</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--gray-100);
+            color: var(--gray-800);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* Patient Header Card */
+        .patient-header-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .patient-main-info {
+            display: flex;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+
+        .patient-avatar {
+            width: 80px;
+            height: 80px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .patient-details h1 {
+            font-size: 1.5rem;
+            color: var(--gray-800);
+            margin-bottom: 0.25rem;
+        }
+
+        .patient-details .patient-meta {
+            color: var(--gray-500);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .patient-tags {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            padding: 0.3rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .tag-flow {
+            background: #dbeafe;
+            color: var(--primary);
+        }
+
+        .tag-phase {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .tag-opme {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .patient-status {
+            text-align: right;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-badge.ok {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-badge.danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-days {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+        }
+
+        .patient-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.6rem 1rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: white;
+            color: var(--gray-700);
+            border: 1px solid var(--gray-300);
+        }
+
+        .btn-outline:hover {
+            background: var(--gray-50);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        /* Layout Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Timeline Section */
+        .timeline-section {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 24px;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--gray-200);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-left: 60px;
+            padding-bottom: 1.5rem;
+        }
+
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+
+        .timeline-icon {
+            position: absolute;
+            left: 0;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            z-index: 1;
+        }
+
+        .timeline-icon.completed {
+            background: var(--success);
+            color: white;
+        }
+
+        .timeline-icon.current {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+        }
+
+        .timeline-icon.pending {
+            background: var(--gray-200);
+            color: var(--gray-500);
+        }
+
+        .timeline-content {
+            background: var(--gray-50);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .timeline-content.current {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+        }
+
+        .timeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .timeline-title {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .timeline-date {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .timeline-description {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin-bottom: 0.75rem;
+        }
+
+        /* Checklist */
+        .checklist {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checklist-item:hover {
+            background: var(--gray-50);
+        }
+
+        .checklist-item.completed {
+            opacity: 0.7;
+        }
+
+        .checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid var(--gray-300);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.2s;
+        }
+
+        .checklist-item.completed .checkbox {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .checklist-item:not(.completed) .checkbox:hover {
+            border-color: var(--primary);
+        }
+
+        .checklist-label {
+            font-size: 0.9rem;
+            color: var(--gray-700);
+        }
+
+        .checklist-item.completed .checklist-label {
+            text-decoration: line-through;
+            color: var(--gray-500);
+        }
+
+        .advance-phase-btn {
+            margin-top: 1rem;
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .sidebar-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Contact Info */
+        .contact-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 0.9rem;
+            color: var(--gray-600);
+        }
+
+        .contact-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--gray-100);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Documents */
+        .document-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .document-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+            font-size: 0.875rem;
+        }
+
+        .document-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .document-status {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .document-status.sent {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .document-status.viewed {
+            background: #dbeafe;
+            color: var(--primary);
+        }
+
+        .document-status.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Activity Log */
+        .activity-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .activity-item {
+            display: flex;
+            gap: 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        .activity-time {
+            color: var(--gray-400);
+            white-space: nowrap;
+            min-width: 50px;
+        }
+
+        .activity-text {
+            color: var(--gray-600);
+        }
+
+        .activity-text strong {
+            color: var(--gray-700);
+        }
+
+        /* Quick Actions */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        .quick-action-btn {
+            padding: 0.75rem;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--gray-700);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .quick-action-btn:hover {
+            background: #eff6ff;
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .quick-action-icon {
+            font-size: 1.25rem;
+        }
+
+        /* PDF Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--gray-400);
+        }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        .confirm-message {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .confirm-message h4 {
+            color: #166534;
+            margin-bottom: 0.5rem;
+        }
+
+        .confirm-message p {
+            font-size: 0.9rem;
+            color: #15803d;
+        }
+
+        .pdf-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .pdf-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--success);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            z-index: 1001;
+        }
+
+        .toast.show {
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <button class="back-btn" onclick="window.location.href='interface-bucomax.html'">
+                ← Voltar ao Painel
+            </button>
+            <div class="logo">
+                <div class="logo-icon">B</div>
+                <span>BucoMax</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Patient Header Card -->
+        <div class="patient-header-card">
+            <div class="patient-main-info">
+                <div class="patient-avatar">MS</div>
+                <div class="patient-details">
+                    <h1>Maria Santos</h1>
+                    <p class="patient-meta">Cadastrado em 15/01/2024 • ID: #00234</p>
+                    <div class="patient-tags">
+                        <span class="tag tag-flow">🔄 Fluxo Completo</span>
+                        <span class="tag tag-phase">🔬 Fase: Exames</span>
+                        <span class="tag tag-opme">Art Fix</span>
+                    </div>
+                </div>
+            </div>
+            <div class="patient-status">
+                <div class="status-badge danger">
+                    🚨 Atenção Necessária
+                </div>
+                <p class="status-days">22 dias na fase atual (limite: 10 dias)</p>
+                <div class="patient-actions">
+                    <button class="btn btn-primary" onclick="openAdvanceModal()">
+                        Avançar Fase ➡️
+                    </button>
+                    <button class="btn btn-outline">
+                        💬 WhatsApp
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+            <!-- Timeline Section -->
+            <div class="timeline-section">
+                <div class="section-header">
+                    <h2 class="section-title">📊 Linha do Tempo e Checklist</h2>
+                </div>
+
+                <div class="timeline">
+                    <!-- Avaliação - Completed -->
+                    <div class="timeline-item">
+                        <div class="timeline-icon completed">✓</div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="timeline-title">📋 Avaliação e Planejamento</span>
+                                <span class="timeline-date">15/01/2024</span>
+                            </div>
+                            <div class="timeline-description">Fase concluída em 3 dias</div>
+                            <div class="checklist">
+                                <div class="checklist-item completed" onclick="toggleCheck(this)">
+                                    <div class="checkbox">✓</div>
+                                    <span class="checklist-label">Consulta inicial realizada</span>
+                                </div>
+                                <div class="checklist-item completed" onclick="toggleCheck(this)">
+                                    <div class="checkbox">✓</div>
+                                    <span class="checklist-label">Anamnese completa</span>
+                                </div>
+                                <div class="checklist-item completed" onclick="toggleCheck(this)">
+                                    <div class="checkbox">✓</div>
+                                    <span class="checklist-label">Planejamento definido</span>
+                                </div>
+                                <div class="checklist-item completed" onclick="toggleCheck(this)">
+                                    <div class="checkbox">✓</div>
+                                    <span class="checklist-label">Orientações iniciais enviadas</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exames - Current -->
+                    <div class="timeline-item">
+                        <div class="timeline-icon current">🔬</div>
+                        <div class="timeline-content current">
+                            <div class="timeline-header">
+                                <span class="timeline-title">🔬 Exames</span>
+                                <span class="timeline-date">Desde 18/01/2024</span>
+                            </div>
+                            <div class="timeline-description" style="color: var(--danger);">
+                                ⚠️ 22 dias nesta fase - Acima do limite recomendado (10 dias)
+                            </div>
+                            <div class="checklist">
+                                <div class="checklist-item completed" onclick="toggleCheck(this)">
+                                    <div class="checkbox">✓</div>
+                                    <span class="checklist-label">Solicitação de exames laboratoriais enviada</span>
+                                </div>
+                                <div class="checklist-item completed" onclick="toggleCheck(this)">
+                                    <div class="checkbox">✓</div>
+                                    <span class="checklist-label">Exames laboratoriais realizados</span>
+                                </div>
+                                <div class="checklist-item" onclick="toggleCheck(this)">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Tomografia realizada</span>
+                                </div>
+                                <div class="checklist-item" onclick="toggleCheck(this)">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Panorâmica realizada</span>
+                                </div>
+                                <div class="checklist-item" onclick="toggleCheck(this)">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Todos os exames recebidos e aprovados</span>
+                                </div>
+                            </div>
+                            <button class="btn btn-success advance-phase-btn" onclick="openAdvanceModal()">
+                                ✓ Marcar todos e Avançar para Ortodontia
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Ortodontia - Pending -->
+                    <div class="timeline-item">
+                        <div class="timeline-icon pending">🦷</div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="timeline-title">🦷 Ortodontia</span>
+                                <span class="timeline-date">Pendente</span>
+                            </div>
+                            <div class="timeline-description">Aguardando conclusão da fase anterior</div>
+                            <div class="checklist">
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Ortodontia iniciada</span>
+                                </div>
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Acompanhamento mensal</span>
+                                </div>
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Ortodontia concluída</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pré-operatório - Pending -->
+                    <div class="timeline-item">
+                        <div class="timeline-icon pending">📝</div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="timeline-title">📝 Pré-operatório</span>
+                                <span class="timeline-date">Pendente</span>
+                            </div>
+                            <div class="timeline-description">Aguardando fases anteriores</div>
+                            <div class="checklist">
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Solicitação enviada (convênio/judicial)</span>
+                                </div>
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Autorização recebida</span>
+                                </div>
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Exames pré-operatórios realizados</span>
+                                </div>
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Pré-operatório completo</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Cirurgia - Pending -->
+                    <div class="timeline-item">
+                        <div class="timeline-icon pending">🏥</div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="timeline-title">🏥 Cirurgia</span>
+                                <span class="timeline-date">Pendente</span>
+                            </div>
+                            <div class="timeline-description">Aguardando fases anteriores</div>
+                            <div class="checklist">
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Data agendada</span>
+                                </div>
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Cirurgia realizada</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Pós-operatório - Pending -->
+                    <div class="timeline-item">
+                        <div class="timeline-icon pending">🩹</div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="timeline-title">🩹 Pós-operatório</span>
+                                <span class="timeline-date">Pendente</span>
+                            </div>
+                            <div class="timeline-description">Aguardando fases anteriores</div>
+                            <div class="checklist">
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Retorno 7 dias</span>
+                                </div>
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Retorno 15 dias</span>
+                                </div>
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Retorno 30 dias</span>
+                                </div>
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Pós-operatório concluído</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Conclusão - Pending -->
+                    <div class="timeline-item">
+                        <div class="timeline-icon pending">✅</div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="timeline-title">✅ Conclusão</span>
+                                <span class="timeline-date">Pendente</span>
+                            </div>
+                            <div class="timeline-description">Aguardando fases anteriores</div>
+                            <div class="checklist">
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Alta concedida</span>
+                                </div>
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Fotos antes/depois liberadas</span>
+                                </div>
+                                <div class="checklist-item">
+                                    <div class="checkbox"></div>
+                                    <span class="checklist-label">Caso finalizado</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Quick Actions -->
+                <div class="sidebar-card">
+                    <h3 class="sidebar-title">⚡ Ações Rápidas</h3>
+                    <div class="quick-actions">
+                        <button class="quick-action-btn" onclick="sendReminder()">
+                            <span class="quick-action-icon">📩</span>
+                            Enviar Lembrete
+                        </button>
+                        <button class="quick-action-btn" onclick="resendDocs()">
+                            <span class="quick-action-icon">📄</span>
+                            Reenviar PDFs
+                        </button>
+                        <button class="quick-action-btn">
+                            <span class="quick-action-icon">📞</span>
+                            Ligar
+                        </button>
+                        <button class="quick-action-btn">
+                            <span class="quick-action-icon">📝</span>
+                            Adicionar Nota
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Contact Info -->
+                <div class="sidebar-card">
+                    <h3 class="sidebar-title">📱 Contato</h3>
+                    <div class="contact-info">
+                        <div class="contact-item">
+                            <div class="contact-icon">📱</div>
+                            <span>(11) 99999-0003</span>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">✉️</div>
+                            <span>maria.santos@email.com</span>
+                        </div>
+                        <div class="contact-item">
+                            <div class="contact-icon">👤</div>
+                            <span>Resp: Dr. João Silva</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Documents Sent -->
+                <div class="sidebar-card">
+                    <h3 class="sidebar-title">📄 Documentos Enviados</h3>
+                    <div class="document-list">
+                        <div class="document-item">
+                            <div class="document-info">
+                                <span>📄</span>
+                                <span>Orientações Iniciais</span>
+                            </div>
+                            <span class="document-status viewed">Visualizado</span>
+                        </div>
+                        <div class="document-item">
+                            <div class="document-info">
+                                <span>📄</span>
+                                <span>Lista de Exames</span>
+                            </div>
+                            <span class="document-status sent">Enviado</span>
+                        </div>
+                        <div class="document-item">
+                            <div class="document-info">
+                                <span>📄</span>
+                                <span>Guia Laboratorial</span>
+                            </div>
+                            <span class="document-status sent">Enviado</span>
+                        </div>
+                        <div class="document-item">
+                            <div class="document-info">
+                                <span>📄</span>
+                                <span>Orientações Tomografia</span>
+                            </div>
+                            <span class="document-status pending">Pendente</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Log -->
+                <div class="sidebar-card">
+                    <h3 class="sidebar-title">📋 Histórico de Atividades</h3>
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <span class="activity-time">Hoje</span>
+                            <span class="activity-text">Sistema gerou alerta de <strong>estagnação</strong></span>
+                        </div>
+                        <div class="activity-item">
+                            <span class="activity-time">3 dias</span>
+                            <span class="activity-text"><strong>Lembrete</strong> enviado via WhatsApp</span>
+                        </div>
+                        <div class="activity-item">
+                            <span class="activity-time">10 dias</span>
+                            <span class="activity-text">Paciente confirmou recebimento de exames lab.</span>
+                        </div>
+                        <div class="activity-item">
+                            <span class="activity-time">18/01</span>
+                            <span class="activity-text"><strong>Dr. João</strong> avançou para fase Exames</span>
+                        </div>
+                        <div class="activity-item">
+                            <span class="activity-time">15/01</span>
+                            <span class="activity-text"><strong>Secretaria</strong> cadastrou paciente</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal: Confirmar Avanço -->
+    <div class="modal-overlay" id="advanceModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">✓ Confirmar Avanço de Fase</h3>
+                <button class="modal-close" onclick="closeModal('advanceModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="confirm-message">
+                    <h4>📤 Documentos serão enviados automaticamente!</h4>
+                    <p>Ao confirmar, o paciente receberá via WhatsApp os seguintes materiais da fase "Ortodontia":</p>
+                </div>
+                <div class="pdf-list">
+                    <div class="pdf-item">
+                        <span>📄</span>
+                        <span>Guia de Cuidados com Aparelho</span>
+                    </div>
+                    <div class="pdf-item">
+                        <span>📄</span>
+                        <span>Cronograma de Consultas Ortodônticas</span>
+                    </div>
+                    <div class="pdf-item">
+                        <span>📄</span>
+                        <span>Orientações Alimentares</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('advanceModal')">Cancelar</button>
+                <button class="btn btn-success" onclick="confirmAdvance()">
+                    ✓ Confirmar e Enviar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span>✓</span>
+        <span id="toastMessage">Operação realizada com sucesso!</span>
+    </div>
+
+    <script>
+        function toggleCheck(element) {
+            element.classList.toggle('completed');
+            if (element.classList.contains('completed')) {
+                element.querySelector('.checkbox').innerHTML = '✓';
+                logActivity('Item de checklist marcado');
+            } else {
+                element.querySelector('.checkbox').innerHTML = '';
+            }
+        }
+
+        function openAdvanceModal() {
+            document.getElementById('advanceModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        function confirmAdvance() {
+            closeModal('advanceModal');
+            showToast('Fase avançada com sucesso! Documentos enviados ao paciente via WhatsApp.');
+        }
+
+        function sendReminder() {
+            showToast('Lembrete enviado para Maria Santos via WhatsApp!');
+        }
+
+        function resendDocs() {
+            showToast('Documentos reenviados com sucesso!');
+        }
+
+        function logActivity(action) {
+            // In a real app, this would log to the backend
+            console.log('Activity logged:', action);
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            toast.classList.add('show');
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Close modal when clicking outside
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+
+</html>

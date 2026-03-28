@@ -1,0 +1,1134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BucoMax - Configurações</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--gray-100);
+            color: var(--gray-800);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .main-nav {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .nav-link {
+            padding: 0.5rem 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* Page Header */
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--gray-800);
+        }
+
+        .page-subtitle {
+            color: var(--gray-500);
+            font-size: 0.95rem;
+        }
+
+        /* Layout */
+        .settings-layout {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .settings-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Sidebar */
+        .settings-sidebar {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            height: fit-content;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-item {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .sidebar-item:hover {
+            background: var(--gray-100);
+        }
+
+        .sidebar-item.active {
+            background: #dbeafe;
+            color: var(--primary);
+        }
+
+        .sidebar-icon {
+            font-size: 1.1rem;
+        }
+
+        .sidebar-text {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        /* Content */
+        .settings-content {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .settings-section {
+            display: none;
+        }
+
+        .settings-section.active {
+            display: block;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-group textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .form-hint {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            margin-top: 0.25rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Toggle Switch */
+        .toggle-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+        }
+
+        .toggle-info h4 {
+            font-size: 0.95rem;
+            color: var(--gray-800);
+            margin-bottom: 0.25rem;
+        }
+
+        .toggle-info p {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--gray-300);
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked+.toggle-slider {
+            background-color: var(--success);
+        }
+
+        .toggle-switch input:checked+.toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: white;
+            border: 1px solid var(--gray-300);
+            color: var(--gray-700);
+        }
+
+        .btn-outline:hover {
+            background: var(--gray-50);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Phase Config */
+        .phase-config-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+        }
+
+        .phase-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .phase-info {
+            flex: 1;
+        }
+
+        .phase-name {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .phase-docs {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .phase-days {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .phase-days input {
+            width: 60px;
+            padding: 0.5rem;
+            text-align: center;
+        }
+
+        /* Team Members */
+        .team-member {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+        }
+
+        .member-avatar {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        .member-info {
+            flex: 1;
+        }
+
+        .member-name {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .member-role {
+            font-size: 0.85rem;
+            color: var(--gray-500);
+        }
+
+        .member-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+        }
+
+        /* OPME List */
+        .opme-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--gray-50);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+        }
+
+        .opme-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .opme-logo {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--gray-800);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            z-index: 1001;
+        }
+
+        .toast.show {
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success {
+            background: var(--success);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .main-nav {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">B</div>
+            <span>BucoMax</span>
+        </div>
+        <nav class="main-nav">
+            <a href="index.html" class="nav-link">📊 Dashboard</a>
+            <a href="pacientes.html" class="nav-link">👥 Pacientes</a>
+            <a href="relatorios.html" class="nav-link">📈 Relatórios</a>
+            <a href="configuracoes.html" class="nav-link active">⚙️ Configurações</a>
+        </nav>
+        <div class="user-info">
+            <span>Dr. João Silva</span>
+            <div class="user-avatar">👤</div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1 class="page-title">⚙️ Configurações</h1>
+            <p class="page-subtitle">Personalize o BucoMax de acordo com suas necessidades</p>
+        </div>
+
+        <div class="settings-layout">
+            <!-- Sidebar -->
+            <div class="settings-sidebar">
+                <ul class="sidebar-menu">
+                    <li class="sidebar-item active" onclick="switchSection('profile')">
+                        <span class="sidebar-icon">👤</span>
+                        <span class="sidebar-text">Perfil</span>
+                    </li>
+                    <li class="sidebar-item" onclick="switchSection('clinic')">
+                        <span class="sidebar-icon">🏥</span>
+                        <span class="sidebar-text">Clínica</span>
+                    </li>
+                    <li class="sidebar-item" onclick="switchSection('phases')">
+                        <span class="sidebar-icon">📋</span>
+                        <span class="sidebar-text">Fases do Tratamento</span>
+                    </li>
+                    <li class="sidebar-item" onclick="switchSection('notifications')">
+                        <span class="sidebar-icon">🔔</span>
+                        <span class="sidebar-text">Notificações</span>
+                    </li>
+                    <li class="sidebar-item" onclick="switchSection('team')">
+                        <span class="sidebar-icon">👥</span>
+                        <span class="sidebar-text">Equipe</span>
+                    </li>
+                    <li class="sidebar-item" onclick="switchSection('opme')">
+                        <span class="sidebar-icon">🏭</span>
+                        <span class="sidebar-text">Fornecedores OPME</span>
+                    </li>
+                    <li class="sidebar-item" onclick="switchSection('integrations')">
+                        <span class="sidebar-icon">🔗</span>
+                        <span class="sidebar-text">Integrações</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Content -->
+            <div class="settings-content">
+                <!-- Profile Section -->
+                <div class="settings-section active" id="section-profile">
+                    <h2 class="section-title">👤 Informações do Perfil</h2>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nome Completo</label>
+                            <input type="text" value="Dr. João Silva" id="profileName">
+                        </div>
+                        <div class="form-group">
+                            <label>CRO</label>
+                            <input type="text" value="CRO-SP 12345" id="profileCRO">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>E-mail</label>
+                            <input type="email" value="dr.joao@bucomax.com" id="profileEmail">
+                        </div>
+                        <div class="form-group">
+                            <label>Telefone</label>
+                            <input type="tel" value="(11) 99999-1234" id="profilePhone">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Especialidade</label>
+                        <select id="profileSpecialty">
+                            <option value="buco">Cirurgia Bucomaxilofacial</option>
+                            <option value="orto">Ortodontia</option>
+                            <option value="implanto">Implantodontia</option>
+                            <option value="geral">Clínica Geral</option>
+                        </select>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="saveProfile()">💾 Salvar Alterações</button>
+                        <button class="btn btn-outline" onclick="cancelChanges()">Cancelar</button>
+                    </div>
+                </div>
+
+                <!-- Clinic Section -->
+                <div class="settings-section" id="section-clinic">
+                    <h2 class="section-title">🏥 Dados da Clínica</h2>
+
+                    <div class="form-group">
+                        <label>Nome da Clínica</label>
+                        <input type="text" value="Clínica BucoMax - Cirurgia Ortognática" id="clinicName">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>CNPJ</label>
+                            <input type="text" value="12.345.678/0001-90" id="clinicCNPJ">
+                        </div>
+                        <div class="form-group">
+                            <label>Telefone</label>
+                            <input type="tel" value="(11) 3456-7890" id="clinicPhone">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Endereço</label>
+                        <input type="text" value="Av. Paulista, 1000 - Cj. 1501" id="clinicAddress">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cidade</label>
+                            <input type="text" value="São Paulo" id="clinicCity">
+                        </div>
+                        <div class="form-group">
+                            <label>CEP</label>
+                            <input type="text" value="01310-100" id="clinicCEP">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Hospitais Conveniados</label>
+                        <textarea id="clinicHospitals">Hospital Albert Einstein
+Hospital Sírio-Libanês
+Hospital Oswaldo Cruz</textarea>
+                        <span class="form-hint">Um hospital por linha</span>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="saveClinic()">💾 Salvar Alterações</button>
+                        <button class="btn btn-outline" onclick="cancelChanges()">Cancelar</button>
+                    </div>
+                </div>
+
+                <!-- Phases Section -->
+                <div class="settings-section" id="section-phases">
+                    <h2 class="section-title">📋 Configuração de Fases</h2>
+                    <p style="color: var(--gray-500); margin-bottom: 1rem; font-size: 0.9rem;">
+                        Configure os limites de dias para alertas de cada fase do tratamento
+                    </p>
+
+                    <div class="phase-config-item">
+                        <div class="phase-icon">📋</div>
+                        <div class="phase-info">
+                            <div class="phase-name">Avaliação</div>
+                            <div class="phase-docs">3 documentos automáticos</div>
+                        </div>
+                        <div class="phase-days">
+                            <span>Alerta após</span>
+                            <input type="number" value="7" min="1" max="30">
+                            <span>dias</span>
+                        </div>
+                    </div>
+
+                    <div class="phase-config-item">
+                        <div class="phase-icon">🔬</div>
+                        <div class="phase-info">
+                            <div class="phase-name">Exames</div>
+                            <div class="phase-docs">3 documentos automáticos</div>
+                        </div>
+                        <div class="phase-days">
+                            <span>Alerta após</span>
+                            <input type="number" value="15" min="1" max="60">
+                            <span>dias</span>
+                        </div>
+                    </div>
+
+                    <div class="phase-config-item">
+                        <div class="phase-icon">🦷</div>
+                        <div class="phase-info">
+                            <div class="phase-name">Ortodontia</div>
+                            <div class="phase-docs">3 documentos automáticos</div>
+                        </div>
+                        <div class="phase-days">
+                            <span>Alerta após</span>
+                            <input type="number" value="30" min="1" max="90">
+                            <span>dias</span>
+                        </div>
+                    </div>
+
+                    <div class="phase-config-item">
+                        <div class="phase-icon">📝</div>
+                        <div class="phase-info">
+                            <div class="phase-name">Pré-operatório</div>
+                            <div class="phase-docs">4 documentos automáticos</div>
+                        </div>
+                        <div class="phase-days">
+                            <span>Alerta após</span>
+                            <input type="number" value="15" min="1" max="60">
+                            <span>dias</span>
+                        </div>
+                    </div>
+
+                    <div class="phase-config-item">
+                        <div class="phase-icon">🏥</div>
+                        <div class="phase-info">
+                            <div class="phase-name">Cirurgia</div>
+                            <div class="phase-docs">3 documentos automáticos</div>
+                        </div>
+                        <div class="phase-days">
+                            <span>Alerta após</span>
+                            <input type="number" value="1" min="1" max="7">
+                            <span>dias</span>
+                        </div>
+                    </div>
+
+                    <div class="phase-config-item">
+                        <div class="phase-icon">🩹</div>
+                        <div class="phase-info">
+                            <div class="phase-name">Pós-operatório</div>
+                            <div class="phase-docs">5 documentos automáticos</div>
+                        </div>
+                        <div class="phase-days">
+                            <span>Alerta após</span>
+                            <input type="number" value="30" min="1" max="90">
+                            <span>dias</span>
+                        </div>
+                    </div>
+
+                    <div class="phase-config-item">
+                        <div class="phase-icon">✅</div>
+                        <div class="phase-info">
+                            <div class="phase-name">Conclusão</div>
+                            <div class="phase-docs">3 documentos automáticos</div>
+                        </div>
+                        <div class="phase-days">
+                            <span>Alerta após</span>
+                            <input type="number" value="7" min="1" max="30">
+                            <span>dias</span>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="savePhases()">💾 Salvar Configurações</button>
+                        <button class="btn btn-outline">Restaurar Padrão</button>
+                    </div>
+                </div>
+
+                <!-- Notifications Section -->
+                <div class="settings-section" id="section-notifications">
+                    <h2 class="section-title">🔔 Preferências de Notificações</h2>
+
+                    <div class="toggle-group">
+                        <div class="toggle-info">
+                            <h4>Alertas de pacientes críticos</h4>
+                            <p>Receber notificações quando um paciente ultrapassar o limite de dias</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-group">
+                        <div class="toggle-info">
+                            <h4>Lembretes de cirurgias</h4>
+                            <p>Notificar 48h antes de cirurgias agendadas</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-group">
+                        <div class="toggle-info">
+                            <h4>Novos pacientes cadastrados</h4>
+                            <p>Receber notificação quando um novo paciente for adicionado</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-group">
+                        <div class="toggle-info">
+                            <h4>Relatórios semanais</h4>
+                            <p>Receber resumo semanal por e-mail</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-group">
+                        <div class="toggle-info">
+                            <h4>Confirmações de envio de documentos</h4>
+                            <p>Notificar quando documentos forem enviados aos pacientes</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="saveNotifications()">💾 Salvar Preferências</button>
+                    </div>
+                </div>
+
+                <!-- Team Section -->
+                <div class="settings-section" id="section-team">
+                    <h2 class="section-title">👥 Equipe</h2>
+
+                    <div class="team-member">
+                        <div class="member-avatar">JS</div>
+                        <div class="member-info">
+                            <div class="member-name">Dr. João Silva</div>
+                            <div class="member-role">Administrador • Cirurgião</div>
+                        </div>
+                        <div class="member-actions">
+                            <button class="btn btn-outline btn-icon">✏️</button>
+                        </div>
+                    </div>
+
+                    <div class="team-member">
+                        <div class="member-avatar">MS</div>
+                        <div class="member-info">
+                            <div class="member-name">Dra. Maria Santos</div>
+                            <div class="member-role">Cirurgiã</div>
+                        </div>
+                        <div class="member-actions">
+                            <button class="btn btn-outline btn-icon">✏️</button>
+                            <button class="btn btn-outline btn-icon">🗑️</button>
+                        </div>
+                    </div>
+
+                    <div class="team-member">
+                        <div class="member-avatar">AP</div>
+                        <div class="member-info">
+                            <div class="member-name">Ana Paula</div>
+                            <div class="member-role">Secretária</div>
+                        </div>
+                        <div class="member-actions">
+                            <button class="btn btn-outline btn-icon">✏️</button>
+                            <button class="btn btn-outline btn-icon">🗑️</button>
+                        </div>
+                    </div>
+
+                    <div class="team-member">
+                        <div class="member-avatar">RC</div>
+                        <div class="member-info">
+                            <div class="member-name">Roberto Costa</div>
+                            <div class="member-role">Ortodontista</div>
+                        </div>
+                        <div class="member-actions">
+                            <button class="btn btn-outline btn-icon">✏️</button>
+                            <button class="btn btn-outline btn-icon">🗑️</button>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="addTeamMember()">➕ Adicionar Membro</button>
+                    </div>
+                </div>
+
+                <!-- OPME Section -->
+                <div class="settings-section" id="section-opme">
+                    <h2 class="section-title">🏭 Fornecedores OPME</h2>
+
+                    <div class="opme-item">
+                        <div class="opme-info">
+                            <div class="opme-logo">🏭</div>
+                            <div>
+                                <strong>Art Fix</strong><br>
+                                <small style="color: var(--gray-500)">16 pacientes ativos</small>
+                            </div>
+                        </div>
+                        <div class="member-actions">
+                            <button class="btn btn-outline btn-icon">✏️</button>
+                            <button class="btn btn-outline btn-icon">🗑️</button>
+                        </div>
+                    </div>
+
+                    <div class="opme-item">
+                        <div class="opme-info">
+                            <div class="opme-logo">🏭</div>
+                            <div>
+                                <strong>Evolve</strong><br>
+                                <small style="color: var(--gray-500)">13 pacientes ativos</small>
+                            </div>
+                        </div>
+                        <div class="member-actions">
+                            <button class="btn btn-outline btn-icon">✏️</button>
+                            <button class="btn btn-outline btn-icon">🗑️</button>
+                        </div>
+                    </div>
+
+                    <div class="opme-item">
+                        <div class="opme-info">
+                            <div class="opme-logo">🏭</div>
+                            <div>
+                                <strong>CPMH</strong><br>
+                                <small style="color: var(--gray-500)">11 pacientes ativos</small>
+                            </div>
+                        </div>
+                        <div class="member-actions">
+                            <button class="btn btn-outline btn-icon">✏️</button>
+                            <button class="btn btn-outline btn-icon">🗑️</button>
+                        </div>
+                    </div>
+
+                    <div class="opme-item">
+                        <div class="opme-info">
+                            <div class="opme-logo">🏭</div>
+                            <div>
+                                <strong>Patrocinado</strong><br>
+                                <small style="color: var(--gray-500)">7 pacientes ativos</small>
+                            </div>
+                        </div>
+                        <div class="member-actions">
+                            <button class="btn btn-outline btn-icon">✏️</button>
+                            <button class="btn btn-outline btn-icon">🗑️</button>
+                        </div>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="addOPME()">➕ Adicionar Fornecedor</button>
+                    </div>
+                </div>
+
+                <!-- Integrations Section -->
+                <div class="settings-section" id="section-integrations">
+                    <h2 class="section-title">🔗 Integrações</h2>
+
+                    <div class="toggle-group">
+                        <div class="toggle-info">
+                            <h4>📱 WhatsApp Business</h4>
+                            <p>Enviar documentos e mensagens automáticas via WhatsApp</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-group">
+                        <div class="toggle-info">
+                            <h4>📅 Google Calendar</h4>
+                            <p>Sincronizar cirurgias e consultas com Google Agenda</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-group">
+                        <div class="toggle-info">
+                            <h4>💳 Financeiro</h4>
+                            <p>Integração com sistema de cobrança e pagamentos</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-group">
+                        <div class="toggle-info">
+                            <h4>🏥 Prontuário Eletrônico</h4>
+                            <p>Sincronizar dados com sistemas de prontuário</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="btn-group">
+                        <button class="btn btn-primary" onclick="saveIntegrations()">💾 Salvar Configurações</button>
+                        <button class="btn btn-outline">Testar Conexões</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span>✓</span>
+        <span id="toastMessage">Operação realizada com sucesso!</span>
+    </div>
+
+    <script>
+        function switchSection(sectionId) {
+            // Update sidebar
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+
+            // Update content
+            document.querySelectorAll('.settings-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(`section-${sectionId}`).classList.add('active');
+        }
+
+        function saveProfile() {
+            showToast('Perfil atualizado com sucesso!');
+        }
+
+        function saveClinic() {
+            showToast('Dados da clínica salvos com sucesso!');
+        }
+
+        function savePhases() {
+            showToast('Configurações de fases salvas com sucesso!');
+        }
+
+        function saveNotifications() {
+            showToast('Preferências de notificações salvas!');
+        }
+
+        function saveIntegrations() {
+            showToast('Configurações de integrações salvas!');
+        }
+
+        function cancelChanges() {
+            showToast('Alterações canceladas.');
+        }
+
+        function addTeamMember() {
+            showToast('Função em desenvolvimento. Em breve você poderá adicionar membros da equipe.');
+        }
+
+        function addOPME() {
+            showToast('Função em desenvolvimento. Em breve você poderá adicionar fornecedores OPME.');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            toast.classList.add('show', 'success');
+
+            setTimeout(() => {
+                toast.classList.remove('show', 'success');
+            }, 3000);
+        }
+    </script>
+</body>
+
+</html>

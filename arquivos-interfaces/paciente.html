@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BucoMax - Detalhes do Paciente</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--gray-100);
+            color: var(--gray-800);
+            line-height: 1.6;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .main-nav {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .nav-link {
+            padding: 0.5rem 1rem;
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+        }
+
+        .nav-link.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        /* Patient Header Card */
+        .patient-header-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+
+        .patient-main-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .patient-identity {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .patient-avatar {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .patient-details h1 {
+            font-size: 1.5rem;
+            color: var(--gray-800);
+            margin-bottom: 0.25rem;
+        }
+
+        .patient-details p {
+            color: var(--gray-500);
+            font-size: 0.9rem;
+        }
+
+        .patient-badges {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .badge-flow {
+            background: #dbeafe;
+            color: var(--primary);
+        }
+
+        .badge-opme {
+            background: #f3e8ff;
+            color: #7c3aed;
+        }
+
+        .badge-status {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-status.warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-status.danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .patient-actions-header {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-outline {
+            background: white;
+            border: 1px solid var(--gray-300);
+            color: var(--gray-700);
+        }
+
+        .btn-outline:hover {
+            background: var(--gray-50);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        /* Contact Info */
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .contact-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--gray-100);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .contact-info label {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            display: block;
+        }
+
+        .contact-info span {
+            font-weight: 500;
+            color: var(--gray-700);
+        }
+
+        /* Main Content Grid */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--gray-800);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 0.5rem;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: var(--gray-200);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding-bottom: 1.5rem;
+        }
+
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -1.5rem;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--gray-300);
+            border: 2px solid white;
+            box-shadow: 0 0 0 2px var(--gray-200);
+        }
+
+        .timeline-dot.completed {
+            background: var(--success);
+            box-shadow: 0 0 0 2px #d1fae5;
+        }
+
+        .timeline-dot.current {
+            background: var(--primary);
+            box-shadow: 0 0 0 2px #dbeafe;
+        }
+
+        .timeline-dot.pending {
+            background: var(--gray-300);
+        }
+
+        .timeline-content h4 {
+            font-size: 0.95rem;
+            color: var(--gray-800);
+            margin-bottom: 0.25rem;
+        }
+
+        .timeline-content p {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .timeline-content .date {
+            font-size: 0.75rem;
+            color: var(--gray-400);
+            margin-top: 0.25rem;
+        }
+
+        /* Checklist */
+        .checklist-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            background: var(--gray-50);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .checklist-item:hover {
+            background: var(--gray-100);
+        }
+
+        .checklist-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--gray-300);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .checklist-item.completed .checklist-checkbox {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .checklist-text {
+            flex: 1;
+        }
+
+        .checklist-text h5 {
+            font-size: 0.9rem;
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+
+        .checklist-text p {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .checklist-item.completed .checklist-text h5 {
+            text-decoration: line-through;
+            color: var(--gray-400);
+        }
+
+        /* Documents */
+        .document-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            background: var(--gray-50);
+        }
+
+        .document-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .document-icon {
+            width: 36px;
+            height: 36px;
+            background: #dbeafe;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .document-name {
+            font-size: 0.9rem;
+            color: var(--gray-700);
+            font-weight: 500;
+        }
+
+        .document-date {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        .document-status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .document-status.sent {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .document-status.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Activity Log */
+        .activity-item {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-icon {
+            width: 32px;
+            height: 32px;
+            background: var(--gray-100);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .activity-content {
+            flex: 1;
+        }
+
+        .activity-content p {
+            font-size: 0.85rem;
+            color: var(--gray-700);
+        }
+
+        .activity-content .time {
+            font-size: 0.75rem;
+            color: var(--gray-400);
+            margin-top: 0.25rem;
+        }
+
+        /* Notes */
+        .notes-textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .notes-textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--gray-800);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            z-index: 1001;
+        }
+
+        .toast.show {
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        .toast.success {
+            background: var(--success);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .patient-main-info {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .patient-actions-header {
+                flex-wrap: wrap;
+            }
+
+            .contact-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .main-nav {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-left">
+            <a href="index.html" class="back-btn">← Voltar ao Dashboard</a>
+            <div class="logo">
+                <div class="logo-icon">B</div>
+                <span>BucoMax</span>
+            </div>
+        </div>
+        <nav class="main-nav">
+            <a href="index.html" class="nav-link">📊 Dashboard</a>
+            <a href="pacientes.html" class="nav-link active">👥 Pacientes</a>
+            <a href="relatorios.html" class="nav-link">📈 Relatórios</a>
+            <a href="configuracoes.html" class="nav-link">⚙️ Configurações</a>
+        </nav>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Patient Header Card -->
+        <div class="patient-header-card">
+            <div class="patient-main-info">
+                <div class="patient-identity">
+                    <div class="patient-avatar" id="patientAvatar">👤</div>
+                    <div class="patient-details">
+                        <h1 id="patientName">Carregando...</h1>
+                        <p id="patientSince">Paciente desde --</p>
+                        <div class="patient-badges">
+                            <span class="badge badge-flow" id="patientFlow">--</span>
+                            <span class="badge badge-opme" id="patientOPME">--</span>
+                            <span class="badge badge-status" id="patientStatus">--</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="patient-actions-header">
+                    <button class="btn btn-primary" onclick="advancePhase()">➡️ Avançar Fase</button>
+                    <button class="btn btn-success" onclick="sendMessage()">💬 Enviar Mensagem</button>
+                    <button class="btn btn-outline" onclick="editPatient()">✏️ Editar</button>
+                </div>
+            </div>
+            <div class="contact-grid">
+                <div class="contact-item">
+                    <div class="contact-icon">📱</div>
+                    <div class="contact-info">
+                        <label>WhatsApp</label>
+                        <span id="patientPhone">--</span>
+                    </div>
+                </div>
+                <div class="contact-item">
+                    <div class="contact-icon">📧</div>
+                    <div class="contact-info">
+                        <label>E-mail</label>
+                        <span id="patientEmail">--</span>
+                    </div>
+                </div>
+                <div class="contact-item">
+                    <div class="contact-icon">📍</div>
+                    <div class="contact-info">
+                        <label>Fase Atual</label>
+                        <span id="patientPhase">--</span>
+                    </div>
+                </div>
+                <div class="contact-item">
+                    <div class="contact-icon">⏱️</div>
+                    <div class="contact-info">
+                        <label>Tempo na Fase</label>
+                        <span id="patientDays">-- dias</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+            <!-- Left Column -->
+            <div class="left-column">
+                <!-- Timeline -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📊 Linha do Tempo do Tratamento</h3>
+                    </div>
+                    <div class="timeline" id="timeline">
+                        <!-- Rendered by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Checklist -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">✅ Checklist da Fase Atual</h3>
+                        <span id="checklistProgress">0/0</span>
+                    </div>
+                    <div class="checklist" id="checklist">
+                        <!-- Rendered by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Documents -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📄 Documentos Enviados</h3>
+                        <button class="btn btn-outline" onclick="sendDocument()">+ Enviar Documento</button>
+                    </div>
+                    <div class="documents-list" id="documentsList">
+                        <!-- Rendered by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="right-column">
+                <!-- Activity Log -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📋 Atividades Recentes</h3>
+                    </div>
+                    <div class="activity-log" id="activityLog">
+                        <!-- Rendered by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">📝 Anotações</h3>
+                        <button class="btn btn-outline" onclick="saveNotes()">Salvar</button>
+                    </div>
+                    <textarea class="notes-textarea" id="patientNotes"
+                        placeholder="Adicione observações sobre o paciente..."></textarea>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">⚡ Ações Rápidas</h3>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <button class="btn btn-outline" onclick="scheduleAppointment()">📅 Agendar Consulta</button>
+                        <button class="btn btn-outline" onclick="requestExams()">🔬 Solicitar Exames</button>
+                        <button class="btn btn-outline" onclick="sendReminder()">🔔 Enviar Lembrete</button>
+                        <button class="btn btn-outline" onclick="viewHistory()">📜 Ver Histórico Completo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <span>✓</span>
+        <span id="toastMessage">Operação realizada com sucesso!</span>
+    </div>
+
+    <script>
+        // ========================================
+        // MOCK DATA
+        // ========================================
+        const mockPatients = [
+            { id: 1, name: 'Pedro Souza', phone: '(11) 99999-0001', email: 'pedro.souza@email.com', flow: 'Completo', phase: 'avaliacao', days: 3, status: 'ok', opme: 'Art Fix', since: '10/01/2025' },
+            { id: 2, name: 'Lucia Mendes', phone: '(11) 99999-0002', email: 'lucia.mendes@email.com', flow: 'Convênio', phase: 'avaliacao', days: 1, status: 'ok', opme: 'Evolve', since: '12/01/2025' },
+            { id: 9, name: 'Maria Santos', phone: '(11) 99999-0003', email: 'maria.santos@email.com', flow: 'Completo', phase: 'exames', days: 22, status: 'danger', opme: 'Evolve', since: '20/12/2024' },
+            { id: 10, name: 'José Lima', phone: '(11) 99999-0004', email: 'jose.lima@email.com', flow: 'Judicial', phase: 'exames', days: 12, status: 'warning', opme: 'Art Fix', since: '01/01/2025' },
+            { id: 27, name: 'Carlos Oliveira', phone: '(11) 99999-0007', email: 'carlos.oliveira@email.com', flow: 'Convênio', phase: 'preop', days: 18, status: 'danger', opme: 'CPMH', since: '15/12/2024' },
+            { id: 28, name: 'Ana Costa', phone: '(11) 99999-0008', email: 'ana.costa@email.com', flow: 'Completo', phase: 'preop', days: 10, status: 'warning', opme: 'Art Fix', since: '03/01/2025' },
+            { id: 36, name: 'Marcos Pereira', phone: '(11) 99999-0009', email: 'marcos.pereira@email.com', flow: 'Completo', phase: 'cirurgia', days: 0, status: 'ok', opme: 'Art Fix', since: '01/12/2024', surgeryDate: '15/02/2025' },
+            { id: 40, name: 'Julia Santos', phone: '(11) 99999-0010', email: 'julia.santos@email.com', flow: 'Direto', phase: 'posop', days: 7, status: 'ok', opme: 'Art Fix', since: '20/11/2024' },
+            { id: 45, name: 'Ricardo Nunes', phone: '(11) 99999-0011', email: 'ricardo.nunes@email.com', flow: 'Completo', phase: 'conclusao', days: 0, status: 'ok', opme: 'Evolve', since: '15/10/2024', altaDate: '10/01/2025' }
+        ];
+
+        const phaseNames = {
+            'avaliacao': { name: 'Avaliação', icon: '📋' },
+            'exames': { name: 'Exames', icon: '🔬' },
+            'ortodontia': { name: 'Ortodontia', icon: '🦷' },
+            'preop': { name: 'Pré-operatório', icon: '📝' },
+            'cirurgia': { name: 'Cirurgia', icon: '🏥' },
+            'posop': { name: 'Pós-operatório', icon: '🩹' },
+            'conclusao': { name: 'Conclusão', icon: '✅' }
+        };
+
+        const phaseOrder = ['avaliacao', 'exames', 'ortodontia', 'preop', 'cirurgia', 'posop', 'conclusao'];
+
+        const phaseChecklists = {
+            avaliacao: [
+                { id: 1, text: 'Realizar anamnese completa', desc: 'Histórico médico e odontológico' },
+                { id: 2, text: 'Análise facial e fotográfica', desc: 'Documentação fotográfica padrão' },
+                { id: 3, text: 'Planejamento inicial', desc: 'Definir tipo de fluxo e tratamento' },
+                { id: 4, text: 'Termo de consentimento', desc: 'Assinatura do paciente' }
+            ],
+            exames: [
+                { id: 1, text: 'Radiografia panorâmica', desc: 'Solicitar e aguardar resultado' },
+                { id: 2, text: 'Tomografia computadorizada', desc: 'TC de face completa' },
+                { id: 3, text: 'Exames laboratoriais', desc: 'Hemograma, coagulograma' },
+                { id: 4, text: 'Modelos dentários', desc: 'Moldagem superior e inferior' },
+                { id: 5, text: 'Análise cefalométrica', desc: 'Medições e planejamento' }
+            ],
+            ortodontia: [
+                { id: 1, text: 'Instalação do aparelho', desc: 'Aparelho ortodôntico fixo' },
+                { id: 2, text: 'Nivelamento inicial', desc: 'Primeira fase do tratamento' },
+                { id: 3, text: 'Consultas mensais', desc: 'Acompanhamento regular' },
+                { id: 4, text: 'Preparo pré-cirúrgico final', desc: 'Posicionamento ideal' }
+            ],
+            preop: [
+                { id: 1, text: 'Reavaliação dos exames', desc: 'Verificar validade e resultados' },
+                { id: 2, text: 'Pedido de material OPME', desc: 'Solicitar ao fornecedor' },
+                { id: 3, text: 'Agendamento da cirurgia', desc: 'Coordenar com hospital' },
+                { id: 4, text: 'Orientações pré-operatórias', desc: 'Enviar ao paciente' },
+                { id: 5, text: 'Termo de consentimento cirúrgico', desc: 'Assinatura final' }
+            ],
+            cirurgia: [
+                { id: 1, text: 'Check-in hospitalar', desc: 'Internação do paciente' },
+                { id: 2, text: 'Procedimento cirúrgico', desc: 'Cirurgia ortognática' },
+                { id: 3, text: 'Pós-operatório imediato', desc: 'Acompanhamento hospitalar' },
+                { id: 4, text: 'Alta hospitalar', desc: 'Orientações de alta' }
+            ],
+            posop: [
+                { id: 1, text: 'Retorno 7 dias', desc: 'Primeira avaliação pós-cirúrgica' },
+                { id: 2, text: 'Retorno 15 dias', desc: 'Remoção de pontos' },
+                { id: 3, text: 'Retorno 30 dias', desc: 'Avaliação da cicatrização' },
+                { id: 4, text: 'Retorno 60 dias', desc: 'Avaliação funcional' },
+                { id: 5, text: 'Fisioterapia', desc: 'Se necessário' }
+            ],
+            conclusao: [
+                { id: 1, text: 'Documentação final', desc: 'Fotos e radiografias finais' },
+                { id: 2, text: 'Alta ortodôntica', desc: 'Remoção do aparelho' },
+                { id: 3, text: 'Relatório final', desc: 'Documentação do caso' },
+                { id: 4, text: 'Orientações de manutenção', desc: 'Cuidados pós-tratamento' }
+            ]
+        };
+
+        let currentPatient = null;
+        let completedChecklist = {};
+
+        // ========================================
+        // INIT
+        // ========================================
+        document.addEventListener('DOMContentLoaded', () => {
+            const patientId = localStorage.getItem('selectedPatientId');
+
+            if (patientId) {
+                currentPatient = mockPatients.find(p => p.id === parseInt(patientId));
+            }
+
+            if (!currentPatient) {
+                currentPatient = mockPatients[0];
+            }
+
+            renderPatientDetails();
+            renderTimeline();
+            renderChecklist();
+            renderDocuments();
+            renderActivityLog();
+        });
+
+        // ========================================
+        // RENDER FUNCTIONS
+        // ========================================
+        function renderPatientDetails() {
+            document.getElementById('patientName').textContent = currentPatient.name;
+            document.getElementById('patientSince').textContent = `Paciente desde ${currentPatient.since}`;
+            document.getElementById('patientFlow').textContent = currentPatient.flow;
+            document.getElementById('patientOPME').textContent = `OPME: ${currentPatient.opme}`;
+            document.getElementById('patientPhone').textContent = currentPatient.phone;
+            document.getElementById('patientEmail').textContent = currentPatient.email;
+            document.getElementById('patientPhase').textContent = phaseNames[currentPatient.phase].name;
+            document.getElementById('patientDays').textContent = `${currentPatient.days} dias`;
+
+            const statusBadge = document.getElementById('patientStatus');
+            statusBadge.textContent = currentPatient.status === 'ok' ? 'Em dia' :
+                currentPatient.status === 'warning' ? 'Atenção' : 'Crítico';
+            statusBadge.className = `badge badge-status ${currentPatient.status === 'ok' ? '' : currentPatient.status}`;
+
+            // Avatar initials
+            const initials = currentPatient.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+            document.getElementById('patientAvatar').textContent = initials;
+        }
+
+        function renderTimeline() {
+            const timeline = document.getElementById('timeline');
+            const currentPhaseIndex = phaseOrder.indexOf(currentPatient.phase);
+
+            timeline.innerHTML = phaseOrder.map((phase, index) => {
+                let dotClass = 'pending';
+                let dateText = '';
+
+                if (index < currentPhaseIndex) {
+                    dotClass = 'completed';
+                    dateText = 'Concluído';
+                } else if (index === currentPhaseIndex) {
+                    dotClass = 'current';
+                    dateText = `${currentPatient.days} dias`;
+                } else {
+                    dateText = 'Pendente';
+                }
+
+                return `
+                    <div class="timeline-item">
+                        <div class="timeline-dot ${dotClass}"></div>
+                        <div class="timeline-content">
+                            <h4>${phaseNames[phase].icon} ${phaseNames[phase].name}</h4>
+                            <p class="date">${dateText}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderChecklist() {
+            const checklist = document.getElementById('checklist');
+            const items = phaseChecklists[currentPatient.phase] || [];
+
+            // Initialize completed items for this phase if not exists
+            if (!completedChecklist[currentPatient.phase]) {
+                completedChecklist[currentPatient.phase] = [];
+            }
+
+            const completed = completedChecklist[currentPatient.phase];
+
+            checklist.innerHTML = items.map(item => `
+                <div class="checklist-item ${completed.includes(item.id) ? 'completed' : ''}" 
+                     onclick="toggleChecklistItem(${item.id})">
+                    <div class="checklist-checkbox">
+                        ${completed.includes(item.id) ? '✓' : ''}
+                    </div>
+                    <div class="checklist-text">
+                        <h5>${item.text}</h5>
+                        <p>${item.desc}</p>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('checklistProgress').textContent =
+                `${completed.length}/${items.length}`;
+        }
+
+        function renderDocuments() {
+            const documentsList = document.getElementById('documentsList');
+
+            const mockDocs = [
+                { name: 'Ficha de Anamnese', date: '10/01/2025', status: 'sent' },
+                { name: 'Termo de Consentimento', date: '10/01/2025', status: 'sent' },
+                { name: 'Guia de Preparo para Exames', date: '12/01/2025', status: 'sent' },
+                { name: 'Orientações Pré-Operatórias', date: '', status: 'pending' }
+            ];
+
+            documentsList.innerHTML = mockDocs.map(doc => `
+                <div class="document-item">
+                    <div class="document-info">
+                        <div class="document-icon">📄</div>
+                        <div>
+                            <div class="document-name">${doc.name}</div>
+                            <div class="document-date">${doc.date || 'Não enviado'}</div>
+                        </div>
+                    </div>
+                    <span class="document-status ${doc.status}">${doc.status === 'sent' ? 'Enviado' : 'Pendente'}</span>
+                </div>
+            `).join('');
+        }
+
+        function renderActivityLog() {
+            const activityLog = document.getElementById('activityLog');
+
+            const activities = [
+                { icon: '📋', text: 'Paciente avançou para fase de Exames', time: 'Há 3 dias' },
+                { icon: '📄', text: 'Documento "Guia de Preparo" enviado via WhatsApp', time: 'Há 3 dias' },
+                { icon: '✅', text: 'Checklist "Termo de Consentimento" marcado como concluído', time: 'Há 5 dias' },
+                { icon: '💬', text: 'Mensagem de lembrete enviada ao paciente', time: 'Há 6 dias' },
+                { icon: '👤', text: 'Paciente cadastrado no sistema', time: 'Há 10 dias' }
+            ];
+
+            activityLog.innerHTML = activities.map(act => `
+                <div class="activity-item">
+                    <div class="activity-icon">${act.icon}</div>
+                    <div class="activity-content">
+                        <p>${act.text}</p>
+                        <span class="time">${act.time}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ========================================
+        // ACTIONS
+        // ========================================
+        function toggleChecklistItem(itemId) {
+            const phase = currentPatient.phase;
+            if (!completedChecklist[phase]) {
+                completedChecklist[phase] = [];
+            }
+
+            const index = completedChecklist[phase].indexOf(itemId);
+            if (index > -1) {
+                completedChecklist[phase].splice(index, 1);
+            } else {
+                completedChecklist[phase].push(itemId);
+            }
+
+            renderChecklist();
+            showToast('Checklist atualizado!');
+        }
+
+        function advancePhase() {
+            const currentIndex = phaseOrder.indexOf(currentPatient.phase);
+            if (currentIndex < phaseOrder.length - 1) {
+                currentPatient.phase = phaseOrder[currentIndex + 1];
+                currentPatient.days = 0;
+                renderPatientDetails();
+                renderTimeline();
+                renderChecklist();
+                showToast(`Paciente avançou para ${phaseNames[currentPatient.phase].name}!`);
+            } else {
+                showToast('O paciente já está na fase final.');
+            }
+        }
+
+        function sendMessage() {
+            showToast('Abrindo WhatsApp...');
+            setTimeout(() => {
+                window.open(`https://wa.me/55${currentPatient.phone.replace(/\D/g, '')}`, '_blank');
+            }, 500);
+        }
+
+        function editPatient() {
+            showToast('Função de edição em desenvolvimento.');
+        }
+
+        function sendDocument() {
+            showToast('Documento enviado ao paciente via WhatsApp!');
+        }
+
+        function saveNotes() {
+            const notes = document.getElementById('patientNotes').value;
+            showToast('Anotações salvas com sucesso!');
+        }
+
+        function scheduleAppointment() {
+            showToast('Abrindo agendamento...');
+        }
+
+        function requestExams() {
+            showToast('Solicitação de exames enviada!');
+        }
+
+        function sendReminder() {
+            showToast('Lembrete enviado ao paciente!');
+        }
+
+        function viewHistory() {
+            showToast('Carregando histórico completo...');
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            toastMessage.textContent = message;
+            toast.classList.add('show', 'success');
+
+            setTimeout(() => {
+                toast.classList.remove('show', 'success');
+            }, 3000);
+        }
+    </script>
+</body>
+
+</html>
