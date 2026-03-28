@@ -18,17 +18,17 @@ const tenants: TenantSeed[] = [
   {
     slug: "clinica-alpha",
     name: "Clínica Alpha",
-    adminEmail: "admin-alpha@idoctor.local",
+    adminEmail: "admin-alpha@bucomax.local",
     adminName: "Admin Alpha",
-    userEmail: "user-alpha@idoctor.local",
+    userEmail: "user-alpha@bucomax.local",
     userName: "Usuário Alpha",
   },
   {
     slug: "clinica-beta",
     name: "Clínica Beta",
-    adminEmail: "admin-beta@idoctor.local",
+    adminEmail: "admin-beta@bucomax.local",
     adminName: "Admin Beta",
-    userEmail: "user-beta@idoctor.local",
+    userEmail: "user-beta@bucomax.local",
     userName: "Usuário Beta",
   },
 ];
@@ -36,7 +36,7 @@ const tenants: TenantSeed[] = [
 async function main() {
   const passwordHash = await bcrypt.hash(DEV_PASSWORD, 12);
 
-  const superEmail = "dev@idoctor.local";
+  const superEmail = "dev@bucomax.local";
   const superUser = await prisma.user.upsert({
     where: { email: superEmail },
     create: {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { getMe, patchMe } from "@/features/account/app/services/profile.service";
@@ -114,7 +114,7 @@ export function AccountProfileCard() {
               placeholder="https://"
             />
           </CardContent>
-          <CardFooter className="justify-end border-t pt-6">
+          <CardFooter className="justify-end border-t pt-4 mt-6">
             <Button type="submit" disabled={form.formState.isSubmitting}>
               {form.formState.isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
               {t("save")}

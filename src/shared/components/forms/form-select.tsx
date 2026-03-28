@@ -55,6 +55,7 @@ export function FormSelect({
       render={({ field, fieldState }) => {
         const value =
           field.value === "" || field.value === undefined ? undefined : String(field.value);
+        const selectedLabel = options.find((opt) => opt.value === value)?.label;
 
         return (
           <Field data-invalid={!!fieldState.error} className={containerClassName}>
@@ -71,7 +72,7 @@ export function FormSelect({
                 className={cn("w-full", className)}
                 aria-invalid={!!fieldState.error}
               >
-                <SelectValue placeholder={placeholder ?? "Selecione…"} />
+                <SelectValue placeholder={placeholder ?? "Selecione…"}>{selectedLabel}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {options.map((opt) => (

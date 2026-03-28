@@ -103,7 +103,7 @@ export function InviteUserCard() {
               disabled={!canInvite}
             />
           </CardContent>
-          <CardFooter className="justify-end border-t pt-6">
+          <CardFooter className="justify-end border-t pt-4 mt-6">
             <Button type="submit" disabled={!canInvite || form.formState.isSubmitting}>
               {form.formState.isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
               {t("submit")}

@@ -15,11 +15,32 @@
     "attendance": "Atendimentos",
     "files": "Arquivos",
     "accountPage": "Conta",
-    "settings": "Configurações"
+    "settings": "Usuários"
   },
   "home": {
     "title": "Início",
     "loggedInAs": "Logado como",
+    "cards": {
+      "inProgress": "Pacientes em atendimento",
+      "completedToday": "Atendimentos concluídos hoje",
+      "awaitingAction": "Aguardando próxima ação",
+      "conversionRate": "Taxa de conclusão (7 dias)"
+    },
+    "insights": {
+      "title": "Insights operacionais",
+      "first": "{count} pacientes estão aguardando transição de etapa — priorize os casos com maior tempo na fila.",
+      "second": "{count} altas hoje sugerem bom fluxo no turno atual.",
+      "third": "Com {percent}% de conclusão semanal, há espaço para melhorar adesão no meio da jornada."
+    },
+    "charts": {
+      "transitions7d": "Transições por dia (7 dias)",
+      "distribution": {
+        "title": "Distribuição operacional",
+        "awaiting": "Aguardando ação",
+        "active": "Em andamento",
+        "completedToday": "Concluídos hoje"
+      }
+    },
     "shortcuts": "Atalhos úteis:",
     "apiDocLink": "Documentação da API (Scalar)",
     "meEndpoint": "GET /api/v1/me",

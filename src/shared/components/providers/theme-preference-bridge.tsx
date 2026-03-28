@@ -7,7 +7,7 @@ import { usePersistedAppStore } from "@/shared/stores/use-persisted-app-store";
 /**
  * Após reidratar o Zustand, aplica `themePreference` no `next-themes`
  * (o pacote ainda usa uma chave própria no localStorage para FOUC; a preferência
- * canônica fica no bucket criptografado `idoctor.persisted.v1`).
+ * canônica fica no bucket criptografado `bucomax.persisted.v1`).
  */
 export function ThemePreferenceBridge() {
   const themePreference = usePersistedAppStore((s) => s.themePreference);

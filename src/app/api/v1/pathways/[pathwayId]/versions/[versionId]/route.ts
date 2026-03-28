@@ -1,4 +1,7 @@
-import { prisma } from "@/infrastructure/database/prisma";
+import {
+  getPathwayVersionForTenant,
+  updateDraftPathwayVersionForTenant,
+} from "@/infrastructure/database/pathway-version";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
 import { patchPathwayVersionBodySchema } from "@/lib/validators/pathway";
@@ -16,19 +19,13 @@ export async function GET(_request: Request, ctx: RouteCtx) {
 
   const { pathwayId, versionId } = await ctx.params;
 
-  const pathway = await prisma.carePathway.findFirst({
-    where: { id: pathwayId, tenantId: t.tenantId },
-    select: { id: true },
-  });
-  if (!pathway) {
-    return jsonError("NOT_FOUND", "Jornada não encontrada.", 404);
-  }
-
-  const row = await prisma.pathwayVersion.findFirst({
-    where: { id: versionId, pathwayId },
+  const row = await getPathwayVersionForTenant({
+    tenantId: t.tenantId,
+    pathwayId,
+    versionId,
   });
   if (!row) {
-    return jsonError("NOT_FOUND", "Versão não encontrada.", 404);
+    return jsonError("NOT_FOUND", "Jornada ou versão não encontrada.", 404);
   }
 
   return jsonSuccess({
@@ -52,29 +49,6 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
 
   const { pathwayId, versionId } = await ctx.params;
 
-  const pathway = await prisma.carePathway.findFirst({
-    where: { id: pathwayId, tenantId: t.tenantId },
-    select: { id: true },
-  });
-  if (!pathway) {
-    return jsonError("NOT_FOUND", "Jornada não encontrada.", 404);
-  }
-
-  const existing = await prisma.pathwayVersion.findFirst({
-    where: { id: versionId, pathwayId },
-  });
-  if (!existing) {
-    return jsonError("NOT_FOUND", "Versão não encontrada.", 404);
-  }
-
-  if (existing.published) {
-    return jsonError(
-      "CONFLICT",
-      "Versão publicada não pode ser editada. Crie uma nova versão.",
-      409,
-    );
-  }
-
   let body: unknown;
   try {
     body = await request.json();
@@ -87,18 +61,22 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const row = await prisma.pathwayVersion.update({
-    where: { id: versionId },
-    data: { graphJson: parsed.data.graphJson as object },
-    select: {
-      id: true,
-      pathwayId: true,
-      version: true,
-      published: true,
-      graphJson: true,
-      createdAt: true,
-    },
+  const row = await updateDraftPathwayVersionForTenant({
+    tenantId: t.tenantId,
+    pathwayId,
+    versionId,
+    graphJson: parsed.data.graphJson as object,
   });
+  if (row === "NOT_FOUND") {
+    return jsonError("NOT_FOUND", "Jornada ou versão não encontrada.", 404);
+  }
+  if (row === "CONFLICT") {
+    return jsonError(
+      "CONFLICT",
+      "Versão publicada não pode ser editada. Crie uma nova versão.",
+      409,
+    );
+  }
 
   return jsonSuccess({
     version: {

@@ -9,7 +9,7 @@
     "step3": "Confirm",
     "caseDescription": "Case description",
     "caseDescriptionHint": "Optional. Clinical context or notes.",
-    "documentId": "Document ID (national ID, medical record…)",
+    "documentId": "CPF",
     "documentIdHint": "Optional.",
     "pathwayLabel": "Clinical pathway",
     "pathwayPlaceholder": "Select a pathway with a published version",

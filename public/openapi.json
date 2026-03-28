@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "iDoctor API",
+    "title": "Bucomax API",
     "version": "0.5.0",
     "description": "API REST v1. Autenticação: cookie de sessão NextAuth. Tenant ativo: `User.activeTenantId` + sessão. Respostas JSON: `{ success, data, meta }` (sucesso) ou `{ success, error, meta }` (erro)."
   },

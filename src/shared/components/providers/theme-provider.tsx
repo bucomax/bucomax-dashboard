@@ -15,7 +15,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       defaultTheme="system"
       enableSystem
       disableTransitionOnChange
-      storageKey="idoctor-nt-theme"
+      storageKey="bucomax-nt-theme"
     >
       <ThemePreferenceBridge />
       {children}

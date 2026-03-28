@@ -7,7 +7,7 @@ import { Resend } from "resend";
 import { getPublicAppUrl } from "@/lib/config/urls";
 
 const apiKey = process.env.RESEND_API_KEY;
-const fromEmail = process.env.EMAIL_FROM ?? "iDoctor <onboarding@resend.dev>";
+const fromEmail = process.env.EMAIL_FROM ?? "Bucomax <onboarding@resend.dev>";
 
 let client: Resend | null = null;
 

@@ -1,4 +1,4 @@
-import { InviteUserCard } from "@/features/settings/app/components/invite-user-card";
+import { UsersManagementPanel } from "@/features/settings/app/components/users-management-panel";
 import { DashboardPage } from "@/shared/components/layout/dashboard-page";
 import { getTranslations } from "next-intl/server";
 
@@ -7,9 +7,7 @@ export async function SettingsPage() {
 
   return (
     <DashboardPage title={t("title")} description={t("description")}>
-      <div className="space-y-6">
-        <InviteUserCard />
-      </div>
+      <UsersManagementPanel />
     </DashboardPage>
   );
 }

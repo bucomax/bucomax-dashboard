@@ -6,7 +6,7 @@ import { getPersistSecret } from "@/lib/storage/persist-secret";
  * Uma única chave no `localStorage`; valor = blob criptografado (AES) contendo
  * um JSON `{ [persistName]: serializedState }` para permitir mais de um `persist` no futuro.
  */
-export const ENCRYPTED_LOCAL_STORAGE_KEY = "idoctor.persisted.v1";
+export const ENCRYPTED_LOCAL_STORAGE_KEY = "bucomax.persisted.v1";
 
 type PersistBucket = Record<string, string>;
 
@@ -38,7 +38,7 @@ function writeBucket(bucket: PersistBucket): void {
     const encrypted = CryptoJS.AES.encrypt(payload, getPersistSecret()).toString();
     localStorage.setItem(ENCRYPTED_LOCAL_STORAGE_KEY, encrypted);
   } catch (e) {
-    console.error("[idoctor] Falha ao persistir estado criptografado:", e);
+    console.error("[bucomax] Falha ao persistir estado criptografado:", e);
   }
 }
 

@@ -1,24 +1,18 @@
-import { prisma } from "@/infrastructure/database/prisma";
+import { listTenantsForUserContext } from "@/infrastructure/database/tenant-context";
 import { jsonSuccess } from "@/lib/api-response";
 import { requireSessionOr401 } from "@/lib/auth/guards";
 
-/** Lista tenants aos quais o usuário tem membership. */
+/** Lista tenants do contexto do usuário (super_admin vê todos). */
 export async function GET() {
   const auth = await requireSessionOr401();
   if (auth.response) return auth.response;
 
-  const rows = await prisma.tenantMembership.findMany({
-    where: { userId: auth.session!.user.id },
-    include: { tenant: true },
-    orderBy: { tenant: { name: "asc" } },
+  const tenants = await listTenantsForUserContext({
+    userId: auth.session!.user.id,
+    isSuperAdmin: auth.session!.user.globalRole === "super_admin",
   });
 
   return jsonSuccess({
-    tenants: rows.map((r) => ({
-      id: r.tenant.id,
-      name: r.tenant.name,
-      slug: r.tenant.slug,
-      role: r.role,
-    })),
+    tenants,
   });
 }

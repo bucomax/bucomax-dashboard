@@ -9,7 +9,7 @@
     "step3": "Confirmar",
     "caseDescription": "Descrição do caso",
     "caseDescriptionHint": "Opcional. Contexto clínico ou observações.",
-    "documentId": "Documento (CPF, RG, prontuário…)",
+    "documentId": "CPF",
     "documentIdHint": "Opcional.",
     "pathwayLabel": "Jornada clínica",
     "pathwayPlaceholder": "Selecione uma jornada com versão publicada",

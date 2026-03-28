@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Button } from "@/shared/components/ui/button";
 import { Form, FormPassword } from "@/shared/components/forms";
@@ -17,10 +17,10 @@ export function SetPasswordForm({ successMessage, redirectTo }: SetPasswordFormP
 
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <form onSubmit={onSubmit} className="flex flex-col gap-4 pb-4">
         <FormPassword name="newPassword" label="Nova senha" autoComplete="new-password" />
         <Button type="submit" disabled={isSubmitting} className="w-full">
-          {isSubmitting ? "Salvando…" : "Salvar senha"}
+          {isSubmitting ? "Salvandoâ€¦" : "Salvar senha"}
         </Button>
       </form>
     </Form>

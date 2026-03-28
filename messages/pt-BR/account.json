@@ -1,6 +1,6 @@
 {
   "title": "Conta",
-  "description": "Perfil, senha e equipe do tenant (quando você for administrador).",
+  "description": "Perfil, senha e segurança da conta.",
   "profile": {
     "title": "Perfil",
     "description": "Nome e foto exibidos na aplicação.",

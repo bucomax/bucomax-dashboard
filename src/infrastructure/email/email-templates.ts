@@ -1,7 +1,7 @@
 /**
  * Templates HTML transacionais (Resend).
  * Estrutura alinhada ao kaber.ai (`src/infrastructure/email/email-templates.ts`):
- * layout em tabela, preheader, CTA, footer — marca **iDoctor**.
+ * layout em tabela, preheader, CTA, footer — marca **Bucomax**.
  */
 
 import { getPublicAppUrl } from "@/lib/config/urls";
@@ -24,7 +24,7 @@ function baseLayout(content: string, preheader?: string): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light">
-  <title>iDoctor</title>
+  <title>Bucomax</title>
   ${preheader ? `<style type="text/css">#preheader { display: none !important; }</style>` : ""}
 </head>
 <body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
@@ -35,7 +35,7 @@ function baseLayout(content: string, preheader?: string): string {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: ${BRAND.background}; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
           <tr>
             <td style="background-color: ${BRAND.primary}; padding: 24px 32px; text-align: center;">
-              <a href="${base}" style="text-decoration: none; color: #ffffff; font-size: 22px; font-weight: 700;">iDoctor</a>
+              <a href="${base}" style="text-decoration: none; color: #ffffff; font-size: 22px; font-weight: 700;">Bucomax</a>
             </td>
           </tr>
           <tr>
@@ -46,7 +46,7 @@ function baseLayout(content: string, preheader?: string): string {
           <tr>
             <td style="padding: 20px 32px; background-color: #f9fafb; border-top: 1px solid ${BRAND.border};">
               <p style="margin: 0; font-size: 12px; color: ${BRAND.textMuted}; text-align: center;">
-                iDoctor — plataforma clínica multi-tenant
+                Bucomax — plataforma clínica multi-tenant
               </p>
               <p style="margin: 8px 0 0; font-size: 12px; color: ${BRAND.textMuted}; text-align: center;">
                 <a href="${base}" style="color: ${BRAND.link}; text-decoration: underline;">Abrir aplicação</a>
@@ -100,7 +100,7 @@ export function getConfirmEmailHtml(params: { name: string | null; confirmUrl: s
       Este link expira em 24 horas. Se você não criou esta conta, ignore este e-mail.
     </p>
   `;
-  return baseLayout(content, `Confirme seu e-mail — iDoctor`);
+  return baseLayout(content, `Confirme seu e-mail — Bucomax`);
 }
 
 /** Recuperação de senha. */
@@ -127,7 +127,7 @@ export function getResetPasswordHtml(params: { name: string | null; resetUrl: st
       Este link expira em 1 hora. Se você não solicitou isso, ignore este e-mail.
     </p>
   `;
-  return baseLayout(content, `Redefina sua senha — iDoctor`);
+  return baseLayout(content, `Redefina sua senha — Bucomax`);
 }
 
 /**
@@ -137,7 +137,7 @@ export function getInviteSetPasswordHtml(params: { name: string | null; setPassw
   const name = params.name || "Usuário";
   const content = `
     <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND.text}; line-height: 1.3;">
-      Você foi convidado para o iDoctor
+      Você foi convidado para o Bucomax
     </h1>
     <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
       Olá, ${name}!
@@ -156,5 +156,5 @@ export function getInviteSetPasswordHtml(params: { name: string | null; setPassw
       Este link expira em 48 horas. Se você não esperava este convite, ignore este e-mail.
     </p>
   `;
-  return baseLayout(content, `Defina sua senha — convite iDoctor`);
+  return baseLayout(content, `Defina sua senha — convite Bucomax`);
 }

@@ -3,9 +3,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "@/i18n/navigation";
 import { toast } from "@/lib/toast";
+import { formatCpfDisplay } from "@/lib/validators/cpf";
+import { formatPhoneBrDisplay } from "@/lib/validators/phone";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Form, FormInput, FormTextarea } from "@/shared/components/forms";
+import { Form, FormCpf, FormInput, FormPhoneNumber, FormTextarea } from "@/shared/components/forms";
 import {
   Select,
   SelectContent,
@@ -77,6 +79,8 @@ export function NewClientWizard() {
     () => eligiblePathways.find((p) => p.id === pathwayId) ?? null,
     [eligiblePathways, pathwayId],
   );
+  const reviewPhone = form.getValues("phone");
+  const reviewDocumentId = form.getValues("documentId") ?? "";
 
   function goBack() {
     if (step === 1) return;
@@ -107,7 +111,7 @@ export function NewClientWizard() {
         name: values.name.trim(),
         phone: values.phone.trim(),
         caseDescription: values.caseDescription?.trim() || undefined,
-        documentId: values.documentId?.trim() || undefined,
+        documentId: values.documentId.trim(),
       });
       if (!pathwayId) {
         toast.error(t("errorGeneric"));
@@ -151,15 +155,17 @@ export function NewClientWizard() {
         <Form {...form}>
           {step === 1 ? (
             <div className="flex flex-col gap-4">
-              <FormInput name="name" label={t("name")} autoComplete="name" />
-              <FormInput name="phone" label={t("phone")} type="tel" autoComplete="tel" />
+              <div className="grid gap-4 lg:grid-cols-3">
+                <FormInput name="name" label={t("name")} autoComplete="name" />
+                <FormPhoneNumber name="phone" label={t("phone")} />
+                <FormCpf name="documentId" label={t("documentId")} />
+              </div>
               <FormTextarea
                 name="caseDescription"
                 label={t("caseDescription")}
                 description={t("caseDescriptionHint")}
                 rows={4}
               />
-              <FormInput name="documentId" label={t("documentId")} description={t("documentIdHint")} />
             </div>
           ) : null}
 
@@ -212,7 +218,11 @@ export function NewClientWizard() {
                 </div>
                 <div>
                   <dt className="text-muted-foreground">{t("reviewPhone")}</dt>
-                  <dd>{form.getValues("phone")}</dd>
+                  <dd>{formatPhoneBrDisplay(reviewPhone)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">{t("documentId")}</dt>
+                  <dd>{reviewDocumentId ? formatCpfDisplay(reviewDocumentId) : "—"}</dd>
                 </div>
                 <div className="sm:col-span-2">
                   <dt className="text-muted-foreground">{t("reviewPathway")}</dt>
@@ -229,7 +239,7 @@ export function NewClientWizard() {
           ) : null}
         </Form>
       </CardContent>
-      <CardFooter className="flex flex-wrap gap-2 border-t pt-0">
+      <CardFooter className="flex flex-wrap gap-2 border-t">
         {step > 1 ? (
           <Button type="button" variant="outline" onClick={goBack} disabled={submitting}>
             {t("back")}

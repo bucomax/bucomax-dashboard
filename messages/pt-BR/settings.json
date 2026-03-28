@@ -1,6 +1,8 @@
 {
-  "title": "Configurações",
-  "description": "Gestão de equipe e permissões do tenant.",
+  "title": "Usuários",
+  "description": "Listagem e gestão de usuários do tenant.",
+  "addUser": "Adicionar usuário",
+  "hideAddUser": "Fechar formulário",
   "invites": {
     "title": "Convidar usuário",
     "description": "Cria a conta no tenant e envia o link por e-mail para definir senha.",

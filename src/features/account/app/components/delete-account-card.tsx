@@ -54,7 +54,7 @@ export function DeleteAccountCard() {
         ) : null}
       </CardContent>
       {!open ? (
-        <CardFooter className="border-t pt-6">
+        <CardFooter className="border-t pt-4 mt-6">
           <Button type="button" variant="destructive" onClick={() => setOpen(true)}>
             {t("openConfirm")}
           </Button>

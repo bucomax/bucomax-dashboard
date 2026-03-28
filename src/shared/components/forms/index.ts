@@ -1,4 +1,5 @@
 export { Form } from "./form";
+export { FormCpf, type FormCpfProps } from "./form-cpf";
 export { FormInput, type FormInputProps } from "./form-input";
 export { FormPassword, type FormPasswordProps } from "./form-password";
 export { FormPhoneNumber, type FormPhoneNumberProps } from "./form-phone-number";

@@ -1,6 +1,8 @@
 {
-  "title": "Settings",
-  "description": "Team and tenant permission management.",
+  "title": "Users",
+  "description": "Tenant user listing and management.",
+  "addUser": "Add user",
+  "hideAddUser": "Hide form",
   "invites": {
     "title": "Invite user",
     "description": "Creates the tenant account and sends an email link to set a password.",

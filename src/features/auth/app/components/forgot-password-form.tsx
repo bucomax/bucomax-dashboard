@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
@@ -10,7 +10,7 @@ export function ForgotPasswordForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} className="flex flex-col gap-4">
+      <form onSubmit={onSubmit} className="flex flex-col gap-4 pb-4">
         <FormInput name="email" label="Email" type="email" autoComplete="email" />
         {apiError ? (
           <Alert variant="destructive">
@@ -23,7 +23,7 @@ export function ForgotPasswordForm() {
           </Alert>
         ) : null}
         <Button type="submit" disabled={form.formState.isSubmitting} className="w-full">
-          {form.formState.isSubmitting ? "Enviando…" : "Enviar link"}
+          {form.formState.isSubmitting ? "Enviandoâ€¦" : "Enviar link"}
         </Button>
       </form>
     </Form>

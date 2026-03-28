@@ -1,6 +1,14 @@
 "use client";
 
 import { Link, usePathname } from "@/i18n/navigation";
+import { routing } from "@/i18n/routing";
+import { Button } from "@/shared/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -15,18 +23,22 @@ import {
   SidebarRail,
   SidebarSeparator,
 } from "@/shared/components/ui/sidebar";
+import type { AppShellUser } from "@/shared/types/layout";
 import {
+  ChevronDown,
   ClipboardList,
   FolderOpen,
   GitBranch,
   Home,
+  LogOut,
   Settings,
   Stethoscope,
   UserCircle,
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { signOut } from "next-auth/react";
 
 type NavItem = {
   href: string;
@@ -95,10 +107,17 @@ const navGroups: { labelKey: "principal" | "operacao" | "conta"; items: NavItem[
   },
 ];
 
-export function AppSidebar() {
+type AppSidebarProps = {
+  user: AppShellUser;
+};
+
+export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
   const t = useTranslations("dashboard");
   const tBrand = useTranslations("global");
+  const tShell = useTranslations("dashboard.shell");
+  const locale = useLocale();
+  const loginCallback = locale === routing.defaultLocale ? "/login" : `/${locale}/login`;
 
   return (
     <Sidebar collapsible="icon">
@@ -138,8 +157,26 @@ export function AppSidebar() {
         ))}
       </SidebarContent>
       <SidebarSeparator />
-      <SidebarFooter className="text-muted-foreground p-2 text-xs group-data-[collapsible=icon]:hidden">
-        {t("shell.tenantFooter")}
+      <SidebarFooter className="p-2 group-data-[collapsible=icon]:hidden">
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <Button variant="ghost" size="sm" className="h-auto w-full justify-between gap-2 px-2 py-2">
+                <div className="min-w-0 text-left">
+                  <p className="truncate text-sm font-medium">{user.name?.trim() || tShell("account")}</p>
+                  <p className="text-muted-foreground truncate text-xs">{user.email}</p>
+                </div>
+                <ChevronDown className="text-muted-foreground size-4 shrink-0" />
+              </Button>
+            }
+          />
+          <DropdownMenuContent side="top" align="start" className="min-w-[14rem]">
+            <DropdownMenuItem onClick={() => void signOut({ callbackUrl: loginCallback })}>
+              <LogOut className="size-4" />
+              {tShell("signOut")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

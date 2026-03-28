@@ -3,7 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { createEncryptedPersistStorage } from "@/lib/storage/encrypted-persist-storage";
 import type { ThemePreference } from "@/shared/types/persisted-app";
 
-const PERSIST_NAME = "idoctor-app";
+const PERSIST_NAME = "bucomax-app";
 
 type PersistedAppState = {
   version: number;

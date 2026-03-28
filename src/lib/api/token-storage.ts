@@ -4,8 +4,8 @@
  * os interceptors do axios usarão estes valores.
  */
 
-const ACCESS_KEY = "idoctor_access_token";
-const REFRESH_KEY = "idoctor_refresh_token";
+const ACCESS_KEY = "bucomax_access_token";
+const REFRESH_KEY = "bucomax_refresh_token";
 
 let memoryAccess: string | null = null;
 let memoryRefresh: string | null = null;

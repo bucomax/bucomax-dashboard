@@ -178,7 +178,9 @@ export function TenantMembersCard() {
                       disabled={busy}
                     >
                       <SelectTrigger className="h-9 w-[140px] sm:w-[160px]" size="sm">
-                        <SelectValue />
+                        <SelectValue>
+                          {m.role === "tenant_admin" ? t("roleAdmin") : t("roleUser")}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="tenant_admin">{t("roleAdmin")}</SelectItem>

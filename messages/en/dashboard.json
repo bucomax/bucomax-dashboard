@@ -15,11 +15,32 @@
     "attendance": "Attendance",
     "files": "Files",
     "accountPage": "Account",
-    "settings": "Settings"
+    "settings": "Users"
   },
   "home": {
     "title": "Home",
     "loggedInAs": "Signed in as",
+    "cards": {
+      "inProgress": "Patients in progress",
+      "completedToday": "Completed today",
+      "awaitingAction": "Awaiting next action",
+      "conversionRate": "Completion rate (7 days)"
+    },
+    "insights": {
+      "title": "Operational insights",
+      "first": "{count} patients are waiting for a stage transition — prioritize the longest pending cases.",
+      "second": "{count} discharges today indicate healthy flow in the current shift.",
+      "third": "With {percent}% weekly completion, there is room to improve adherence mid-journey."
+    },
+    "charts": {
+      "transitions7d": "Transitions per day (7 days)",
+      "distribution": {
+        "title": "Operational distribution",
+        "awaiting": "Awaiting action",
+        "active": "In progress",
+        "completedToday": "Completed today"
+      }
+    },
     "shortcuts": "Shortcuts:",
     "apiDocLink": "API documentation (Scalar)",
     "meEndpoint": "GET /api/v1/me",

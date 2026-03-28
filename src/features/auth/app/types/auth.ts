@@ -1,5 +1,7 @@
 import type { z } from "zod";
-import { forgotPasswordSchema, setPasswordFormSchema } from "../utils/schemas";
+import { forgotPasswordSchema, loginSchema, setPasswordFormSchema } from "../utils/schemas";
+
+export type LoginFormValues = z.infer<typeof loginSchema>;
 
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>;
 

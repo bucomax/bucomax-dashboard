@@ -1,11 +1,11 @@
 {
   "meta": {
-    "title": "iDoctor",
+    "title": "Bucomax",
     "description": "Plataforma clínica multi-tenant"
   },
-  "brand": "iDoctor",
+  "brand": "Bucomax",
   "home": {
-    "title": "iDoctor",
+    "title": "Bucomax",
     "subtitle": "Plataforma em desenvolvimento. Use login para acessar o dashboard ou abra a documentação da API.",
     "login": "Entrar",
     "apiDocs": "API (Scalar)",

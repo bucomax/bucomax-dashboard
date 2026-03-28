@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   const resetUrl = buildResetPasswordUrl(token);
   const { error } = await sendEmail({
     to: user.email,
-    subject: "iDoctor — Redefinir senha",
+    subject: "Bucomax — Redefinir senha",
     html: getResetPasswordHtml({ name: user.name, resetUrl }),
   });
 

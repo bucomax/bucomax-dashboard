@@ -5,8 +5,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { toast } from "@/lib/toast";
@@ -93,8 +91,6 @@ export function TenantSwitcher({ activeTenantId }: TenantSwitcherProps) {
         }
       />
       <DropdownMenuContent className="min-w-[14rem]" align="end">
-        <DropdownMenuLabel>Clínica / tenant</DropdownMenuLabel>
-        <DropdownMenuSeparator />
         {loadError ? (
           <div className="text-destructive px-2 py-1.5 text-sm">{loadError}</div>
         ) : null}

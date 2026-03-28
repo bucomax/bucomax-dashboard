@@ -1,4 +1,4 @@
-# iDoctor
+# Bucomax
 
 Plataforma em construção: dashboard **multi-tenant**, **RBAC**, **PostgreSQL**, **Next.js**, **Tailwind**, **subdomínios por tenant** e **Cloudflare R2**.
 

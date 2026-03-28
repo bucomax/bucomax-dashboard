@@ -1,6 +1,6 @@
 {
   "title": "Account",
-  "description": "Profile, password, and tenant team (when you are an administrator).",
+  "description": "Profile, password, and account security.",
   "profile": {
     "title": "Profile",
     "description": "Name and photo shown in the app.",

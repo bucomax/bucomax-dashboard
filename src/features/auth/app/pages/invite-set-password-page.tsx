@@ -16,7 +16,7 @@ export function InviteSetPasswordPage() {
         <CardHeader>
           <CardTitle>Definir senha</CardTitle>
           <CardDescription>
-            Você foi convidado para o iDoctor. Crie sua senha para continuar.
+            Você foi convidado para o Bucomax. Crie sua senha para continuar.
           </CardDescription>
         </CardHeader>
         <CardContent>

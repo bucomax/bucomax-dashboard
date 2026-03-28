@@ -96,7 +96,7 @@ export async function POST(request: Request) {
   const setPasswordUrl = buildInviteSetPasswordUrl(token);
   const { error } = await sendEmail({
     to: emailNorm,
-    subject: "iDoctor — Defina sua senha",
+    subject: "Bucomax — Defina sua senha",
     html: getInviteSetPasswordHtml({
       name: name?.trim() || null,
       setPasswordUrl,
