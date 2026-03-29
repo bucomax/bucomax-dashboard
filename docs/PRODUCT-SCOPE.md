@@ -9,7 +9,7 @@ Inclui **fases de produto** (para alinhar ao PDF *Fases Do Produto – Assistent
 
 ## 1. Visão em uma frase
 
-O **iDoctor** é o **painel interno multi-tenant** onde cada **clínica (tenant)** define a **jornada do paciente** (passo a passo do tratamento), a equipe **move o paciente entre etapas**, o sistema **grava o estado** e **dispara o chatbot** (mensagem + documentos). Também **orquestra chamadas à IA** (análise de exames, TD, etc.) quando uma etapa exige isso. O **WhatsApp** e a **inferência de IA** são **projetos separados**; aqui ficam **regras, cadastro, jornada, armazenamento e integrações**.
+O **iDoctor** é o **painel interno multi-tenant** onde cada **clínica (tenant)** define a **jornada do paciente** (passo a passo do tratamento), a equipe **move o paciente entre etapas**, o sistema **grava o estado** e **monta o payload** do pacote documental para o chatbot (mensagem + documentos). Também prepara a base para **orquestrar chamadas à IA** (análise de exames, TD, etc.) quando uma etapa exige isso. O **WhatsApp** e a **inferência de IA** são **projetos separados**; aqui ficam **regras, cadastro, jornada, armazenamento e integrações**.
 
 ---
 
@@ -64,9 +64,9 @@ Fluxo canônico em **três momentos** (sempre nessa ordem lógica):
 
 | Passo | O que acontece | Detalhe |
 |-------|----------------|---------|
-| **1. Cadastrar o paciente** | Registro do **Cliente/Paciente** no tenant | Dados mínimos: **nome**, **telefone WhatsApp** (canal principal de contato), **descrição do caso** / observações clínicas; opcionalmente documento, endereço, outros campos que a clínica definir. Ainda **não** há fluxo de jornada vinculado — só ficha. |
+| **1. Cadastrar o paciente** | Registro do **Cliente/Paciente** no tenant | Dados mínimos atuais do produto/código: **nome**, **telefone WhatsApp**, **documento** e **descrição do caso**; opcionalmente e-mail, responsável, OPME e outros campos que a clínica definir. Ainda **não** há fluxo de jornada vinculado — só ficha. |
 | **2. Escolher o fluxo** | Associar o paciente a um **`CarePathway`** (versão publicada) | Cria-se o **`PatientPathway`**: `pathwayId` + primeira etapa (`currentStageId`). Se o tenant tiver **vários** fluxos → **escolha explícita**; se **só um** → sistema **define automaticamente** esse fluxo. Ao **entrar** na primeira etapa, vale a **regra do pacote**: envio ao WhatsApp dos documentos da etapa (se houver). |
-| **3. Avançar no fluxo** | **Transição de etapa** (`TransitionPatientStage`) | A equipe **move** o paciente para a **próxima etapa** (ou etapa específica) no painel. Cada mudança **persiste** transição, **dispara** o chatbot com o pacote de documentos da etapa de **destino** e, se configurado, jobs de IA. |
+| **3. Avançar no fluxo** | **Transição de etapa** (`TransitionPatientStage`) | A equipe **move** o paciente para a **próxima etapa** (ou etapa específica) no painel. Cada mudança **persiste** transição, gera **snapshot do pacote** de documentos da etapa de **destino** para o canal e prepara a futura integração de dispatch/IA. |
 
 O passo 3 pode repetir **várias vezes** até o fim do tratamento ou arquivamento do caso.
 
@@ -99,7 +99,8 @@ A equipe pode usar um **fluxo em etapas na mesma tela** (wizard / stepper), em v
 | **Modelo de jornada** (`CarePathway`) | Pertence a **um tenant**. Pode haver **vários** por clínica. Pode nascer de **template** padrão da plataforma ou ser criado do zero. |
 | **Versão publicada** (`PathwayVersion`) | Contém o **grafo** salvo do React Flow + etapas derivadas para documentos e transições. |
 | **Etapa** | Um passo com **nome**, **ordem** (ou posição no grafo), texto ao paciente, **anexos**. |
-| **Documentos na etapa** | Na **criação/edição** da jornada, a clínica **associa arquivos** à etapa (PDFs, termos, checklists, pedidos de exame). |
+| **Documentos na etapa** | Na **criação/edição** da jornada, a clínica **associa arquivos** à etapa (PDFs, termos, pedidos de exame). |
+| **Checklist na etapa** | Na **criação/edição** da jornada, a clínica define itens operacionais da etapa; no detalhe do paciente, a equipe marca o progresso apenas da **etapa atual**. |
 | **Regra de envio ao entrar na etapa** | Sempre que o paciente **passa a estar** numa etapa, recebe **todos** os documentos **daquela** etapa (pacote integral). |
 | **Instância por paciente** | `PatientPathway`: **qual fluxo** (`pathwayId`), **versão**, **etapa atual** (`currentStageId`), histórico de transições. |
 
@@ -124,7 +125,7 @@ Isso é **uma jornada**; no painel, o médico/atendente **posiciona o paciente**
 1. Médico ou equipe **altera a etapa** do paciente no painel (select da próxima etapa, botão “Avançar”, etc.).  
 2. O iDoctor **persiste** a nova etapa + auditoria (`userId`, timestamp).  
 3. O sistema **monta o evento** para o projeto WhatsApp: `patient.stage_changed`, `tenantId`, `patientId`, `stageId`, **texto da mensagem**, **`documents[]` completo** da etapa de destino.  
-4. O **chatbot** **entrega no canal** a mensagem e **todos** os documentos dessa etapa.
+4. No estado atual do código, esse payload fica persistido como **`dispatchStub`**; a entrega real ao canal continua como integração evolutiva.
 
 **Caso “iniciou tratamento e precisa assinar documentos”:**
 
@@ -146,17 +147,17 @@ Isso é **uma jornada**; no painel, o médico/atendente **posiciona o paciente**
 
 | Ação | Comportamento sugerido |
 |------|----------------------|
-| **Disparar análise** | `POST` para a API de IA com: `tenantId`, `patientId` ou `runId`, `stageId`, `tipo` (`exam_analysis`, `td_analysis`, …), `input` (URLs do R2, texto). |
+| **Disparar análise** | Evolução futura: `POST` para a API de IA com `tenantId`, `patientId` ou `runId`, `stageId`, `tipo` (`exam_analysis`, `td_analysis`, …), `input` (URLs do R2, texto). |
 | **Autenticação** | API key ou mTLS; `tenantId` sempre no payload. |
-| **Resposta assíncrona** | IA retorna `202` + `jobId`; iDoctor grava `AiJob` ligado ao paciente/etapa. |
-| **Callback** | `POST /api/v1/webhooks/ai` com `jobId`, `status`, `result` ou erro; atualiza ficha do paciente e/ou libera próxima ação na UI. |
-| **Idempotência** | Mesmo `jobId` não duplica efeitos. |
+| **Resposta assíncrona** | Planejado: IA retorna `202` + `jobId`; o painel grava status ligado ao paciente/etapa. |
+| **Callback** | Planejado: `POST /api/v1/webhooks/ai` com `jobId`, `status`, `result` ou erro. |
+| **Idempotência** | Planejado na integração real. |
 
 ### 3.4 Integração com o projeto WhatsApp (saída)
 
 | Ação | Comportamento sugerido |
 |------|----------------------|
-| **Saída principal** | Ao **mudar de etapa**, iDoctor chama a **API do chatbot** com: texto introdutório, **`documents[]` completo** (todos os arquivos da etapa de destino), `patient` + `tenant`. |
+| **Saída principal** | Ao **mudar de etapa**, o painel monta e persiste o payload que chamará a **API do chatbot** com: texto introdutório, **`documents[]` completo** (todos os arquivos da etapa de destino), `patient` + `tenant`. |
 | **Entrada** | Webhook do chatbot → iDoctor quando o paciente **responde**, **assina** ou **envia arquivo**; atualiza status da etapa ou anexa à ficha (contrato em `docs/integrations/whatsapp.md`). |
 
 ### 3.5 Dados e painel clínico
@@ -165,7 +166,7 @@ Isso é **uma jornada**; no painel, o médico/atendente **posiciona o paciente**
 |------------|-----------|
 | **Cadastro de paciente/cliente** | **WhatsApp** (telefone do canal), **nome**, **descrição do caso** / resumo clínico; demais campos opcionais (documento, endereço) — por tenant. Cadastro **antes** de vincular fluxo (passo 1 da ordem operacional). |
 | **Arquivos** | Documentos da **biblioteca da clínica** e os **vinculados a cada etapa** da jornada; exames no R2 para IA. |
-| **Ficha do paciente** | Etapa atual, histórico de etapas, timeline de envios ao WhatsApp e resultados de IA. |
+| **Ficha do paciente** | Etapa atual, checklist da etapa atual, **anotações dedicadas**, histórico de etapas, timeline de transições, arquivos, responsável, OPME e snapshot do pacote documental por etapa. |
 | **Auditoria** | Quem moveu o paciente de etapa, disparos ao canal e jobs de IA. |
 
 ---
@@ -194,7 +195,7 @@ Ordem típica de leitura; nomes podem ser ajustados ao produto final.
 | **Análises IA** (opcional) | `/dashboard/ai-jobs` | Lista de jobs de IA por tenant (debug/acompanhamento). |
 | **Arquivos** | `/dashboard/files` | Biblioteca por tenant/cliente. |
 | **Relatórios** | `/dashboard/reports` | Gráficos (volume, SLA, taxa de erro IA). |
-| **Configurações** | `/dashboard/settings` | Time, integrações, webhooks. |
+| **Configurações** | `/dashboard/settings` | Perfil, clínica, notificações, equipe, OPME, fases do tratamento e placeholders de integrações; para `super_admin`, também concentra a gestão básica de tenants. |
 | **Admin** (só super admin) | `/admin/tenants` | Gestão de tenants. |
 
 ### 4.3 Padrões visuais (shadcn)

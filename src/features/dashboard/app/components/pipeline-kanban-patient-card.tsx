@@ -1,0 +1,160 @@
+"use client";
+
+import type { KanbanPatientPathway } from "@/features/dashboard/types";
+import { useKanbanDragOverlayMode } from "@/features/dashboard/app/components/pipeline-kanban-dnd-context";
+import { useRouter } from "@/i18n/navigation";
+import { useDraggable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
+import { cn } from "@/lib/utils";
+import { slaHealthKanbanCardClassName } from "@/lib/utils/sla-status-ui";
+import { Button } from "@/shared/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/components/ui/dropdown-menu";
+import { Loader2, MoreVertical, MoveRight, Siren, UserRound } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useMemo } from "react";
+
+type PipelineKanbanPatientCardProps = {
+  patientPathway: KanbanPatientPathway;
+  dragDisabled: boolean;
+  isTransitioning: boolean;
+  onRequestChangeStage: () => void;
+};
+
+function calendarDaysInStage(enteredStageAt: string): number {
+  const entered = new Date(enteredStageAt);
+  const a = new Date(entered.getFullYear(), entered.getMonth(), entered.getDate());
+  const now = new Date();
+  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.max(0, Math.round((b.getTime() - a.getTime()) / (24 * 60 * 60 * 1000)));
+}
+
+type StageDurationTone = "ok" | "warning" | "critical";
+
+function stageDurationTone(pp: KanbanPatientPathway, days: number): StageDurationTone {
+  const warn = pp.currentStage.alertWarningDays;
+  const crit = pp.currentStage.alertCriticalDays;
+  if (pp.slaStatus === "danger" || (crit != null && days >= crit)) {
+    return "critical";
+  }
+  if (pp.slaStatus === "warning" || (warn != null && days >= warn)) {
+    return "warning";
+  }
+  return "ok";
+}
+
+export function PipelineKanbanPatientCard({
+  patientPathway: pp,
+  dragDisabled,
+  isTransitioning,
+  onRequestChangeStage,
+}: PipelineKanbanPatientCardProps) {
+  const t = useTranslations("dashboard.pipeline");
+  const router = useRouter();
+  const dragOverlayMode = useKanbanDragOverlayMode();
+
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: pp.id,
+    disabled: dragDisabled || isTransitioning,
+  });
+
+  /** Com DragOverlay, não aplicar transform no item da lista — evita distorção em colunas flex com min-height. */
+  const style =
+    dragOverlayMode && isDragging
+      ? { opacity: 0, transition: "none" as const }
+      : transform
+        ? { transform: CSS.Transform.toString(transform) }
+        : undefined;
+
+  const days = useMemo(() => calendarDaysInStage(pp.enteredStageAt), [pp.enteredStageAt]);
+  const tone = useMemo(() => stageDurationTone(pp, days), [pp, days]);
+
+  const durationLabel = t("drag.daysInStage", { count: days });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "w-full shrink-0 rounded-lg border bg-card text-sm shadow-sm",
+        "transform-gpu transition-[transform,box-shadow] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]",
+        slaHealthKanbanCardClassName(pp.slaStatus),
+        !dragDisabled && !isTransitioning && "cursor-grab touch-none active:cursor-grabbing",
+        !isDragging &&
+          !isTransitioning &&
+          "hover:-translate-y-px hover:shadow-[0_10px_28px_-10px_rgba(15,23,42,0.12)] dark:hover:shadow-[0_10px_28px_-10px_rgba(0,0,0,0.45)]",
+        isDragging && !dragOverlayMode && "z-10 opacity-90 shadow-lg",
+        isDragging && dragOverlayMode && "pointer-events-none",
+        isTransitioning && "pointer-events-none opacity-60",
+      )}
+      {...(!dragDisabled && !isTransitioning ? listeners : {})}
+      {...(!dragDisabled && !isTransitioning ? attributes : {})}
+    >
+      <div className="p-3">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">{pp.client.name}</p>
+            <p className="text-muted-foreground mt-0.5 text-xs">{pp.client.phone}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            {isTransitioning ? <Loader2 className="text-muted-foreground size-4 animate-spin" /> : null}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-foreground h-8 w-8 shrink-0"
+                    aria-label={t("drag.cardActions")}
+                    onPointerDown={(e) => e.stopPropagation()}
+                  >
+                    <MoreVertical className="size-4" />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="end" className="min-w-[12rem]" onPointerDown={(e) => e.stopPropagation()}>
+                <DropdownMenuItem
+                  onClick={() => {
+                    router.push(`/dashboard/clients/${pp.client.id}`);
+                  }}
+                >
+                  <UserRound className="size-4" />
+                  {t("drag.openPatient")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    onRequestChangeStage();
+                  }}
+                >
+                  <MoveRight className="size-4" />
+                  {t("drag.changeStage")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+        <div
+          className={cn(
+            "mt-2 inline-flex max-w-full items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium",
+            tone === "ok" &&
+              "bg-teal-50 text-teal-900 dark:bg-teal-950/45 dark:text-teal-100",
+            tone === "warning" &&
+              "bg-amber-50 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100",
+            tone === "critical" &&
+              "bg-red-50 text-red-900 dark:bg-red-950/40 dark:text-red-100",
+          )}
+        >
+          {tone === "critical" ? (
+            <Siren className="size-3.5 shrink-0 text-red-600 dark:text-red-400" aria-hidden />
+          ) : null}
+          <span className="min-w-0 truncate">{durationLabel}</span>
+        </div>
+      </div>
+    </div>
+  );
+}

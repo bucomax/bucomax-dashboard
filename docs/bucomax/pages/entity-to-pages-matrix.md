@@ -16,6 +16,6 @@ Legenda: ● primário · ○ secundário / futuro
 | `PatientPathway` | ● | ● | ● | — | ● KPIs |
 | `StageTransition` | ○ atividades | — | ● histórico | — | ○ tempo (futuro) |
 | `FileAsset` | ○ docs | — | ● documentos | — | — |
-| *Gaps:* `OpmeSupplier`, SLA/`enteredStageAt`, `StageDocument`, checklist, `TenantSettings` | conforme doc da página | | | | |
+| *Gaps:* `TenantSettings`, `ChannelDispatch` | conforme doc da página | | | | |
 
 Para o detalhe de UI/API por tela, usar os arquivos `page-*.md` na mesma pasta.

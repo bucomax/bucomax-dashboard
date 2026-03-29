@@ -1,4 +1,5 @@
 import { prisma } from "@/infrastructure/database/prisma";
+import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { requireSuperAdmin, requireSessionOr401 } from "@/lib/auth/guards";
 import { getSession } from "@/lib/auth/session";
@@ -6,14 +7,15 @@ import { postAuthContextBodySchema } from "@/lib/validators/tenant";
 
 /** Define o tenant ativo (`User.activeTenantId`). Exige membership ou `super_admin`. */
 export async function POST(request: Request) {
-  const auth = await requireSessionOr401();
+  const apiT = await getApiT(request);
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("INVALID_JSON", "Corpo JSON inválido.", 400);
+    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
   }
 
   const parsed = postAuthContextBodySchema.safeParse(body);
@@ -26,7 +28,11 @@ export async function POST(request: Request) {
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
   if (!tenant) {
-    return jsonError("NOT_FOUND", "Tenant não encontrado.", 404);
+    return jsonError("NOT_FOUND", apiT("errors.tenantNotFound"), 404);
+  }
+
+  if (!tenant.isActive) {
+    return jsonError("TENANT_INACTIVE", apiT("errors.tenantInactive"), 403);
   }
 
   const membership = await prisma.tenantMembership.findUnique({
@@ -34,7 +40,7 @@ export async function POST(request: Request) {
   });
 
   if (!membership && !requireSuperAdmin(auth.session!)) {
-    return jsonError("FORBIDDEN", "Sem acesso a este tenant.", 403);
+    return jsonError("FORBIDDEN", apiT("errors.forbiddenTenantAccess"), 403);
   }
 
   await prisma.user.update({

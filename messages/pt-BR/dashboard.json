@@ -3,34 +3,37 @@
     "superAdminBanner": "Super admin — contexto de tenant ativo para APIs e telas.",
     "tenantFooter": "Plataforma clínica multi-tenant",
     "signOut": "Sair",
-    "account": "Conta"
+    "account": "Conta",
+    "editAccount": "Editar conta"
   },
   "nav": {
     "principal": "Principal",
     "operacao": "Operação",
     "conta": "Conta",
+    "sistema": "Sistema",
     "home": "Início",
     "clients": "Pacientes",
     "pathways": "Jornadas",
     "attendance": "Atendimentos",
     "files": "Arquivos",
     "accountPage": "Conta",
-    "settings": "Usuários"
+    "settings": "Configurações",
+    "reports": "Relatórios",
+    "new": "Novo"
   },
   "home": {
     "title": "Início",
-    "loggedInAs": "Logado como",
     "cards": {
-      "inProgress": "Pacientes em atendimento",
-      "completedToday": "Atendimentos concluídos hoje",
-      "awaitingAction": "Aguardando próxima ação",
-      "conversionRate": "Taxa de conclusão (7 dias)"
+      "inProgress": "Pacientes em jornada",
+      "completedToday": "Transições hoje",
+      "awaitingAction": "Sem ação há 48 h",
+      "conversionRate": "Taxa de movimentação (7 d)"
     },
     "insights": {
       "title": "Insights operacionais",
-      "first": "{count} pacientes estão aguardando transição de etapa — priorize os casos com maior tempo na fila.",
-      "second": "{count} altas hoje sugerem bom fluxo no turno atual.",
-      "third": "Com {percent}% de conclusão semanal, há espaço para melhorar adesão no meio da jornada."
+      "first": "{count, plural, =0 {Todos os pacientes estão em dia.} =1 {1 paciente sem ação há mais de 48 h — verifique a fila.} other {{count} pacientes sem ação há mais de 48 h — priorize os com maior tempo.}}",
+      "second": "{count, plural, =0 {Nenhuma transição de etapa hoje.} =1 {1 transição de etapa hoje.} other {{count} transições de etapa hoje — bom fluxo.}}",
+      "third": "{percent}% dos pacientes tiveram movimentação nos últimos 7 dias."
     },
     "charts": {
       "transitions7d": "Transições por dia (7 dias)",
@@ -40,10 +43,135 @@
         "active": "Em andamento",
         "completedToday": "Concluídos hoje"
       }
+    }
+  },
+  "pipeline": {
+    "pipelineTitle": "Pacientes por etapa",
+    "pipelineDescription": "Cada coluna é uma etapa da jornada ativa: veja quem está onde, prazos e alertas.",
+    "noPublishedPathway": "Publique uma versão da jornada em Configurações ou Jornadas para ver o quadro.",
+    "newPatient": "Novo paciente",
+    "reports": "Relatórios",
+    "export": "Exportar CSV",
+    "pathwayLabel": "Jornada",
+    "stats": {
+      "total": "Total de pacientes",
+      "ok": "Em dia",
+      "warning": "Atenção",
+      "danger": "Críticos"
     },
-    "shortcuts": "Atalhos úteis:",
-    "apiDocLink": "Documentação da API (Scalar)",
-    "meEndpoint": "GET /api/v1/me",
-    "withSession": "(com sessão)"
+    "alerts": {
+      "title": "Alertas ativos",
+      "description": "Pacientes acima do SLA crítico nesta jornada.",
+      "stagnation": "{days} dias na fase \"{stage}\"",
+      "viewPatient": "Ver paciente"
+    },
+    "filters": {
+      "search": "Busca",
+      "searchPlaceholder": "Nome ou telefone…",
+      "status": "Filtro de status",
+      "opme": "Fornecedor OPME",
+      "opmeAll": "Todos os fornecedores",
+      "opmeUnassigned": "Sem fornecedor",
+      "all": "Todos",
+      "clear": "Limpar filtros"
+    },
+    "column": {
+      "patients": "na coluna",
+      "countAria": "{display} pacientes nesta coluna",
+      "empty": "Nenhum paciente nesta etapa",
+      "loadMore": "Carregar mais",
+      "loadMoreDisabledWithStatus": "Limpe o filtro de status para carregar mais (a paginação neste modo é outra)."
+    },
+    "drag": {
+      "hint": "Arraste o card para outra coluna para mudar de etapa.",
+      "cardActions": "Ações do paciente",
+      "daysInStage": "{count, plural, =0 {hoje nesta fase} one {há # dia nesta fase} other {há # dias nesta fase}}",
+      "changeStage": "Alterar etapa",
+      "openJourney": "Abrir jornada",
+      "openPatient": "Ficha do paciente",
+      "transitionSuccess": "Etapa atualizada.",
+      "transitionError": "Não foi possível mudar de etapa.",
+      "disabledWithStatus": "Limpe o filtro de status para mover cards entre colunas."
+    },
+    "loadError": "Não foi possível carregar o pipeline.",
+    "loadMoreError": "Não foi possível carregar mais pacientes.",
+    "modals": {
+      "newPatient": {
+        "title": "Novo paciente",
+        "description": "Cadastre o paciente e inicie uma jornada publicada."
+      },
+      "changeStage": {
+        "title": "Alterar etapa",
+        "description": "Mova este paciente para outra etapa da mesma jornada publicada.",
+        "client": "Paciente:",
+        "currentStage": "Etapa atual:",
+        "targetStage": "Etapa de destino",
+        "targetPlaceholder": "Selecione uma etapa",
+        "note": "Observação (opcional)",
+        "cancel": "Cancelar",
+        "submit": "Confirmar",
+        "loadError": "Não foi possível carregar a jornada.",
+        "pickStage": "Selecione a etapa de destino.",
+        "sameStage": "Escolha uma etapa diferente da atual.",
+        "success": "Etapa atualizada.",
+        "submitError": "Não foi possível mudar de etapa.",
+        "noOtherStages": "Não há outras etapas para onde mover nesta jornada.",
+        "completeTreatment": "Concluir tratamento",
+        "completeConfirmTitle": "Concluir tratamento?",
+        "completeConfirmDescription": "O paciente será retirado do quadro ativo. O histórico de etapas e documentos é mantido e uma nova jornada poderá ser iniciada depois.",
+        "completeConfirmCancel": "Cancelar",
+        "completeConfirmSubmit": "Concluir",
+        "completeSuccess": "Tratamento concluído.",
+        "completeError": "Não foi possível concluir o tratamento."
+      }
+    }
+  },
+  "reports": {
+    "title": "Relatórios",
+    "description": "Visão consolidada do tenant com recortes por período, jornada, OPME e exportação CSV.",
+    "refresh": "Atualizar",
+    "exportCsv": "Exportar CSV",
+    "loadError": "Não foi possível carregar os relatórios.",
+    "empty": "Nenhum dado encontrado com os filtros atuais.",
+    "unassignedOpme": "Sem fornecedor",
+    "filters": {
+      "period": "Período",
+      "period7": "Últimos 7 dias",
+      "period30": "Últimos 30 dias",
+      "period90": "Últimos 90 dias",
+      "period365": "Últimos 365 dias",
+      "pathway": "Jornada",
+      "opme": "Fornecedor OPME",
+      "allPathways": "Todas as jornadas",
+      "allOpme": "Todos os fornecedores"
+    },
+    "cards": {
+      "patientsInScope": "Pacientes no recorte",
+      "criticalPatients": "Pacientes críticos",
+      "transitionsInPeriod": "Transições no período",
+      "pathwaysInScope": "Jornadas com pacientes"
+    },
+    "status": {
+      "ok": "Em dia",
+      "warning": "Atenção",
+      "danger": "Crítico"
+    },
+    "charts": {
+      "byStageTitle": "Pacientes por fase",
+      "byStageDescription": "Distribuição atual por etapa dentro do recorte filtrado.",
+      "byStatusTitle": "Pacientes por status SLA",
+      "byStatusDescription": "Comparativo entre em dia, atenção e crítico.",
+      "byPathwayTitle": "Pacientes por jornada",
+      "byPathwayDescription": "Volume por fluxo ativo no recorte atual.",
+      "byOpmeTitle": "Pacientes por OPME",
+      "byOpmeDescription": "Distribuição por fornecedor vinculado ao paciente."
+    },
+    "criticalTitle": "Casos críticos",
+    "criticalDescription": "Pacientes acima do SLA crítico dentro do recorte atual.",
+    "criticalDays": "{days} dias na fase",
+    "viewPatient": "Ver paciente",
+    "range": "{from}-{to} de {total}",
+    "prev": "Anterior",
+    "next": "Próxima"
   }
 }

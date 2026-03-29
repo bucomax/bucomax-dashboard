@@ -1,4 +1,5 @@
 import { prisma } from "@/infrastructure/database/prisma";
+import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
 import { postPathwayVersionBodySchema } from "@/lib/validators/pathway";
@@ -8,27 +9,28 @@ export const dynamic = "force-dynamic";
 type RouteCtx = { params: Promise<{ pathwayId: string }> };
 
 export async function POST(request: Request, ctx: RouteCtx) {
-  const auth = await requireSessionOr401();
+  const apiT = await getApiT(request);
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
-  const t = getActiveTenantIdOr400(auth.session!);
-  if (t.response) return t.response;
+  const tenantCtx = await getActiveTenantIdOr400(auth.session!, request, apiT);
+  if (tenantCtx.response) return tenantCtx.response;
 
   const { pathwayId } = await ctx.params;
 
   const pathway = await prisma.carePathway.findFirst({
-    where: { id: pathwayId, tenantId: t.tenantId },
+    where: { id: pathwayId, tenantId: tenantCtx.tenantId },
     select: { id: true },
   });
   if (!pathway) {
-    return jsonError("NOT_FOUND", "Jornada não encontrada.", 404);
+    return jsonError("NOT_FOUND", apiT("errors.pathwayNotFound"), 404);
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("INVALID_JSON", "Corpo JSON inválido.", 400);
+    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
   }
 
   const parsed = postPathwayVersionBodySchema.safeParse(body);

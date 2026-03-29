@@ -1,8 +1,10 @@
 import type account from "../../messages/pt-BR/account.json";
+import type api from "../../messages/pt-BR/api.json";
 import type auth from "../../messages/pt-BR/auth.json";
 import type clients from "../../messages/pt-BR/clients.json";
 import type dashboard from "../../messages/pt-BR/dashboard.json";
 import type global from "../../messages/pt-BR/global.json";
+import type notifications from "../../messages/pt-BR/notifications.json";
 import type pathways from "../../messages/pt-BR/pathways.json";
 import type settings from "../../messages/pt-BR/settings.json";
 
@@ -11,11 +13,13 @@ import type settings from "../../messages/pt-BR/settings.json";
 type Messages = {
   global: typeof global;
   auth: typeof auth;
+  api: typeof api;
   dashboard: typeof dashboard;
   clients: typeof clients;
   account: typeof account;
   settings: typeof settings;
   pathways: typeof pathways;
+  notifications: typeof notifications;
 };
 
 declare module "next-intl" {

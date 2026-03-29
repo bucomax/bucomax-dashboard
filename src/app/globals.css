@@ -128,4 +128,13 @@
   html {
     @apply font-sans;
   }
+  /** Botões nativos e equivalentes ARIA — o design system usa `<Button>` em muitos pontos, mas há `<button>` solto (KPIs, handles, etc.). */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
 }

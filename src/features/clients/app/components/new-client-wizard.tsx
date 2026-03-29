@@ -1,6 +1,8 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
+import { translatedZodResolver } from "@/features/clients/app/utils/translated-zod-resolver";
+import { useCreateClientFlow } from "@/features/clients/app/hooks/use-create-client-flow";
+import { useClientPathwayOptions } from "@/features/clients/app/hooks/use-client-pathway-options";
 import { useRouter } from "@/i18n/navigation";
 import { toast } from "@/lib/toast";
 import { formatCpfDisplay } from "@/lib/validators/cpf";
@@ -16,71 +18,83 @@ import {
   SelectValue,
 } from "@/shared/components/ui/select";
 import { Field, FieldDescription, FieldLabel } from "@/shared/components/ui/field";
-import {
-  createClient,
-  createPatientPathway,
-  listPathwaysForTenant,
-} from "@/features/clients/app/services/clients.service";
-import type { PathwayOption } from "@/features/clients/app/types/api";
+import { useTenantSettingsPickers } from "@/features/settings/app/hooks/use-tenant-settings-pickers";
 import { newClientFormSchema, type NewClientFormValues } from "@/features/clients/app/utils/schemas";
+import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
+import { postClientBodySchema } from "@/lib/validators/client";
 import { cn } from "@/lib/utils";
 import { Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
+
+const PICKER_NONE = "__none__";
 
 type Step = 1 | 2 | 3;
 
-export function NewClientWizard() {
+export type NewClientWizardProps = {
+  /** `callback`: fecha modal / chama `onFlowComplete` sem redirecionar. Padrão: lista de clientes. */
+  submitBehavior?: "navigateToClients" | "callback";
+  onFlowComplete?: () => void;
+};
+
+export function NewClientWizard({
+  submitBehavior = "navigateToClients",
+  onFlowComplete,
+}: NewClientWizardProps = {}) {
   const t = useTranslations("clients.wizard");
+  const tApi = useTranslations("api");
   const router = useRouter();
+  const { data: session, status: sessionStatus } = useSession();
+  const tenantId = session?.user?.tenantId ?? null;
   const [step, setStep] = useState<Step>(1);
   const [pathwayId, setPathwayId] = useState<string | null>(null);
-  const [pathways, setPathways] = useState<PathwayOption[] | null>(null);
-  const [pathwaysLoading, setPathwaysLoading] = useState(false);
-  const [pathwaysError, setPathwaysError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const [assignedToUserId, setAssignedToUserId] = useState(PICKER_NONE);
+  const [opmeSupplierId, setOpmeSupplierId] = useState(PICKER_NONE);
+  const { submitting, submitClientFlow } = useCreateClientFlow();
+  const {
+    members,
+    suppliers,
+    error: pickersError,
+  } = useTenantSettingsPickers({
+    enabled: step === 1 && sessionStatus === "authenticated" && Boolean(tenantId),
+    fallbackErrorMessage: t("errorGeneric"),
+  });
+  const {
+    eligiblePathways,
+    loading: pathwaysLoading,
+    error: pathwaysError,
+  } = useClientPathwayOptions({
+    enabled: step === 2,
+    fallbackErrorMessage: t("errorGeneric"),
+  });
+
+  const resolver = useMemo(
+    () =>
+      translatedZodResolver<NewClientFormValues>(newClientFormSchema, (key) =>
+        tApi(key as Parameters<typeof tApi>[0]),
+      ),
+    [tApi],
+  );
 
   const form = useForm<NewClientFormValues>({
-    resolver: zodResolver(newClientFormSchema),
+    resolver,
     defaultValues: {
       name: "",
       phone: "",
       caseDescription: "",
       documentId: "",
+      email: "",
     },
   });
-
-  const eligiblePathways = useMemo(
-    () => (pathways ?? []).filter((p) => p.publishedVersion != null),
-    [pathways],
-  );
-
-  const loadPathways = useCallback(async () => {
-    setPathwaysLoading(true);
-    setPathwaysError(null);
-    try {
-      const list = await listPathwaysForTenant();
-      setPathways(list);
-    } catch (e) {
-      setPathwaysError(e instanceof Error ? e.message : t("errorGeneric"));
-      setPathways([]);
-    } finally {
-      setPathwaysLoading(false);
-    }
-  }, [t]);
-
-  useEffect(() => {
-    if (step !== 2) return;
-    void loadPathways();
-  }, [step, loadPathways]);
 
   const selectedPathway = useMemo(
     () => eligiblePathways.find((p) => p.id === pathwayId) ?? null,
     [eligiblePathways, pathwayId],
   );
-  const reviewPhone = form.getValues("phone");
-  const reviewDocumentId = form.getValues("documentId") ?? "";
+  const reviewPhone = String(form.getValues("phone") ?? "");
+  const reviewDocumentId = String(form.getValues("documentId") ?? "");
 
   function goBack() {
     if (step === 1) return;
@@ -105,26 +119,45 @@ export function NewClientWizard() {
 
   async function handleSubmitAll() {
     const values = form.getValues();
-    setSubmitting(true);
     try {
-      const client = await createClient({
-        name: values.name.trim(),
-        phone: values.phone.trim(),
-        caseDescription: values.caseDescription?.trim() || undefined,
-        documentId: values.documentId.trim(),
-      });
       if (!pathwayId) {
         toast.error(t("errorGeneric"));
         return;
       }
-      await createPatientPathway({ clientId: client.id, pathwayId });
+      const parsed = postClientBodySchema.safeParse({
+        name: String(values.name ?? "").trim(),
+        phone: String(values.phone ?? ""),
+        caseDescription: values.caseDescription?.trim() || undefined,
+        documentId: values.documentId ?? "",
+        email: String(values.email ?? "").trim() || undefined,
+        assignedToUserId: assignedToUserId === PICKER_NONE ? undefined : assignedToUserId,
+        opmeSupplierId: opmeSupplierId === PICKER_NONE ? undefined : opmeSupplierId,
+      });
+      if (!parsed.success) {
+        const msg = joinTranslatedZodIssues(parsed.error, (key) =>
+          tApi(key as Parameters<typeof tApi>[0]),
+        );
+        toast.error(msg || t("errorGeneric"));
+        return;
+      }
+      await submitClientFlow({
+        payload: parsed.data,
+        pathwayId,
+      });
       toast.success(t("success"));
-      router.push("/dashboard/clients");
-      router.refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("errorGeneric"));
-    } finally {
-      setSubmitting(false);
+      if (submitBehavior === "callback") {
+        setStep(1);
+        setPathwayId(null);
+        setAssignedToUserId(PICKER_NONE);
+        setOpmeSupplierId(PICKER_NONE);
+        form.reset();
+        onFlowComplete?.();
+      } else {
+        router.push("/dashboard/clients");
+        router.refresh();
+      }
+    } catch {
+      /* erro: toast global no apiClient */
     }
   }
 
@@ -157,8 +190,59 @@ export function NewClientWizard() {
             <div className="flex flex-col gap-4">
               <div className="grid gap-4 lg:grid-cols-3">
                 <FormInput name="name" label={t("name")} autoComplete="name" />
-                <FormPhoneNumber name="phone" label={t("phone")} />
-                <FormCpf name="documentId" label={t("documentId")} />
+                <FormPhoneNumber name="phone" label={t("phone")} description={t("phoneHint")} />
+                <FormCpf name="documentId" label={t("documentId")} description={t("documentIdHint")} />
+              </div>
+              <FormInput
+                name="email"
+                label={t("email")}
+                description={t("emailHint")}
+                type="email"
+                autoComplete="email"
+                required={false}
+              />
+              {pickersError ? <p className="text-destructive text-sm">{pickersError}</p> : null}
+              <div className="grid gap-4 lg:grid-cols-2">
+                <Field>
+                  <FieldLabel>{t("assignedTo")}</FieldLabel>
+                  <Select
+                    value={assignedToUserId}
+                    onValueChange={(v) => setAssignedToUserId(v ?? PICKER_NONE)}
+                    disabled={sessionStatus !== "authenticated" || members === null}
+                  >
+                    <SelectTrigger className="w-full max-w-md">
+                      <SelectValue placeholder={t("assignedPlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={PICKER_NONE}>{t("noneOption")}</SelectItem>
+                      {(members ?? []).map((m) => (
+                        <SelectItem key={m.userId} value={m.userId}>
+                          {m.name ?? m.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field>
+                  <FieldLabel>{t("opme")}</FieldLabel>
+                  <Select
+                    value={opmeSupplierId}
+                    onValueChange={(v) => setOpmeSupplierId(v ?? PICKER_NONE)}
+                    disabled={sessionStatus !== "authenticated" || suppliers === null}
+                  >
+                    <SelectTrigger className="w-full max-w-md">
+                      <SelectValue placeholder={t("opmePlaceholder")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={PICKER_NONE}>{t("noneOption")}</SelectItem>
+                      {(suppliers ?? []).map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
               </div>
               <FormTextarea
                 name="caseDescription"
@@ -219,6 +303,10 @@ export function NewClientWizard() {
                 <div>
                   <dt className="text-muted-foreground">{t("reviewPhone")}</dt>
                   <dd>{formatPhoneBrDisplay(reviewPhone)}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">{t("email")}</dt>
+                  <dd>{String(form.getValues("email") ?? "").trim() || "—"}</dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">{t("documentId")}</dt>

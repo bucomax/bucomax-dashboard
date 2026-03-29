@@ -1,22 +1,30 @@
 import { prisma } from "@/infrastructure/database/prisma";
+import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
+import {
+  assertActiveTenantMembership,
+  getActiveTenantIdOr400,
+  requireSessionOr401,
+} from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
 type RouteCtx = { params: Promise<{ patientPathwayId: string }> };
 
-export async function GET(_request: Request, ctx: RouteCtx) {
-  const auth = await requireSessionOr401();
+export async function GET(request: Request, ctx: RouteCtx) {
+  const apiT = await getApiT(request);
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
-  const t = getActiveTenantIdOr400(auth.session!);
-  if (t.response) return t.response;
+  const tenantCtx = await getActiveTenantIdOr400(auth.session!, request, apiT);
+  if (tenantCtx.response) return tenantCtx.response;
+  const forbidden = await assertActiveTenantMembership(auth.session!, tenantCtx.tenantId, request, apiT);
+  if (forbidden) return forbidden;
 
   const { patientPathwayId } = await ctx.params;
 
   const row = await prisma.patientPathway.findFirst({
-    where: { id: patientPathwayId, tenantId: t.tenantId },
+    where: { id: patientPathwayId, tenantId: tenantCtx.tenantId },
     include: {
       client: { select: { id: true, name: true, phone: true, caseDescription: true } },
       pathway: { select: { id: true, name: true, description: true } },
@@ -26,7 +34,14 @@ export async function GET(_request: Request, ctx: RouteCtx) {
           version: true,
           stages: {
             orderBy: { sortOrder: "asc" },
-            select: { id: true, name: true, stageKey: true, sortOrder: true },
+            select: {
+              id: true,
+              name: true,
+              stageKey: true,
+              sortOrder: true,
+              alertWarningDays: true,
+              alertCriticalDays: true,
+            },
           },
         },
       },
@@ -43,7 +58,7 @@ export async function GET(_request: Request, ctx: RouteCtx) {
   });
 
   if (!row) {
-    return jsonError("NOT_FOUND", "Instância de jornada não encontrada.", 404);
+    return jsonError("NOT_FOUND", apiT("errors.patientPathwayInstanceNotFound"), 404);
   }
 
   return jsonSuccess({
@@ -61,6 +76,7 @@ export async function GET(_request: Request, ctx: RouteCtx) {
         dispatchStub: tr.dispatchStub,
         createdAt: tr.createdAt.toISOString(),
       })),
+      enteredStageAt: row.enteredStageAt.toISOString(),
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     },

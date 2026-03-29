@@ -28,6 +28,8 @@ alwaysApply: false
 
 - Layout (auth vs app): `src/shared/components/layout/` (`AuthLayout`, `AppShell`, sidebar, tema, tenant). Rotas: grupos `(auth)` e `(dashboard)` em `src/app/`.
 - UI (shadcn): `@/shared/components/ui/`; formulários RHF: `@/shared/components/forms/`; cliente HTTP: `@/lib/api/http-client`; envelope API: `@/shared/types/api/v1`.
+- **Modal padrão:** `StandardDialogContent` em `@/shared/components/ui/dialog` — topo fixo (título + fechar), corpo com scroll, rodapé fixo opcional (`footer`), altura limitada ao viewport (`100dvh`). Preferir a `DialogContent` “solta” só em casos excepcionais.
+- **Debounce:** `src/shared/hooks/use-debounce.ts` — única fonte para atrasar valor ou callback. Em **filtro com input de busca** que chama API/listagem, usar **`useDebouncedState`** com **`{ trim: true, delayMs: DEBOUNCE_MS.search }`** (estado imediato para o `<input>`, valor debounced nas dependências do `useEffect`/service). Não reimplementar debounce com `setTimeout` na feature. Para executar uma função após pausa (ex. rascunho), usar **`useDebouncedCallback`**.
 
 ## Nomenclatura
 

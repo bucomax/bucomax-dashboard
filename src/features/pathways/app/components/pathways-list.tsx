@@ -1,61 +1,84 @@
 "use client";
 
-import { listPathways, postPathway } from "@/features/pathways/app/services/pathways.service";
-import { toast } from "@/lib/toast";
+import { useCreatePathway } from "@/features/pathways/app/hooks/use-create-pathway";
+import { usePathways } from "@/features/pathways/app/hooks/use-pathways";
 import { Link, useRouter } from "@/i18n/navigation";
+import { toast } from "@/lib/toast";
+import {
+  DataTableBody,
+  DataTableEmpty,
+  DataTableHeader,
+  DataTableRoot,
+  DataTableRow,
+  DataTableScroll,
+} from "@/shared/components/layout/data-table";
 import { Button } from "@/shared/components/ui/button";
+import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
+import { Field, FieldLabel } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { Loader2 } from "lucide-react";
+import { Check, ExternalLink, Loader2, Plus, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+
+const ROW_GRID =
+  "grid min-w-[360px] grid-cols-[minmax(8rem,1fr)_minmax(7rem,auto)] items-center gap-2";
+
+const REDIRECT_DELAY_MS = 5_000;
+
+type CreateDialogPhase = "idle" | "saving" | "redirecting";
 
 export function PathwaysList() {
   const t = useTranslations("pathways.list");
   const router = useRouter();
-  const [rows, setRows] = useState<Awaited<ReturnType<typeof listPathways>> | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { pathways, loading, error, reload } = usePathways();
+  const { createPathway } = useCreatePathway();
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("");
-  const [creating, setCreating] = useState(false);
+  const [createPhase, setCreatePhase] = useState<CreateDialogPhase>("idle");
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const data = await listPathways();
-      setRows(data);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("loadError"));
-      setRows([]);
-    }
-  }, [t]);
+  const isCreateBusy = createPhase !== "idle";
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const onDialogOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open && isCreateBusy) return;
+      setDialogOpen(open);
+      if (!open) {
+        setName("");
+        setCreatePhase("idle");
+      }
+    },
+    [isCreateBusy],
+  );
 
   async function handleCreate() {
     const trimmed = name.trim();
     if (!trimmed) {
-      toast.error(t("name"));
+      toast.error(t("nameRequired"));
       return;
     }
-    setCreating(true);
+    if (isCreateBusy) return;
+
+    setCreatePhase("saving");
     try {
-      const p = await postPathway({ name: trimmed });
-      setName("");
+      const pathway = await createPathway({ name: trimmed });
       toast.success(t("createSuccess"));
-      router.push(`/dashboard/pathways/${p.id}`);
+      setCreatePhase("redirecting");
+      await new Promise((resolve) => setTimeout(resolve, REDIRECT_DELAY_MS));
+      setCreatePhase("idle");
+      setName("");
+      setDialogOpen(false);
+      router.push(`/dashboard/pathways/${pathway.id}`);
       router.refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("loadError"));
-    } finally {
-      setCreating(false);
+    } catch {
+      setCreatePhase("idle");
     }
   }
 
-  if (rows === null && !error) {
+  if (loading && pathways === null) {
     return (
       <div className="space-y-2">
+        <Skeleton className="h-10 w-full max-w-xs" />
         <Skeleton className="h-10 w-full" />
         <Skeleton className="h-10 w-full" />
       </div>
@@ -66,61 +89,122 @@ export function PathwaysList() {
     return (
       <div className="flex flex-col gap-2">
         <p className="text-destructive text-sm">{error}</p>
-        <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
+        <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
           {t("retry")}
         </Button>
       </div>
     );
   }
 
+  const safePathways = pathways ?? [];
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-        <div className="min-w-0 flex-1 space-y-2">
-          <label className="text-sm font-medium" htmlFor="new-pathway-name">
-            {t("name")}
-          </label>
-          <Input
-            id="new-pathway-name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={t("namePlaceholder")}
-          />
-        </div>
-        <Button type="button" onClick={() => void handleCreate()} disabled={creating}>
-          {creating ? <Loader2 className="size-4 animate-spin" /> : null}
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button type="button" size="sm" onClick={() => setDialogOpen(true)}>
+          <Plus className="size-4" />
           {t("newPathway")}
         </Button>
       </div>
 
-      {!rows?.length ? (
-        <p className="text-muted-foreground text-sm">{t("empty")}</p>
-      ) : (
-        <div className="divide-border rounded-xl border">
-          <div className="text-muted-foreground grid grid-cols-2 gap-2 border-b px-4 py-2 text-xs font-medium md:grid-cols-3">
+      <Dialog open={dialogOpen} onOpenChange={onDialogOpenChange}>
+        <StandardDialogContent
+          title={t("newPathwayDialogTitle")}
+          description={
+            isCreateBusy ? undefined : t("newPathwayDialogDescription")
+          }
+          size="sm"
+          footer={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-1.5"
+                onClick={() => onDialogOpenChange(false)}
+                disabled={isCreateBusy}
+              >
+                <X className="size-4" />
+                {t("dialogCancel")}
+              </Button>
+              <Button
+                type="button"
+                className="gap-1.5"
+                onClick={() => void handleCreate()}
+                disabled={isCreateBusy}
+              >
+                {isCreateBusy ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Check className="size-4" />
+                )}
+                {t("create")}
+              </Button>
+            </>
+          }
+        >
+          {createPhase === "saving" ? (
+            <div className="flex flex-col items-center gap-4 py-6 text-center">
+              <Loader2 className="text-primary size-10 animate-spin" aria-hidden />
+              <p className="text-muted-foreground text-sm leading-relaxed">{t("creatingMessage")}</p>
+            </div>
+          ) : createPhase === "redirecting" ? (
+            <div className="flex flex-col items-center gap-4 py-6 text-center">
+              <Loader2 className="text-muted-foreground size-10 animate-spin" aria-hidden />
+              <p className="text-muted-foreground text-sm leading-relaxed">{t("redirectWaitMessage")}</p>
+            </div>
+          ) : (
+            <Field>
+              <FieldLabel htmlFor="new-pathway-name">{t("name")}</FieldLabel>
+              <Input
+                id="new-pathway-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t("namePlaceholder")}
+                autoComplete="off"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    void handleCreate();
+                  }
+                }}
+              />
+            </Field>
+          )}
+        </StandardDialogContent>
+      </Dialog>
+
+      <DataTableRoot>
+        <DataTableScroll>
+          <DataTableHeader className={ROW_GRID}>
             <span>{t("columnPathway")}</span>
-            <span className="hidden md:block">{t("columnPublish")}</span>
-            <span className="text-right" />
-          </div>
-          <ul className="divide-y">
-            {rows.map((p) => (
-              <li key={p.id} className="grid grid-cols-2 items-center gap-2 px-4 py-3 text-sm md:grid-cols-3">
-                <span className="min-w-0 font-medium">{p.name}</span>
-                <span className="text-muted-foreground hidden text-xs md:block">
-                  {p.publishedVersion
-                    ? t("published", { version: p.publishedVersion.version })
-                    : t("noPublished")}
-                </span>
-                <div className="flex justify-end">
-                  <Button nativeButton={false} size="sm" variant="outline" render={<Link href={`/dashboard/pathways/${p.id}`} />}>
-                    {t("open")}
-                  </Button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+            <span className="text-start">{t("columnActions")}</span>
+          </DataTableHeader>
+
+          {!safePathways.length ? (
+            <DataTableEmpty>{t("empty")}</DataTableEmpty>
+          ) : (
+            <DataTableBody>
+              {safePathways.map((p) => (
+                <DataTableRow key={p.id} className={ROW_GRID}>
+                  <span className="min-w-0 font-medium">{p.name}</span>
+                  <div className="flex justify-start">
+                    <Button
+                      nativeButton={false}
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      render={<Link href={`/dashboard/pathways/${p.id}`} />}
+                    >
+                      <ExternalLink className="size-3.5" />
+                      {t("open")}
+                    </Button>
+                  </div>
+                </DataTableRow>
+              ))}
+            </DataTableBody>
+          )}
+        </DataTableScroll>
+      </DataTableRoot>
     </div>
   );
 }

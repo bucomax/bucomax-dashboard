@@ -1,110 +1,98 @@
-# Página: Dashboard (pipeline + alertas)
+# Página: Dashboard (visão completa)
 
 ## Origem do mock
 
 - **Arquivo:** [`arquivos-interfaces/index.html`](../../../arquivos-interfaces/index.html)
-- **Título no mock:** BucoMax — Sistema de Gestão de Pacientes / visão Dashboard.
+- O HTML trata **toda** a área principal (`<main>`) como o dashboard: **não é só o Kanban**. A ordem vertical do mock deve ser respeitada no produto (com adaptação ao `AppShell`).
 
 ## Objetivo no produto
 
-Tela inicial operacional: **visão geral** (métricas), **alertas**, **ações rápidas**, **filtros**, **pipeline Kanban** por etapa, modais de **novo paciente** e **alterar fase** com preview de documentos.
+Tela inicial operacional com **seis grandes áreas** além do shell global, mais **dois modais**:
+
+1. **Cards de métricas** (4)  
+2. **Alertas ativos** (lista)  
+3. **Barra de ações** (Novo paciente, Relatórios, Exportar)  
+4. **Filtros** (busca, fluxo, status, OPME)  
+5. **Pipeline / Kanban** ("Visão por Etapas")  
+6. **Modais:** novo paciente; alterar fase (+ preview de documentos)
+
+A doc [../dashboard-kanban-dynamic-columns.md](../dashboard-kanban-dynamic-columns.md) cobre **apenas o item 5** e o DnD entre colunas. **Este arquivo** é a referência da **página inteira**.
+
+**Paginação e filtros:** ver [../listings-pagination-and-filters.md](../listings-pagination-and-filters.md). No dashboard, **cada coluna do pipeline** deve paginar os pacientes; a lista de **alertas** também. Filtros do mock: **busca** (nome/telefone), **fluxo** (`CarePathway`), **status** (ok/warning/danger), **OPME**.
 
 ---
 
-## Rota e layout sugeridos (Next.js)
+## Mapa da página (ordem do `index.html` → produto)
 
-- **Rota:** `/[locale]/dashboard` (ou raiz autenticada do tenant), dentro de `AppShell` + sidebar existentes.
-- **Layout:** não replicar header em gradiente do HTML; usar shell do projeto + `main` com `max-w-*` e espaçamento dos tokens.
-
----
-
-## Blocos de UI (mock → componentes alvo)
-
-| Bloco no mock | Componentes / padrões (projeto) |
-|---------------|-----------------------------------|
-| Nav superior com logo | Já coberto por `AppSidebar` / header do shell |
-| Grid 4 stat cards (total, em dia, atenção, críticos) | `Card` + ícones `lucide-react`; clique pode setar filtro de status (query string ou estado) |
-| Seção “Alertas ativos” | `Card` ou `Alert` variantes; lista de itens com CTA “Ver paciente” |
-| Barra ações (Novo paciente, Relatórios, Exportar) | `Button`, `Link` para `/reports`, export chama API ou gera CSV no cliente |
-| Filtros (busca, fluxo, status, OPME) | `Input`, `Select` (ou Combobox); reutilizar `src/shared/components/forms/form-select.tsx` se aplicável |
-| Pipeline colunas + cards | Colunas **dinâmicas** conforme [../dashboard-kanban-dynamic-columns.md](../dashboard-kanban-dynamic-columns.md); `@dnd-kit` |
-| Modal novo paciente | `Dialog`; campos alinhados ao wizard existente `new-client-wizard` ou extrair passos |
-| Modal alterar fase | `Dialog`; lista de etapas + área preview documentos |
-| Toast | `sonner` |
+| # | Bloco no mock | Conteúdo / comportamento | Frontend | Backend / dados | Status implementação (API) |
+|---|---------------|--------------------------|----------|-----------------|----------------------------|
+| 1 | **Stats grid** | Total; Em dia; Atenção; Críticos (limites por etapa). Clique no card aplica filtro de status no pipeline. | `Card` ×4 na home | `GET .../dashboard-summary` | **Implementado** |
+| 2 | **Alertas ativos** | Linhas: estagnação por paciente (nome + dias + fase); prazo convênio; alerta agregado ("3 pacientes…"). CTAs "Ver paciente" / "Ver lista". | `Alert` / lista em `Card` | `GET .../dashboard-alerts` (MVP: só **danger** por SLA) | **Parcial** — convênio/agregados ainda P1/P3 |
+| 3 | **Barra de ações** | Novo paciente; link Relatórios; Exportar (JSON/CSV do que está visível ou relatório) | `Button`, `Link` `/reports`, export | Export: `GET` com mesmo filtro ou geração no cliente no MVP | **Implementado** — link + export CSV do pipeline (inclui filtros atuais); relatório completo em `/dashboard/reports` |
+| 4 | **Filtros** | Busca nome/telefone; Fluxo (`CarePathway`); Status (ok/warning/danger); OPME | `Input`, `Select` | Filtros aplicados na query do Kanban ou pós-processamento | **Implementado** — busca/status/OPME + filtros na URL |
+| 5 | **Pipeline (Kanban)** | Colunas dinâmicas; cards; DnD; avançar / ver | Ver [../dashboard-kanban-dynamic-columns.md](../dashboard-kanban-dynamic-columns.md) | `GET .../kanban` + coluna paginada + `POST .../transition` | **Implementado** na home (DnD + paginação) |
+| 6a | **Modal novo paciente** | Nome, WhatsApp, e-mail, tipo de fluxo, OPME, responsável | `Dialog` + alinhar a `new-client-wizard` | `POST /clients` + `POST /patient-pathways` ou wizard único | **Parcial** — wizard existe; campos e-mail/OPME/responsável podem ser gap |
+| 6b | **Modal alterar fase** | Lista de etapas; destaque da atual; preview documentos ao selecionar destino | `Dialog` | Lista de estágios da mesma versão + `StageDocument` (gap) | **Parcial** — transição existe; preview de docs pendente de modelo |
 
 ---
 
-## Dados exibidos (conceituais)
+## Rota e layout (Next.js)
 
-| Dado | Origem desejada |
-|------|------------------|
-| Contagens por status (ok / warning / danger) | Derivado de SLA (dias na etapa) — exige `enteredStageAt` ou equivalente (gap) |
-| Lista de alertas | Query agregada: pacientes acima de limiar por `PathwayStage`; alertas de convênio (gap) |
-| Pacientes por coluna | `PatientPathway.currentStageId` agrupado por estágio; `Client` para nome/telefone |
-| Filtro “fluxo” | `CarePathway.name` ou tipo (se modelado); hoje pode ser só pathway selecionado |
-| Filtro OPME | Campo em `Client` ou tabela `OpmeSupplier` (gap) |
-| Modal novo paciente | Nome, telefone, e-mail, tipo fluxo, OPME, responsável | ver gaps em `Client` / `User` |
+- **Rota:** `/[locale]/dashboard` (já existe no app; hoje pode não refletir todo o mock).
+- **Layout:** header com nav do mock → substituído por **sidebar** + área de conteúdo com `max-w-*` e tokens do tema.
 
 ---
 
-## Backend
+## Endpoints desejados (visão consolidada)
 
-### Tabelas / models envolvidos
-
-- Leitura: `PatientPathway`, `PathwayStage`, `PathwayVersion` (publicada), `CarePathway`, `Client`, `Tenant`
-- Escrita: criação `Client` + início jornada (`PatientPathway`) no “Salvar paciente”; `StageTransition` + update `PatientPathway` na troca de fase / DnD
-
-### Endpoints (exemplos a formalizar em `/api/v1`)
-
-| Necessidade | Método | Notas |
-|-------------|--------|--------|
-| Kanban | `GET` agregado ou 2 chamadas: estágios publicados + lista pacientes com estágio | Ordenar estágios por `sortOrder` |
-| Métricas / alertas | `GET` dedicado ou mesmo payload enriquecido | Depende de SLA persistido |
-| Transição | `POST .../patient-pathways/:id/transition` | Mesmo use case para botão e DnD |
-| Criar paciente + jornada | `POST .../clients` + `POST .../patient-pathways` ou onboarding único | Alinhar a wizard atual |
-
-### Gaps de schema / regra
-
-- `enteredStageAt` em `PatientPathway` (ou histórico) para “dias na fase”
-- Limites de dias por etapa (`PathwayStage` metadata ou tabela SLA)
-- OPME, e-mail, `assignedToUserId` em `Client` se ainda não existirem
-- `StageDocument` + dispatch para “preview documentos” fiel ao mock
-
-### Checklist backend
-
-- [ ] Endpoint estágios publicados + pacientes por tenant
-- [ ] Transição validada (mesma versão, tenant, estágio válido)
-- [ ] Endpoint ou projeção para alertas (ou MVP sem alertas até SLA existir)
-- [ ] Criação paciente alinhada ao fluxo multi-tenant existente
+| Necessidade | Proposta | Notas |
+|-------------|----------|--------|
+| Kanban filtrado + **paginado por coluna** | `GET .../kanban` + `GET .../kanban/columns/{stageId}/patients` | Implementado (offset na coluna; `status` no Kanban com cap in-memory 500/etapa) |
+| Resumo métricas | `GET .../dashboard-summary` | Implementado (aceita `opmeSupplierId`) |
+| Alertas (**paginados**) | `GET .../dashboard-alerts?limit=` | MVP danger-only; evoluir para cursor e convênio |
+| Transição | `POST /api/v1/patient-pathways/{id}/transition` | Já existe |
+| Criar paciente | Fluxo atual de clientes + matrícula | Já existe em partes |
 
 ---
 
-## Frontend
+## Gaps de schema / produto (relembrar)
 
-### Rotas / arquivos prováveis
+- P1: `Client.email`, OPME, `assignedToUserId` — filtros e modal alinhados ao mock.  
+- P3: convênio, alertas agregados "aguardando exames".  
+- `StageDocument` — preview no modal de fase.  
+- Regra exata ok/warning/danger: comparar `enteredStageAt` com `alertWarningDays` / `alertCriticalDays` da **etapa atual** (não mais hardcoded 7/15 no texto da UI).
 
-- `src/features/dashboard/...` ou página em `src/app/[locale]/(dashboard)/dashboard/page.tsx`
-- Componentes: `KanbanBoard`, `StatCards`, `AlertsSection`, `NewPatientDialog`, `ChangePhaseDialog`
+---
 
-### Estado e fetching
+## Checklist backend (página completa)
 
-- TanStack Query (ou padrão do repo): chave `['kanban', tenantId, pathwayId]`
-- Após transição: invalidar queries ou update otimista
-- Filtros: estado local + `useMemo` ou query params
+- [x] Kanban + filtros `search`/`status`/`opmeSupplierId`/`limit` + paginação por coluna.  
+- [x] **Métricas** `dashboard-summary` (aceita `opmeSupplierId`).  
+- [x] **Alertas** MVP (`dashboard-alerts`, aceita `opmeSupplierId`).  
+- [x] Filtro **OPME** no Kanban e métricas/alertas (`opmeSupplierId`; `__unassigned__` = sem fornecedor).  
+- [ ] Segundo `pathwayId` na mesma view (multi-fluxo simultâneo) — fora do MVP atual.  
+- [x] Export CSV do pipeline **visível** coerente com filtros atuais (MVP client-side).
 
-### Checklist frontend
+---
 
-- [ ] Shell + grid responsivo
-- [ ] Kanban dinâmico (sem fases hardcoded)
-- [ ] Modais integrados às APIs reais
-- [ ] Acessibilidade DnD (`@dnd-kit`)
-- [ ] i18n (`messages/*`) para strings da tela
+## Checklist frontend (página completa)
+
+- [x] Bloco pipeline na home: métricas → alertas → filtros → colunas (abaixo dos gráficos atuais).  
+- [x] Cards de métrica ligados ao filtro de status.  
+- [x] Barra de ações com **Relatórios** + **Exportar CSV** do pipeline visível.  
+- [x] Ação de **limpar filtros** na barra de filtros.  
+- [x] **DnD** entre colunas no Kanban (`@dnd-kit`).  
+- [x] Modais novo paciente e alterar fase com APIs reais (preview de docs por etapa segue gap de produto).  
+- [x] i18n para todos os rótulos — cards/insights reescritos com cópia neutra (ICU `plural`); chaves dev removidas; rótulos SLA derivados dos dados reais.
+- [x] Filtros sincronizados na **URL** (`?search=&status=&opme=&pathway=`) com debounce no campo de busca.
 
 ---
 
 ## Documentação relacionada
 
-- [../dashboard-kanban-dynamic-columns.md](../dashboard-kanban-dynamic-columns.md)
-- [../persistence-api-and-transitions.md](../persistence-api-and-transitions.md)
-- [../BUCOMAX-INTERFACES-AND-DATA.md](../../BUCOMAX-INTERFACES-AND-DATA.md) (gaps)
-- Wizard atual: `src/features/clients/app/components/new-client-wizard.tsx`
+- [../dashboard-kanban-dynamic-columns.md](../dashboard-kanban-dynamic-columns.md) — **somente** pipeline colunas + DnD.  
+- [../listings-pagination-and-filters.md](../listings-pagination-and-filters.md) — paginação e filtros transversais.  
+- [../execution-plan.md](../execution-plan.md) — Fase 0 (API núcleo); Fase 2 deve contemplar **dashboard completo**, não só Kanban.  
+- [../persistence-api-and-transitions.md](../persistence-api-and-transitions.md)  
+- [../BUCOMAX-INTERFACES-AND-DATA.md](../../BUCOMAX-INTERFACES-AND-DATA.md)  
+- Wizard: `src/features/clients/app/components/new-client-wizard.tsx`

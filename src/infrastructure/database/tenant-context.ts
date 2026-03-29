@@ -18,6 +18,7 @@ export async function listTenantsForUserContext({
 }: ListTenantsParams): Promise<TenantContextItem[]> {
   if (isSuperAdmin) {
     const rows = await prisma.tenant.findMany({
+      where: { isActive: true },
       orderBy: { name: "asc" },
       select: { id: true, name: true, slug: true },
     });
@@ -31,7 +32,7 @@ export async function listTenantsForUserContext({
   }
 
   const rows = await prisma.tenantMembership.findMany({
-    where: { userId },
+    where: { userId, tenant: { isActive: true } },
     include: { tenant: true },
     orderBy: { tenant: { name: "asc" } },
   });

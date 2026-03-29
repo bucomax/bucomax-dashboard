@@ -1,27 +1,15 @@
 import { normalizeApiError } from "@/lib/api/axios-error";
 import { apiClient } from "@/lib/api/http-client";
 import type { ApiEnvelope } from "@/shared/types/api/v1";
-
-export type PatientPathwayDetail = {
-  id: string;
-  client: { id: string; name: string; phone: string; caseDescription: string | null };
-  pathway: { id: string; name: string; description: string | null };
-  pathwayVersion: {
-    id: string;
-    version: number;
-    stages: { id: string; name: string; stageKey: string; sortOrder: number }[];
-  };
-  currentStage: { id: string; name: string; stageKey: string } | null;
-  transitions: {
-    id: string;
-    fromStage: { id: string; name: string; stageKey: string } | null;
-    toStage: { id: string; name: string; stageKey: string } | null;
-    note: string | null;
-    createdAt: string;
-  }[];
-  createdAt: string;
-  updatedAt: string;
-};
+import type {
+  PatchPatientChecklistItemRequestBody,
+  PatchPatientChecklistItemResponseData,
+} from "@/types/api/patient-pathways-v1";
+import type {
+  PatientPathwayDetail,
+  TogglePatientChecklistItemInput,
+  TransitionPatientStageInput,
+} from "@/features/pathways/types/patient-pathways";
 
 export async function getPatientPathway(patientPathwayId: string): Promise<PatientPathwayDetail> {
   try {
@@ -39,7 +27,7 @@ export async function getPatientPathway(patientPathwayId: string): Promise<Patie
 
 export async function transitionPatientStage(
   patientPathwayId: string,
-  body: { toStageId: string; note?: string },
+  body: TransitionPatientStageInput,
 ): Promise<void> {
   try {
     const res = await apiClient.post<ApiEnvelope<{ patientPathway: unknown }>>(
@@ -49,6 +37,38 @@ export async function transitionPatientStage(
     if (!res.data.success) {
       throw new Error(res.data.error.message);
     }
+  } catch (e) {
+    throw normalizeApiError(e);
+  }
+}
+
+export async function completePatientPathway(patientPathwayId: string): Promise<void> {
+  try {
+    const res = await apiClient.post<ApiEnvelope<{ patientPathway: unknown }>>(
+      `/api/v1/patient-pathways/${patientPathwayId}/complete`,
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.error.message);
+    }
+  } catch (e) {
+    throw normalizeApiError(e);
+  }
+}
+
+export async function togglePatientChecklistItem(
+  patientPathwayId: string,
+  checklistItemId: string,
+  body: TogglePatientChecklistItemInput,
+): Promise<PatchPatientChecklistItemResponseData["item"]> {
+  try {
+    const res = await apiClient.patch<ApiEnvelope<PatchPatientChecklistItemResponseData>>(
+      `/api/v1/patient-pathways/${patientPathwayId}/checklist-items/${checklistItemId}`,
+      body,
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.error.message);
+    }
+    return res.data.data.item;
   } catch (e) {
     throw normalizeApiError(e);
   }

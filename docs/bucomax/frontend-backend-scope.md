@@ -6,6 +6,8 @@ Toda fatia abaixo exige **frontend e backend** em conjunto: o painel consome API
 
 **Nota sobre “cada etapa”:** no produto, **uma linha de `PathwayStage`** não gera um projeto FE/BE separado — o mesmo código renderiza **N colunas** dinamicamente. O que se implementa **uma vez** é: editor que manipula a lista de estágios + API que persiste + Kanban que lê a lista ordenada.
 
+**Listagens:** ver [listings-pagination-and-filters.md](./listings-pagination-and-filters.md) — **paginação** em todas as respostas que devolvem listas (incluindo **por coluna** no Kanban); **filtros** documentados por página mock.
+
 ---
 
 ## Parte A — Editor de fases (Configurações, DnD)
@@ -20,14 +22,16 @@ Documento de UX/comportamento: [column-editor-drag-drop.md](./column-editor-drag
 
 ---
 
-## Parte B — Dashboard Kanban (colunas dinâmicas)
+## Parte B — Pipeline Kanban no dashboard (colunas dinâmicas)
 
-Documento: [dashboard-kanban-dynamic-columns.md](./dashboard-kanban-dynamic-columns.md).
+A **página** dashboard inclui também métricas, alertas, barra de ações e filtros — ver [pages/page-dashboard.md](./pages/page-dashboard.md). **Esta parte** cobre só o bloco **pipeline** (equivalente à seção “Visão por Etapas” do mock).
+
+Documento do pipeline: [dashboard-kanban-dynamic-columns.md](./dashboard-kanban-dynamic-columns.md).
 
 | Camada | O que fazer |
 |--------|-------------|
-| **Backend** | Endpoint(s) que devolvem **estágios publicados ordenados** + **pacientes agrupados ou lista plana** com `currentStageId` (e dados do `Client`), sempre filtrados por tenant; endpoint de **transição** já existente ou estendido (`POST …/transition`) com as mesmas regras para clique ou DnD; opcional agregações para cards de métricas/alertas. |
-| **Frontend** | Página dashboard: **fetch** colunas + pacientes; montar **uma coluna por `PathwayStage`** na ordem de `sortOrder`; card do paciente; **DnD entre colunas** chamando a API de transição; tratamento de erro (toast, revert ou refetch); filtros/busca; empty states; responsivo (scroll horizontal ou empilhar). |
+| **Backend** | Endpoint(s) que devolvem **estágios publicados ordenados** + **pacientes por etapa com paginação** (`limit`/`cursor` por `stageId` ou contrato equivalente), sempre filtrados por tenant; endpoint de **transição** (`POST …/transition`) com as mesmas regras para clique ou DnD. **Métricas e alertas** do topo: endpoints dedicados — ver [pages/page-dashboard.md](./pages/page-dashboard.md) e [listings-pagination-and-filters.md](./listings-pagination-and-filters.md). |
+| **Frontend** | **Fetch** colunas + pacientes **por página em cada coluna**; **uma coluna por `PathwayStage`** na ordem de `sortOrder`; cards; **DnD entre colunas** → API de transição; toast/erro/refetch; empty states; responsivo. **Filtros** + query params no `GET` quando o back suportar. |
 | **Contrato** | DTO estável para “coluna + pacientes” ou dois GETs coordenados; resposta de transição com paciente atualizado ou 4xx com código de erro de domínio. |
 
 ---
@@ -47,8 +51,8 @@ Documento: [persistence-api-and-transitions.md](./persistence-api-and-transition
 
 1. **Back primeiro:** contratos da Parte C + endpoints mínimos de listagem de estágios e publicação.  
 2. **Front A** em paralelo ou logo após: editor contra API real ou mock alinhado ao contrato.  
-3. **Back:** endpoint agregado Kanban + transição estável.  
-4. **Front B:** Kanban consumindo API real.
+3. **Back:** endpoint agregado Kanban + transição estável; depois métricas/alertas conforme [pages/page-dashboard.md](./pages/page-dashboard.md).  
+4. **Front B:** pipeline consumindo API real; em seguida demais blocos do dashboard na ordem do mock.
 
 ---
 

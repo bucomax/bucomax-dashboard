@@ -42,11 +42,11 @@ Se no futuro existir editor de grafo avançado, alinhar sincronização bidireci
 
 | Ação | Método | Notas |
 |------|--------|--------|
-| Listar estágios da versão publicada | `GET .../pathways/:id/versions/published/stages` ou embutido no dashboard payload | Ordenado por `sortOrder`. |
+| Listar estágios da versão publicada | `GET /api/v1/pathways/:id/published-stages` ou embutido no dashboard payload | Ordenado por `sortOrder`. |
 | Obter versão draft / criar nova versão | `GET/POST .../pathways/:id/versions` | |
-| Atualizar ordem e definição de colunas | `PUT .../pathways/:id/versions/:versionId/stages` | Body: array ordenado `{ id?, stageKey?, name }[]`. |
-| Publicar versão | `POST .../pathways/:id/versions/:versionId/publish` | Transação: stages + flag published. |
-| Transição de paciente | `POST .../patient-pathways/:id/transition` | `toStageId` deve pertencer ao mesmo `pathwayVersionId`. |
+| Atualizar ordem e definição de colunas | `PATCH /api/v1/pathways/:id/versions/:versionId` | Body atual: `graphJson` (fonte usada pelo editor). |
+| Publicar versão | `POST /api/v1/pathways/:id/versions/:versionId/publish` | Transação: sync de `PathwayStage` + flag `published`. |
+| Transição de paciente | `POST /api/v1/patient-pathways/:id/transition` | `toStageId` deve pertencer ao mesmo `pathwayVersionId`. |
 
 Validação: sempre `tenantId` do contexto autenticado (ver regras em `ARCHITECTURE.md`).
 
@@ -58,7 +58,7 @@ Validação: sempre `tenantId` do contexto autenticado (ver regras em `ARCHITECT
 - Regras:  
   - `toStageId` na mesma versão do paciente.  
   - Opcional: só permitir passos adjacentes na `sortOrder` ou qualquer etapa — **decisão de produto**; documentar na API.  
-- Saída: `PatientPathway.currentStageId` atualizado, `StageTransition` gravado, pipeline de dispatch conforme produto.
+- Saída: `PatientPathway.currentStageId` atualizado, `StageTransition` gravado e `dispatchStub` com `correlationId` e bundle de `StageDocument` da etapa de destino. `ChannelDispatch` dedicado continua como evolução futura.
 
 ---
 

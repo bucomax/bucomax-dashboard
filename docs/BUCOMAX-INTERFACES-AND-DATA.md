@@ -2,7 +2,8 @@
 
 > **Índice unificado do produto Bucomax (colunas DnD + dashboard):** [`docs/bucomax/README.md`](./bucomax/README.md) — aponta para todos os documentos por parte.  
 > **O que cada entrega exige de front e de back:** [`docs/bucomax/frontend-backend-scope.md`](./bucomax/frontend-backend-scope.md).  
-> **Doc detalhada por página do mock (`arquivos-interfaces`):** [`docs/bucomax/pages/README.md`](./bucomax/pages/README.md).
+> **Doc detalhada por página do mock (`arquivos-interfaces`):** [`docs/bucomax/pages/README.md`](./bucomax/pages/README.md).  
+> **Paginação (todas as listagens, inclusive cards por coluna do Kanban) e filtros por tela:** [`docs/bucomax/listings-pagination-and-filters.md`](./bucomax/listings-pagination-and-filters.md).
 
 Este documento deriva dos protótipos HTML em [`arquivos-interfaces/`](../arquivos-interfaces/) e alinha com o **tema existente** do painel Next.js (`src/app/globals.css`, tokens Shadcn/Tailwind, componentes em `src/shared/components/ui`) e com o **modelo de jornada** já previsto no repositório (`CarePathway`, `PathwayVersion`, `PathwayStage`, `PatientPathway`, `StageTransition` — ver `docs/ARCHITECTURE.md`).
 
@@ -15,7 +16,7 @@ Este documento deriva dos protótipos HTML em [`arquivos-interfaces/`](../arquiv
 | Onde | O que a UI faz | Implementação |
 |------|----------------|---------------|
 | **Configurações → Fases** | Definir etapas como colunas, ordem dinâmica | **Lista ordenável (DnD)** — sem `@xyflow/react` nesta tela. Ver [bucomax/column-editor-drag-drop.md](./bucomax/column-editor-drag-drop.md). |
-| **Dashboard** — pipeline | Colunas + cards + DnD entre colunas | **Kanban** alimentado por `PathwayStage` da versão publicada, ordem = `sortOrder`. Ver [bucomax/dashboard-kanban-dynamic-columns.md](./bucomax/dashboard-kanban-dynamic-columns.md). |
+| **Dashboard** — página inteira (`index.html`) | Métricas, alertas, ações, filtros, **pipeline** Kanban, modais | Escopo completo em [bucomax/pages/page-dashboard.md](./bucomax/pages/page-dashboard.md). O **pipeline** sozinho: [bucomax/dashboard-kanban-dynamic-columns.md](./bucomax/dashboard-kanban-dynamic-columns.md). |
 | **Detalhe do paciente** — linha do tempo | Timeline linear | Somente leitura a partir de `PathwayStage.sortOrder` + `PatientPathway` + `StageTransition`. |
 
 **Nota:** `@xyflow/react` permanece útil se no futuro existir **editor de grafo** (ramificações, nós especiais); para o escopo **colunas via DnD**, não é obrigatório. Persistência e API: [bucomax/persistence-api-and-transitions.md](./bucomax/persistence-api-and-transitions.md).
@@ -49,14 +50,17 @@ Este documento deriva dos protótipos HTML em [`arquivos-interfaces/`](../arquiv
 
 ### 3.1 `index.html` — Dashboard
 
+Ordem vertical do mock: **métricas → alertas → barra de ações → filtros → pipeline → modais**. Detalhe de componentes, endpoints e checklist: [bucomax/pages/page-dashboard.md](./bucomax/pages/page-dashboard.md).
+
 | Bloco UI | Dados necessários | Origem no banco (atual ou planejada) |
 |----------|-------------------|--------------------------------------|
-| Cards: total / em dia / atenção / críticos | Contagens por `PatientPathway` + regra de SLA | Agregações sobre pacientes ativos; SLA abaixo |
-| Alertas ativos | Pacientes acima do limite de dias na etapa; alertas de convênio (mock) | Transição + `enteredStageAt` (ver gap §4); tabela ou campo de prazo convênio |
-| Filtros: busca, fluxo, status, OPME | Nome/telefone/cliente; tipo de jornada; SLA; fornecedor | `Client`; `CarePathway` ou classificação; derivado; `OpmeSupplier` (gap) |
-| Pipeline Kanban | Lista de pacientes por `currentStageId` | `PatientPathway` + `PathwayStage` |
-| Modal novo paciente | Nome, WhatsApp, e-mail, tipo de fluxo, OPME, responsável | `Client` + escolha de `CarePathway` + extensões (gap) |
-| Modal alterar fase + preview de documentos | Destino + lista de PDFs da etapa | `StageTransition` + pacote `StageDocument` / `File` (arquitetura; ver gap) |
+| Cards: total / em dia / atenção / críticos | Contagens por `PatientPathway` + regra de SLA | Agregações; `enteredStageAt` + `PathwayStage.alertWarningDays` / `alertCriticalDays` (Fase 0) |
+| Alertas ativos | Estagnação por paciente; prazo convênio; alertas agregados (ex. “3 pacientes…”) | SLA + gaps convênio / agregados (§4) |
+| Barra: Novo paciente, Relatórios, Exportar | Navegação + export do conjunto filtrado | Rotas existentes; export pode ser cliente ou `GET` com filtros |
+| Filtros: busca, fluxo, status, OPME | Nome/telefone; `CarePathway`; faixa SLA; fornecedor | `Client`; pathway selecionado; derivado; OPME (gap) |
+| Pipeline Kanban | Pacientes por `currentStageId` | `PatientPathway` + `PathwayStage`; `GET .../kanban` (Fase 0) |
+| Modal novo paciente | Nome, WhatsApp, e-mail, tipo de fluxo, OPME, responsável | `Client` + `CarePathway` + extensões (gap) |
+| Modal alterar fase + preview de documentos | Destino + lista de PDFs da etapa | `StageTransition` + `StageDocument` / `File` (gap) |
 
 ### 3.2 `pacientes.html` — Lista
 
@@ -70,11 +74,11 @@ Este documento deriva dos protótipos HTML em [`arquivos-interfaces/`](../arquiv
 | Bloco UI | Dados | Origem / gap |
 |----------|--------|----------------|
 | Cabeçalho, contato, ações | Cliente + jornada + responsável | `Client`, `PatientPathway`, `User` |
-| Linha do tempo | Ordem das etapas + atual + datas | `PathwayStage.sortOrder`, `StageTransition`, `enteredStageAt` (gap) |
-| Checklist da fase | Itens + conclusão por paciente | Templates por etapa + progresso — **não existe** no Prisma atual (gap §4) |
-| Documentos enviados / status | Nome, data, enviado/visualizado/pendente | `ChannelDispatch` / ligação documento–etapa (arquitetura §8) |
+| Linha do tempo | Ordem das etapas + atual + datas | `PathwayStage.sortOrder`, `StageTransition`, `PatientPathway.enteredStageAt` (Fase 0) |
+| Checklist da fase | Itens + conclusão por paciente | `PathwayStageChecklistItem` + `PatientPathwayChecklistItem` |
+| Documentos enviados / status | Nome, data, enviado/visualizado/pendente | `FileAsset` + `StageDocument` hoje; `ChannelDispatch` dedicado continua como evolução |
 | Atividades recentes | Eventos | `StageTransition` + futuros webhooks; ou `ActivityLog` (gap) |
-| Anotações | Texto livre | `Client.caseDescription` curto hoje; ideal `PatientNote` ou campo longo (gap) |
+| Anotações | Texto livre | `PatientNote` com histórico, autor e data |
 | Modal confirmar avanço + lista de PDFs | Igual ao dashboard | Mesmo contrato da transição |
 
 ### 3.4 `configuracoes.html` — Configurações
@@ -86,7 +90,7 @@ Este documento deriva dos protótipos HTML em [`arquivos-interfaces/`](../arquiv
 | **Fases do Tratamento** | Limite de dias por fase, contagem de documentos | Metadados por `PathwayStage`; **ordem e colunas** via **editor DnD** — [bucomax/column-editor-drag-drop.md](./bucomax/column-editor-drag-drop.md) |
 | Notificações | Toggles | `TenantSettings` / preferências por usuário (gap) |
 | Equipe | Lista, papéis | `TenantMembership` + `User` (já existe) |
-| Fornecedores OPME | CRUD, contagem de pacientes | `OpmeSupplier` + FK em `Client` ou tabela de vínculo (gap) |
+| Fornecedores OPME | CRUD, contagem de pacientes | `OpmeSupplier` + FK em `Client` |
 | Integrações | WhatsApp, calendário, etc. | Flags em `Tenant`; integrações reais fora do escopo mínimo |
 
 ### 3.5 `relatorios.html` — Relatórios
@@ -102,7 +106,7 @@ Este documento deriva dos protótipos HTML em [`arquivos-interfaces/`](../arquiv
 ## 4. O que já existe no Prisma (referência rápida)
 
 - **`Tenant`**, **`User`**, **`TenantMembership`** — multi-tenant e equipe.
-- **`Client`** — `name`, `phone`, `caseDescription`, `documentId` (CPF ou similar); **falta** e-mail, tipo de fluxo explícito, OPME, responsável, notas longas.
+- **`Client`** — `name`, `phone`, `caseDescription`, `documentId` (CPF ou similar); **falta** tipo de fluxo explícito.
 - **`CarePathway`**, **`PathwayVersion`** (`graphJson`), **`PathwayStage`** (`stageKey`, `name`, `sortOrder`, `patientMessage`).
 - **`PatientPathway`** — vínculo cliente + versão + **`currentStageId`**.
 - **`StageTransition`** — auditoria de mudança (`fromStageId`, `toStageId`, `actorUserId`, `note`, `dispatchStub`).
@@ -118,12 +122,12 @@ Este documento deriva dos protótipos HTML em [`arquivos-interfaces/`](../arquiv
 
 Resumo histórico (nomes indicativos; validar com produto e LGPD):
 
-1. **`enteredStageAt` em `PatientPathway`** (ou tabela de estado derivado) — para calcular **dias na fase** e alertas “>7 / >15 dias”.
-2. **Metadados de SLA por etapa** — ex.: `PathwayStage.metadata` (JSON) com `alertWarningDays`, `alertCriticalDays`, ou tabela `PathwayStageSla`.
+1. **`enteredStageAt` em `PatientPathway`** — **entregue na Fase 0** (ver `database-backlog` / `execution-plan`); usado para **dias na fase** e classificação ok/warning/danger.
+2. **SLA por etapa** — **entregue na Fase 0** como `PathwayStage.alertWarningDays` / `alertCriticalDays` (substitui cópia fixa “7 / 15 dias” só na UI).
 3. **`OpmeSupplier`** (`tenantId`, `name`, `active`) + **`Client.opmeSupplierId`** (opcional).
 4. **`Client`**: `email`, `assignedToUserId` (responsável), talvez `carePathwayId` escolhido no onboarding.
-5. **Checklist**: `PathwayStageChecklistItem` (template por etapa) + `PatientChecklistItem` (progresso por `PatientPathway`).
-6. **`PatientNote`** ou campo `notes` em `Client` / jornada — histórico opcional com `createdAt` / `authorId`.
+5. **Checklist**: `PathwayStageChecklistItem` (template por etapa) + `PatientPathwayChecklistItem` (progresso por `PatientPathway`).
+6. **`PatientNote`** — histórico dedicado com `createdAt` / `authorId`.
 7. **`TenantClinicSettings`** (CNPJ, endereço, texto hospitais) — separar dados legais da marca do `Tenant.name/slug`.
 8. **Alertas de convênio** (mock: “prazo do convênio em 5 dias”) — `Client` ou entidade `InsuranceAuthorization` com `expiresAt`.
 

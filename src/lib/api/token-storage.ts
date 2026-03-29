@@ -1,35 +1,51 @@
 /**
- * Armazenamento de tokens para **API JWT** (fase futura / clientes externos).
- * NextAuth (cookie) continua válido para o dashboard; quando existir `POST /api/v1/auth/refresh`,
- * os interceptors do axios usarão estes valores.
+ * Fachada estável para tokens JWT usados pelo `apiClient` (interceptors).
+ * Fonte da verdade: `useAuthTokenStore` (Zustand + persist criptografado).
+ *
+ * NextAuth (cookie) continua válido para o dashboard; `POST /api/v1/auth/refresh`
+ * alimenta estes valores quando em uso.
  */
 
-const ACCESS_KEY = "bucomax_access_token";
-const REFRESH_KEY = "bucomax_refresh_token";
+import { useAuthTokenStore } from "@/shared/stores/use-auth-token-store";
 
-let memoryAccess: string | null = null;
-let memoryRefresh: string | null = null;
+/** Chaves legadas (texto claro em `localStorage`); migradas uma vez para o blob criptografado. */
+const LEGACY_ACCESS_KEY = "bucomax_access_token";
+const LEGACY_REFRESH_KEY = "bucomax_refresh_token";
+
+let legacyMigrated = false;
+
+function migrateLegacyTokensOnce(): void {
+  if (legacyMigrated || typeof window === "undefined") return;
+  legacyMigrated = true;
+  try {
+    const legacyAccess = localStorage.getItem(LEGACY_ACCESS_KEY);
+    const legacyRefresh = localStorage.getItem(LEGACY_REFRESH_KEY);
+    if (!legacyAccess && !legacyRefresh) return;
+
+    const { accessToken, refreshToken, setTokens } = useAuthTokenStore.getState();
+    if (!accessToken && !refreshToken) {
+      setTokens(legacyAccess, legacyRefresh);
+    }
+    localStorage.removeItem(LEGACY_ACCESS_KEY);
+    localStorage.removeItem(LEGACY_REFRESH_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export function setAuthTokens(access: string | null, refresh: string | null): void {
-  memoryAccess = access;
-  memoryRefresh = refresh;
-  if (typeof window === "undefined") return;
-  if (access) localStorage.setItem(ACCESS_KEY, access);
-  else localStorage.removeItem(ACCESS_KEY);
-  if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
-  else localStorage.removeItem(REFRESH_KEY);
+  migrateLegacyTokensOnce();
+  useAuthTokenStore.getState().setTokens(access, refresh);
 }
 
 export function getAccessToken(): string | null {
-  if (memoryAccess) return memoryAccess;
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(ACCESS_KEY);
+  migrateLegacyTokensOnce();
+  return useAuthTokenStore.getState().accessToken;
 }
 
 export function getRefreshToken(): string | null {
-  if (memoryRefresh) return memoryRefresh;
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem(REFRESH_KEY);
+  migrateLegacyTokensOnce();
+  return useAuthTokenStore.getState().refreshToken;
 }
 
 export function clearAuthTokens(): void {

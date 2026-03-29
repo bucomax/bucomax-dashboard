@@ -14,3 +14,7 @@ export const postAdminTenantBodySchema = z.object({
 export const postAuthContextBodySchema = z.object({
   tenantId: z.string().cuid(),
 });
+
+export const patchAdminTenantBodySchema = z.object({
+  isActive: z.boolean(),
+});

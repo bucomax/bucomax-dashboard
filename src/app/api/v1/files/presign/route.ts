@@ -5,33 +5,37 @@ import {
   presignPutObject,
   publicUrlForKey,
 } from "@/infrastructure/storage/r2-presign";
+import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
+import {
+  assertActiveTenantMembership,
+  getActiveTenantIdOr400,
+  requireSessionOr401,
+} from "@/lib/auth/guards";
 import { postFilePresignBodySchema } from "@/lib/validators/file";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const apiT = await getApiT(request);
   if (!isR2Configured()) {
-    return jsonError(
-      "SERVICE_UNAVAILABLE",
-      "Armazenamento R2 não configurado. Defina R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME.",
-      503,
-    );
+    return jsonError("SERVICE_UNAVAILABLE", apiT("errors.r2NotConfigured"), 503);
   }
 
-  const auth = await requireSessionOr401();
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
-  const ctx = getActiveTenantIdOr400(auth.session!);
+  const ctx = await getActiveTenantIdOr400(auth.session!, request, apiT);
   if (ctx.response) return ctx.response;
   const { tenantId } = ctx;
+  const forbidden = await assertActiveTenantMembership(auth.session!, tenantId, request, apiT);
+  if (forbidden) return forbidden;
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("INVALID_JSON", "Corpo JSON inválido.", 400);
+    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
   }
 
   const parsed = postFilePresignBodySchema.safeParse(body);
@@ -45,7 +49,7 @@ export async function POST(request: Request) {
       select: { id: true },
     });
     if (!c) {
-      return jsonError("NOT_FOUND", "Paciente não encontrado neste tenant.", 404);
+      return jsonError("NOT_FOUND", apiT("errors.patientNotFoundInTenant"), 404);
     }
   }
 

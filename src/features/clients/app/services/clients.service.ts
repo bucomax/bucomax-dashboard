@@ -1,53 +1,173 @@
 import { apiClient } from "@/lib/api/http-client";
+import type {
+  ClientDetailQueryParams,
+  ClientDetailResponseData,
+  ClientDto,
+  ClientsListResponseData,
+  CreateClientRequestBody,
+  CreateClientResponseData,
+  CreatePatientPathwayRequestBody,
+  CreatePatientPathwayResponseData,
+  CreatePatientSelfRegisterInviteResponseData,
+  ListClientsQueryParams,
+  PatchClientRequestBody,
+  PathwaysListResponseData,
+  PatientPathwayCreated,
+  PublishedPathwayStagesResponseData,
+  PublishedStageRowDto,
+  PathwayOption,
+  UpdateClientResponseData,
+} from "@/types/api/clients-v1";
 import type { ApiEnvelope } from "@/shared/types/api/v1";
-import type { ClientDto, PathwayOption, PatientPathwayCreated } from "@/features/clients/app/types/api";
-import type { NewClientFormValues } from "@/features/clients/app/utils/schemas";
+import type {
+  ClientFilesListQueryParams,
+  ClientFilesListResponseData,
+  FileDownloadPresignRequestBody,
+  FileDownloadPresignResponseData,
+} from "@/types/api/files-v1";
 
-type ListClientsPayload = {
-  clients: ClientDto[];
-  total: number;
-  limit: number;
-  offset: number;
-};
-
-type PathwaysPayload = { pathways: PathwayOption[] };
-
-type CreateClientPayload = { client: ClientDto };
-
-type CreatePatientPathwayPayload = { patientPathway: PatientPathwayCreated };
-
-export async function listClients(params?: { limit?: number; offset?: number; q?: string }): Promise<ListClientsPayload> {
+export async function getClientDetail(
+  clientId: string,
+  params?: ClientDetailQueryParams,
+): Promise<ClientDetailResponseData> {
   const search = new URLSearchParams();
+  if (params?.page != null) search.set("page", String(params.page));
   if (params?.limit != null) search.set("limit", String(params.limit));
-  if (params?.offset != null) search.set("offset", String(params.offset));
-  if (params?.q?.trim()) search.set("q", params.q.trim());
   const qs = search.toString();
-  const url = qs ? `/api/v1/clients?${qs}` : "/api/v1/clients";
-  const res = await apiClient.get<ApiEnvelope<ListClientsPayload>>(url);
+  const url = qs ? `/api/v1/clients/${clientId}?${qs}` : `/api/v1/clients/${clientId}`;
+  const res = await apiClient.get<ApiEnvelope<ClientDetailResponseData>>(url);
   if (!res.data.success) {
     throw new Error(res.data.error.message);
   }
   return res.data.data;
 }
 
+export async function listClients(params?: ListClientsQueryParams): Promise<ClientsListResponseData> {
+  const search = new URLSearchParams();
+  if (params?.limit != null) search.set("limit", String(params.limit));
+  if (params?.page != null) search.set("page", String(params.page));
+  if (params?.q?.trim()) search.set("q", params.q.trim());
+  if (params?.pathwayId?.trim()) search.set("pathwayId", params.pathwayId.trim());
+  if (params?.stageId?.trim()) search.set("stageId", params.stageId.trim());
+  if (params?.status) search.set("status", params.status);
+  const qs = search.toString();
+  const url = qs ? `/api/v1/clients?${qs}` : "/api/v1/clients";
+  const res = await apiClient.get<ApiEnvelope<ClientsListResponseData>>(url);
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data;
+}
+
+export async function listPublishedStagesForPathway(pathwayId: string): Promise<PublishedStageRowDto[]> {
+  const res = await apiClient.get<ApiEnvelope<PublishedPathwayStagesResponseData>>(
+    `/api/v1/pathways/${pathwayId}/published-stages`,
+  );
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  const stages = res.data.data.version.stages;
+  return [...stages].sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
 export async function listPathwaysForTenant(): Promise<PathwayOption[]> {
-  const res = await apiClient.get<ApiEnvelope<PathwaysPayload>>("/api/v1/pathways");
+  const res = await apiClient.get<ApiEnvelope<PathwaysListResponseData>>("/api/v1/pathways");
   if (!res.data.success) {
     throw new Error(res.data.error.message);
   }
   return res.data.data.pathways;
 }
 
-export async function createClient(body: NewClientFormValues): Promise<ClientDto> {
-  const res = await apiClient.post<ApiEnvelope<CreateClientPayload>>("/api/v1/clients", body);
+export async function createClient(body: CreateClientRequestBody): Promise<ClientDto> {
+  const res = await apiClient.post<ApiEnvelope<CreateClientResponseData>>("/api/v1/clients", body);
   if (!res.data.success) {
     throw new Error(res.data.error.message);
   }
   return res.data.data.client;
 }
 
-export async function createPatientPathway(input: { clientId: string; pathwayId: string }): Promise<PatientPathwayCreated> {
-  const res = await apiClient.post<ApiEnvelope<CreatePatientPathwayPayload>>("/api/v1/patient-pathways", input);
+export async function createPatientSelfRegisterInvite(): Promise<CreatePatientSelfRegisterInviteResponseData> {
+  const res = await apiClient.post<ApiEnvelope<CreatePatientSelfRegisterInviteResponseData>>(
+    "/api/v1/clients/self-register-invites",
+    {},
+    { skipErrorToast: true },
+  );
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data;
+}
+
+export async function updateClient(
+  clientId: string,
+  body: PatchClientRequestBody,
+): Promise<ClientDto> {
+  const res = await apiClient.patch<ApiEnvelope<UpdateClientResponseData>>(
+    `/api/v1/clients/${clientId}`,
+    body,
+  );
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data.client;
+}
+
+export async function softDeleteClient(clientId: string): Promise<void> {
+  const res = await apiClient.delete<ApiEnvelope<{ message: string }>>(`/api/v1/clients/${clientId}`, {
+    skipErrorToast: true,
+  });
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+}
+
+export async function listClientFiles(
+  clientId: string,
+  params?: ClientFilesListQueryParams,
+): Promise<ClientFilesListResponseData> {
+  const search = new URLSearchParams();
+  if (params?.page != null) search.set("page", String(params.page));
+  if (params?.limit != null) search.set("limit", String(params.limit));
+  const qs = search.toString();
+  const url = qs
+    ? `/api/v1/clients/${clientId}/files?${qs}`
+    : `/api/v1/clients/${clientId}/files`;
+  const res = await apiClient.get<ApiEnvelope<ClientFilesListResponseData>>(url);
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data;
+}
+
+export async function requestFileDownloadPresign(
+  body: FileDownloadPresignRequestBody,
+): Promise<FileDownloadPresignResponseData> {
+  const res = await apiClient.post<ApiEnvelope<FileDownloadPresignResponseData>>(
+    "/api/v1/files/presign-download",
+    body,
+  );
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data;
+}
+
+export async function deleteClientFile(clientId: string, fileId: string): Promise<void> {
+  const res = await apiClient.delete<ApiEnvelope<{ message: string }>>(
+    `/api/v1/clients/${clientId}/files/${fileId}`,
+  );
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+}
+
+export async function createPatientPathway(
+  input: CreatePatientPathwayRequestBody,
+): Promise<PatientPathwayCreated> {
+  const res = await apiClient.post<ApiEnvelope<CreatePatientPathwayResponseData>>(
+    "/api/v1/patient-pathways",
+    input,
+  );
   if (!res.data.success) {
     throw new Error(res.data.error.message);
   }

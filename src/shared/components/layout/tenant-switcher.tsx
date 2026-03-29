@@ -7,7 +7,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { toast } from "@/lib/toast";
 import { listTenants, setActiveTenant } from "@/shared/services/tenant.service";
 import type { TenantListItem } from "@/shared/types/tenant";
 import { Building2, Check, ChevronsUpDown, Loader2 } from "lucide-react";
@@ -35,7 +34,6 @@ export function TenantSwitcher({ activeTenantId }: TenantSwitcherProps) {
       const msg = e instanceof Error ? e.message : "Erro ao carregar tenants";
       setLoadError(msg);
       setTenants([]);
-      toast.error(msg);
     }
   }, []);
 
@@ -56,7 +54,6 @@ export function TenantSwitcher({ activeTenantId }: TenantSwitcherProps) {
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao trocar tenant";
       setLoadError(msg);
-      toast.error(msg);
     } finally {
       setPendingId(null);
     }

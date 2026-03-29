@@ -1,4 +1,4 @@
-import { UsersManagementPanel } from "@/features/settings/app/components/users-management-panel";
+import { SettingsPageLayout } from "@/features/settings/app/components/settings-page-layout";
 import { DashboardPage } from "@/shared/components/layout/dashboard-page";
 import { getTranslations } from "next-intl/server";
 
@@ -7,7 +7,7 @@ export async function SettingsPage() {
 
   return (
     <DashboardPage title={t("title")} description={t("description")}>
-      <UsersManagementPanel />
+      <SettingsPageLayout />
     </DashboardPage>
   );
 }

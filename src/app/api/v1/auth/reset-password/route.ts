@@ -1,17 +1,23 @@
 import bcrypt from "bcryptjs";
 import { AuthTokenPurpose } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
+import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { resetPasswordSchema } from "@/lib/validators/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const { rateLimit } = await import("@/lib/api/rate-limit");
+  const limited = await rateLimit("auth");
+  if (limited) return limited;
+
+  const apiT = await getApiT(request);
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("INVALID_JSON", "Corpo JSON inválido.", 400);
+    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
   }
 
   const parsed = resetPasswordSchema.safeParse(body);
@@ -32,15 +38,15 @@ export async function POST(request: Request) {
     (row.purpose !== AuthTokenPurpose.PASSWORD_RESET &&
       row.purpose !== AuthTokenPurpose.INVITE_SET_PASSWORD)
   ) {
-    return jsonError("INVALID_TOKEN", "Link inválido ou já utilizado.", 400);
+    return jsonError("INVALID_TOKEN", apiT("errors.invalidLinkOrUsed"), 400);
   }
 
   if (row.expiresAt < new Date()) {
-    return jsonError("TOKEN_EXPIRED", "Link expirado. Solicite um novo.", 400);
+    return jsonError("TOKEN_EXPIRED", apiT("errors.linkExpired"), 400);
   }
 
   if (row.purpose === AuthTokenPurpose.PASSWORD_RESET && !row.user.passwordHash) {
-    return jsonError("INVALID_TOKEN", "Use o fluxo de convite para definir a primeira senha.", 400);
+    return jsonError("INVALID_TOKEN", apiT("errors.useInviteForFirstPassword"), 400);
   }
 
   const passwordHash = await bcrypt.hash(newPassword, 12);
@@ -60,6 +66,6 @@ export async function POST(request: Request) {
   ]);
 
   return jsonSuccess({
-    message: "Senha definida com sucesso. Você já pode entrar.",
+    message: apiT("success.passwordResetDone"),
   });
 }

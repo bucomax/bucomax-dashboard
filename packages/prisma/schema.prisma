@@ -1,5 +1,6 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
@@ -23,25 +24,39 @@ enum AuthTokenPurpose {
   INVITE_SET_PASSWORD
 }
 
+enum NotificationType {
+  sla_critical
+  sla_warning
+  stage_transition
+  new_patient
+  checklist_complete
+}
+
 model User {
-  id               String    @id @default(cuid())
-  name             String?
-  email            String    @unique
-  emailVerified    DateTime?
-  image            String?
-  passwordHash     String?
-  globalRole       GlobalRole @default(user)
-  activeTenantId   String?
-  activeTenant     Tenant?   @relation("UserActiveTenant", fields: [activeTenantId], references: [id], onDelete: SetNull)
-  accounts         Account[]
-  sessions         Session[]
-  memberships      TenantMembership[]
-  authTokens         UserAuthToken[]
-  fileAssets         FileAsset[]
-  stageTransitions   StageTransition[]
-  deletedAt        DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                                String                        @id @default(cuid())
+  name                              String?
+  email                             String                        @unique
+  emailVerified                     DateTime?
+  image                             String?
+  passwordHash                      String?
+  globalRole                        GlobalRole                    @default(user)
+  activeTenantId                    String?
+  activeTenant                      Tenant?                       @relation("UserActiveTenant", fields: [activeTenantId], references: [id], onDelete: SetNull)
+  accounts                          Account[]
+  sessions                          Session[]
+  memberships                       TenantMembership[]
+  authTokens                        UserAuthToken[]
+  fileAssets                        FileAsset[]
+  stageTransitions                  StageTransition[]
+  checklistCompletions              PatientPathwayChecklistItem[] @relation("ChecklistCompletedBy")
+  patientNotesAuthored              PatientNote[]                 @relation("PatientNoteAuthor")
+  assignedClients                   Client[]                      @relation("ClientAssignedTo")
+  notifications                     Notification[]
+  patientSelfRegisterInvitesCreated PatientSelfRegisterInvite[]   @relation("PatientSelfRegisterInviteCreator")
+  clientsSoftDeleted                Client[]                      @relation("ClientDeletedBy")
+  deletedAt                         DateTime?
+  createdAt                         DateTime                      @default(now())
+  updatedAt                         DateTime                      @updatedAt
 }
 
 model UserAuthToken {
@@ -95,121 +110,289 @@ model VerificationToken {
 }
 
 model Tenant {
-  id           String               @id @default(cuid())
-  name         String
-  slug         String               @unique
-  createdAt    DateTime             @default(now())
-  updatedAt    DateTime             @updatedAt
-  memberships  TenantMembership[]
-  activeUsers    User[]               @relation("UserActiveTenant")
-  authTokens     UserAuthToken[]
-  clients      Client[]
-  fileAssets   FileAsset[]
-  carePathways   CarePathway[]
-  patientPathways PatientPathway[]
+  id                         String                      @id @default(cuid())
+  name                       String
+  slug                       String                      @unique
+  /**
+   * Quando false, APIs de negócio e troca de contexto recusam este tenant (exceto gestão por super_admin).
+   */
+  isActive                   Boolean                     @default(true)
+  taxId                      String?
+  phone                      String?
+  addressLine                String?
+  city                       String?
+  postalCode                 String?
+  affiliatedHospitals        String?                     @db.Text
+  notifyCriticalAlerts       Boolean                     @default(true)
+  notifySurgeryReminders     Boolean                     @default(true)
+  notifyNewPatients          Boolean                     @default(true)
+  notifyWeeklyReport         Boolean                     @default(true)
+  notifyDocumentDelivery     Boolean                     @default(true)
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+  memberships                TenantMembership[]
+  activeUsers                User[]                      @relation("UserActiveTenant")
+  authTokens                 UserAuthToken[]
+  clients                    Client[]
+  fileAssets                 FileAsset[]
+  carePathways               CarePathway[]
+  patientPathways            PatientPathway[]
+  opmeSuppliers              OpmeSupplier[]
+  patientNotes               PatientNote[]
+  notifications              Notification[]
+  patientSelfRegisterInvites PatientSelfRegisterInvite[]
 }
 
-/** Paciente / cliente da clínica (escopo por tenant). */
+/**
+ * Paciente / cliente da clínica (escopo por tenant).
+ */
 model Client {
-  id              String    @id @default(cuid())
-  tenantId        String
-  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name            String
-  phone           String
-  caseDescription String?   @db.Text
-  documentId      String?
-  deletedAt       DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  files           FileAsset[]
-  patientPathway  PatientPathway?
+  id               String           @id @default(cuid())
+  tenantId         String
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name             String
+  phone            String
+  email            String?
+  caseDescription  String?          @db.Text
+  documentId       String?
+  assignedToUserId String?
+  assignedTo       User?            @relation("ClientAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  opmeSupplierId   String?
+  opmeSupplier     OpmeSupplier?    @relation(fields: [opmeSupplierId], references: [id], onDelete: SetNull)
+  deletedAt        DateTime?
+  /**
+   * Usuário que executou o soft delete (auditoria).
+   */
+  deletedByUserId  String?
+  deletedBy        User?            @relation("ClientDeletedBy", fields: [deletedByUserId], references: [id], onDelete: SetNull)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  files            FileAsset[]
+  patientPathways  PatientPathway[]
+  patientNotes     PatientNote[]
 
   @@index([tenantId])
   @@index([tenantId, deletedAt])
+  @@index([deletedByUserId])
 }
 
-/** Jornada clínica (modelo por tenant). */
+/**
+ * Link temporário (QR) para o paciente preencher o próprio cadastro na clínica.
+ * Um token por convite; após uso (`usedAt`) não pode ser reutilizado.
+ */
+model PatientSelfRegisterInvite {
+  id              String    @id @default(cuid())
+  tenantId        String
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  token           String    @unique
+  expiresAt       DateTime
+  usedAt          DateTime?
+  createdByUserId String
+  createdBy       User      @relation("PatientSelfRegisterInviteCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  createdAt       DateTime  @default(now())
+
+  @@index([tenantId])
+}
+
+/**
+ * Nota clínica/operacional dedicada do paciente.
+ */
+model PatientNote {
+  id           String   @id @default(cuid())
+  tenantId     String
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  authorUserId String
+  author       User     @relation("PatientNoteAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  content      String   @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId, clientId, createdAt])
+  @@index([authorUserId])
+}
+
+/**
+ * Fornecedor OPME (catálogo por tenant).
+ */
+model OpmeSupplier {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  clients   Client[]
+
+  @@index([tenantId])
+}
+
+/**
+ * Jornada clínica (modelo por tenant).
+ */
 model CarePathway {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String
-  description String?  @db.Text
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  description String?          @db.Text
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
   versions    PathwayVersion[]
   patients    PatientPathway[]
 
   @@index([tenantId])
 }
 
-/** Versão do grafo (React Flow) + publicação. */
+/**
+ * Versão do grafo (React Flow) + publicação.
+ */
 model PathwayVersion {
-  id        String   @id @default(cuid())
-  pathwayId String
-  pathway   CarePathway @relation(fields: [pathwayId], references: [id], onDelete: Cascade)
-  version   Int
-  graphJson Json
-  published Boolean  @default(false)
-  createdAt DateTime @default(now())
-  stages    PathwayStage[]
+  id           String           @id @default(cuid())
+  pathwayId    String
+  pathway      CarePathway      @relation(fields: [pathwayId], references: [id], onDelete: Cascade)
+  version      Int
+  graphJson    Json
+  published    Boolean          @default(false)
+  createdAt    DateTime         @default(now())
+  stages       PathwayStage[]
   patientCases PatientPathway[]
 
   @@unique([pathwayId, version])
   @@index([pathwayId, published])
 }
 
-/** Etapa materializada (sincronizada ao publicar versão). */
+/**
+ * Etapa materializada (sincronizada ao publicar versão).
+ */
 model PathwayStage {
-  id               String   @id @default(cuid())
-  pathwayVersionId String
-  pathwayVersion   PathwayVersion @relation(fields: [pathwayVersionId], references: [id], onDelete: Cascade)
-  stageKey         String
-  name             String
-  sortOrder        Int      @default(0)
-  patientMessage   String?  @db.Text
+  id                String         @id @default(cuid())
+  pathwayVersionId  String
+  pathwayVersion    PathwayVersion @relation(fields: [pathwayVersionId], references: [id], onDelete: Cascade)
+  stageKey          String
+  name              String
+  sortOrder         Int            @default(0)
+  patientMessage    String?        @db.Text
+  /**
+   * Dias na etapa acima do qual UI pode marcar “atenção” (Bucomax / SLA).
+   */
+  alertWarningDays  Int?
+  /**
+   * Dias na etapa acima do qual UI pode marcar “crítico”.
+   */
+  alertCriticalDays Int?
 
-  currentPatients PatientPathway[] @relation("PatientCurrentStage")
-  transitionsFrom StageTransition[] @relation("TransitionFrom")
-  transitionsTo   StageTransition[] @relation("TransitionTo")
+  currentPatients PatientPathway[]            @relation("PatientCurrentStage")
+  transitionsFrom StageTransition[]           @relation("TransitionFrom")
+  transitionsTo   StageTransition[]           @relation("TransitionTo")
+  stageDocuments  StageDocument[]
+  checklistItems  PathwayStageChecklistItem[]
 
   @@unique([pathwayVersionId, stageKey])
   @@index([pathwayVersionId, sortOrder])
 }
 
-/** Paciente vinculado a uma versão publicada + etapa atual. */
-model PatientPathway {
-  id               String   @id @default(cuid())
-  tenantId         String
-  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  clientId         String   @unique
-  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  pathwayId        String
-  pathway          CarePathway @relation(fields: [pathwayId], references: [id], onDelete: Restrict)
-  pathwayVersionId String
-  pathwayVersion   PathwayVersion @relation(fields: [pathwayVersionId], references: [id], onDelete: Restrict)
-  currentStageId   String
-  currentStage     PathwayStage @relation("PatientCurrentStage", fields: [currentStageId], references: [id], onDelete: Restrict)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  transitions      StageTransition[]
+/**
+ * Documento do pacote de uma etapa (N:N etapa ↔ arquivo na biblioteca / R2).
+ */
+model StageDocument {
+  id             String       @id @default(cuid())
+  pathwayStageId String
+  pathwayStage   PathwayStage @relation(fields: [pathwayStageId], references: [id], onDelete: Cascade)
+  fileAssetId    String
+  fileAsset      FileAsset    @relation(fields: [fileAssetId], references: [id], onDelete: Cascade)
+  sortOrder      Int          @default(0)
 
-  @@index([tenantId])
-  @@index([pathwayId])
+  @@unique([pathwayStageId, fileAssetId])
+  @@index([pathwayStageId, sortOrder])
 }
 
-/** Auditoria de mudança de etapa + stub de dispatch (WhatsApp / IA). */
+/**
+ * Item de checklist configurado para uma etapa publicada.
+ */
+model PathwayStageChecklistItem {
+  id              String                        @id @default(cuid())
+  pathwayStageId  String
+  pathwayStage    PathwayStage                  @relation(fields: [pathwayStageId], references: [id], onDelete: Cascade)
+  label           String
+  sortOrder       Int                           @default(0)
+  createdAt       DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
+  progressEntries PatientPathwayChecklistItem[]
+
+  @@index([pathwayStageId, sortOrder])
+}
+
+/**
+ * Paciente vinculado a uma versão publicada + etapa atual.
+ */
+model PatientPathway {
+  id               String                        @id @default(cuid())
+  tenantId         String
+  tenant           Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId         String
+  client           Client                        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  pathwayId        String
+  pathway          CarePathway                   @relation(fields: [pathwayId], references: [id], onDelete: Restrict)
+  pathwayVersionId String
+  pathwayVersion   PathwayVersion                @relation(fields: [pathwayVersionId], references: [id], onDelete: Restrict)
+  currentStageId   String
+  currentStage     PathwayStage                  @relation("PatientCurrentStage", fields: [currentStageId], references: [id], onDelete: Restrict)
+  /**
+   * Momento em que o paciente entrou na etapa atual (para “dias na fase” e alertas).
+   */
+  enteredStageAt   DateTime                      @default(now())
+  /**
+   * Quando preenchido, a jornada está concluída (não aparece mais no kanban ativo).
+   */
+  completedAt      DateTime?
+  createdAt        DateTime                      @default(now())
+  updatedAt        DateTime                      @updatedAt
+  transitions      StageTransition[]
+  checklistItems   PatientPathwayChecklistItem[]
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([pathwayId])
+  @@index([pathwayVersionId, currentStageId])
+}
+
+/**
+ * Progresso do checklist por paciente dentro da jornada.
+ */
+model PatientPathwayChecklistItem {
+  id                String                    @id @default(cuid())
+  patientPathwayId  String
+  patientPathway    PatientPathway            @relation(fields: [patientPathwayId], references: [id], onDelete: Cascade)
+  checklistItemId   String
+  checklistItem     PathwayStageChecklistItem @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
+  completedAt       DateTime?
+  completedByUserId String?
+  completedByUser   User?                     @relation("ChecklistCompletedBy", fields: [completedByUserId], references: [id], onDelete: SetNull)
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+
+  @@unique([patientPathwayId, checklistItemId])
+  @@index([patientPathwayId])
+  @@index([checklistItemId])
+}
+
+/**
+ * Auditoria de mudança de etapa + stub de dispatch (WhatsApp / IA).
+ */
 model StageTransition {
-  id               String   @id @default(cuid())
+  id               String         @id @default(cuid())
   patientPathwayId String
   patientPathway   PatientPathway @relation(fields: [patientPathwayId], references: [id], onDelete: Cascade)
   fromStageId      String?
-  fromStage        PathwayStage? @relation("TransitionFrom", fields: [fromStageId], references: [id], onDelete: SetNull)
+  fromStage        PathwayStage?  @relation("TransitionFrom", fields: [fromStageId], references: [id], onDelete: SetNull)
   toStageId        String
-  toStage          PathwayStage @relation("TransitionTo", fields: [toStageId], references: [id], onDelete: Restrict)
+  toStage          PathwayStage   @relation("TransitionTo", fields: [toStageId], references: [id], onDelete: Restrict)
   actorUserId      String
-  actor            User @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
-  note             String? @db.Text
+  actor            User           @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+  note             String?        @db.Text
   dispatchStub     Json?
 
   createdAt DateTime @default(now())
@@ -217,32 +400,55 @@ model StageTransition {
   @@index([patientPathwayId])
 }
 
-/** Metadados de arquivo no R2 (upload via URL pré-assinada). */
+/**
+ * Metadados de arquivo no R2 (upload via URL pré-assinada).
+ */
 model FileAsset {
-  id           String   @id @default(cuid())
-  tenantId     String
-  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  r2Key        String   @unique
-  fileName     String
-  mimeType     String
-  sizeBytes    Int
-  uploadedById String
-  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
-  clientId     String?
-  client       Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  createdAt    DateTime @default(now())
+  id             String          @id @default(cuid())
+  tenantId       String
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  r2Key          String          @unique
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  uploadedById   String
+  uploadedBy     User            @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  clientId       String?
+  client         Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdAt      DateTime        @default(now())
+  stageDocuments StageDocument[]
 
   @@index([tenantId])
   @@index([clientId])
 }
 
 model TenantMembership {
-  id        String     @id @default(cuid())
-  userId    String
-  tenantId  String
-  role      TenantRole @default(tenant_user)
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id       String     @id @default(cuid())
+  userId   String
+  tenantId String
+  role     TenantRole @default(tenant_user)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([userId, tenantId])
+}
+
+/**
+ * Notificação in-app persistida por usuário.
+ */
+model Notification {
+  id        String           @id @default(cuid())
+  tenantId  String
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String?
+  metadata  Json?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@index([tenantId, createdAt])
 }

@@ -7,7 +7,7 @@ Ponto de entrada único: este arquivo **só agrega links** para os documentos po
 ## Decisão de produto (resumo)
 
 - **Cadastro de fases (Configurações):** apenas **drag-and-drop** para criar e **ordenar colunas** de forma dinâmica (lista de etapas ordenável + adicionar/remover colunas).
-- **Dashboard:** exibe **exatamente as colunas** definidas na configuração (versão publicada do fluxo), na mesma ordem.
+- **Dashboard (`index.html`):** ordem do mock = **métricas (4 cards) → alertas → barra de ações → filtros → pipeline (Kanban)** + modais. O **pipeline** segue **exatamente as colunas** da configuração (versão publicada), na mesma ordem — ver [pages/page-dashboard.md](./pages/page-dashboard.md) para a página inteira e [dashboard-kanban-dynamic-columns.md](./dashboard-kanban-dynamic-columns.md) só para o Kanban.
 
 ---
 
@@ -45,24 +45,28 @@ Resumo: **A** (editor DnD) e **B** (Kanban) não são “só front” — exigem
 |-------|-----------|--------|
 | **Banco (migrations)** | [database-backlog.md](./database-backlog.md) | O que criar/alterar no Prisma; P0–P3. |
 | **Ordem de execução** | [execution-plan.md](./execution-plan.md) | Fases 0–5; primeira etapa = API jornada + transição. |
+| **Lógica de negócio consolidada** | [business-logic.md](./business-logic.md) | Regras atuais de cadastro, jornada, bundle documental, responsável, OPME e gaps restantes. |
 | **Front × Back** | [frontend-backend-scope.md](./frontend-backend-scope.md) | Tabelas por entrega: o que o back expõe / o que o front implementa. |
 | **A — Editor de colunas (Configurações)** | [column-editor-drag-drop.md](./column-editor-drag-drop.md) | UI com DnD, adicionar/remover/renomear etapas, rascunho vs publicar, validações. |
-| **B — Dashboard Kanban** | [dashboard-kanban-dynamic-columns.md](./dashboard-kanban-dynamic-columns.md) | Colunas dinâmicas a partir da config, cards de paciente, filtros, DnD entre colunas → transição. |
+| **B — Pipeline (Kanban) no dashboard** | [dashboard-kanban-dynamic-columns.md](./dashboard-kanban-dynamic-columns.md) | Subseção “Visão por etapas”: colunas dinâmicas, cards, DnD → transição. Métricas/alertas/ações: [pages/page-dashboard.md](./pages/page-dashboard.md). |
 | **C — Persistência, API e transições** | [persistence-api-and-transitions.md](./persistence-api-and-transitions.md) | `PathwayStage.sortOrder`, `PathwayVersion`, `graphJson` enxuto ou só estágios, endpoints, use case de transição. |
 | **D — Referência visual e gaps gerais** | [../BUCOMAX-INTERFACES-AND-DATA.md](../BUCOMAX-INTERFACES-AND-DATA.md) | Mocks `arquivos-interfaces`, tema Shadcn, gaps de banco complementares (SLA, OPME, etc.). |
 | **E — Arquitetura do monorepo** | [../ARCHITECTURE.md](../ARCHITECTURE.md) | Multi-tenant, §8 modelo de dados, RBAC. |
+| **Listagens e filtros** | [listings-pagination-and-filters.md](./listings-pagination-and-filters.md) | Paginação obrigatória (incl. cards por coluna do Kanban e lista DnD de etapas acima de limite); filtros por página mock. |
 
 ---
 
 ## Ordem sugerida de leitura para implementação
 
 1. [execution-plan.md](./execution-plan.md) — **por onde começar** e fases.  
-2. [database-backlog.md](./database-backlog.md) — o que migrar no banco e quando.  
-3. [frontend-backend-scope.md](./frontend-backend-scope.md) — divisão FE/BE por fatia.  
-4. [persistence-api-and-transitions.md](./persistence-api-and-transitions.md) — contrato publicar/transicionar.  
-5. [column-editor-drag-drop.md](./column-editor-drag-drop.md) + [dashboard-kanban-dynamic-columns.md](./dashboard-kanban-dynamic-columns.md).  
-6. [`pages/README.md`](./pages/README.md) — detalhe por página do mock.  
-7. [../BUCOMAX-INTERFACES-AND-DATA.md](../BUCOMAX-INTERFACES-AND-DATA.md) — tema e gaps gerais.
+2. [business-logic.md](./business-logic.md) — regras consolidadas que o código já aplica.  
+3. [database-backlog.md](./database-backlog.md) — o que migrar no banco e quando.  
+4. [frontend-backend-scope.md](./frontend-backend-scope.md) — divisão FE/BE por fatia.  
+5. [persistence-api-and-transitions.md](./persistence-api-and-transitions.md) — contrato publicar/transicionar.  
+6. [column-editor-drag-drop.md](./column-editor-drag-drop.md) + [dashboard-kanban-dynamic-columns.md](./dashboard-kanban-dynamic-columns.md) + [pages/page-dashboard.md](./pages/page-dashboard.md) (escopo completo do `index.html`).  
+7. [`pages/README.md`](./pages/README.md) — detalhe por página do mock.  
+8. [listings-pagination-and-filters.md](./listings-pagination-and-filters.md) — paginação e filtros.  
+9. [../BUCOMAX-INTERFACES-AND-DATA.md](../BUCOMAX-INTERFACES-AND-DATA.md) — tema e gaps gerais.
 
 ---
 

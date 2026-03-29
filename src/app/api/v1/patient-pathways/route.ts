@@ -1,34 +1,30 @@
 import { prisma } from "@/infrastructure/database/prisma";
+import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
+import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
+import {
+  assertActiveTenantMembership,
+  getActiveTenantIdOr400,
+  requireSessionOr401,
+} from "@/lib/auth/guards";
+import { buildStageDispatchStub, getStageDocumentBundle } from "@/lib/pathway/stage-document-bundle";
 import { postPatientPathwayBodySchema } from "@/lib/validators/pathway";
 
 export const dynamic = "force-dynamic";
 
-function dispatchStub(input: {
-  tenantId: string;
-  clientId: string;
-  stageId: string;
-  stageName: string;
-}) {
-  return {
-    event: "patient.stage_changed",
-    ...input,
-    documents: [] as string[],
-    channel: "whatsapp_stub",
-  };
-}
-
-export async function GET() {
-  const auth = await requireSessionOr401();
+export async function GET(request: Request) {
+  const apiT = await getApiT(request);
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
-  const ctx = getActiveTenantIdOr400(auth.session!);
+  const ctx = await getActiveTenantIdOr400(auth.session!, request, apiT);
   if (ctx.response) return ctx.response;
   const { tenantId } = ctx;
+  const forbidden = await assertActiveTenantMembership(auth.session!, tenantId, request, apiT);
+  if (forbidden) return forbidden;
 
   const rows = await prisma.patientPathway.findMany({
-    where: { tenantId },
+    where: { tenantId, completedAt: null },
     orderBy: { updatedAt: "desc" },
     include: {
       client: { select: { id: true, name: true, phone: true } },
@@ -44,6 +40,7 @@ export async function GET() {
       client: r.client,
       pathway: r.pathway,
       currentStage: r.currentStage,
+      enteredStageAt: r.enteredStageAt.toISOString(),
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
     })),
@@ -51,19 +48,22 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireSessionOr401();
+  const apiT = await getApiT(request);
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
-  const ctx = getActiveTenantIdOr400(auth.session!);
+  const ctx = await getActiveTenantIdOr400(auth.session!, request, apiT);
   if (ctx.response) return ctx.response;
   const { tenantId } = ctx;
+  const forbidden = await assertActiveTenantMembership(auth.session!, tenantId, request, apiT);
+  if (forbidden) return forbidden;
   const actorUserId = auth.session!.user.id;
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("INVALID_JSON", "Corpo JSON inválido.", 400);
+    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
   }
 
   const parsed = postPatientPathwayBodySchema.safeParse(body);
@@ -78,15 +78,15 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   if (!client) {
-    return jsonError("NOT_FOUND", "Paciente não encontrado neste tenant.", 404);
+    return jsonError("NOT_FOUND", apiT("errors.patientNotFoundInTenant"), 404);
   }
 
-  const existing = await prisma.patientPathway.findUnique({
-    where: { clientId },
+  const activePathway = await prisma.patientPathway.findFirst({
+    where: { clientId, completedAt: null },
     select: { id: true },
   });
-  if (existing) {
-    return jsonError("CONFLICT", "Este paciente já está em uma jornada.", 409);
+  if (activePathway) {
+    return jsonError("CONFLICT", apiT("errors.patientAlreadyInJourney"), 409);
   }
 
   const pathway = await prisma.carePathway.findFirst({
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   if (!pathway) {
-    return jsonError("NOT_FOUND", "Jornada não encontrada.", 404);
+    return jsonError("NOT_FOUND", apiT("errors.pathwayNotFound"), 404);
   }
 
   const publishedVersion = await prisma.pathwayVersion.findFirst({
@@ -105,16 +105,13 @@ export async function POST(request: Request) {
     },
   });
   if (!publishedVersion || publishedVersion.stages.length === 0) {
-    return jsonError(
-      "CONFLICT",
-      "Não há versão publicada com etapas para esta jornada. Publique uma versão primeiro.",
-      409,
-    );
+    return jsonError("CONFLICT", apiT("errors.noPublishedVersionWithStages"), 409);
   }
 
   const firstStage = publishedVersion.stages[0]!;
 
   const result = await prisma.$transaction(async (tx) => {
+    const now = new Date();
     const pp = await tx.patientPathway.create({
       data: {
         tenantId,
@@ -122,6 +119,7 @@ export async function POST(request: Request) {
         pathwayId,
         pathwayVersionId: publishedVersion.id,
         currentStageId: firstStage.id,
+        enteredStageAt: now,
       },
       include: {
         currentStage: true,
@@ -129,6 +127,7 @@ export async function POST(request: Request) {
         client: { select: { id: true, name: true, phone: true } },
       },
     });
+    const documents = await getStageDocumentBundle(tx, firstStage.id);
 
     await tx.stageTransition.create({
       data: {
@@ -136,17 +135,32 @@ export async function POST(request: Request) {
         fromStageId: null,
         toStageId: firstStage.id,
         actorUserId,
-        dispatchStub: dispatchStub({
+        dispatchStub: buildStageDispatchStub({
           tenantId,
           clientId,
           stageId: firstStage.id,
           stageName: firstStage.name,
+          documents,
         }),
       },
     });
 
     return pp;
   });
+
+  notificationEmitter.emit({
+    tenantId,
+    type: "new_patient",
+    title: `Novo paciente: ${result.client.name}`,
+    body: `Jornada "${result.pathway.name}" iniciada na etapa ${result.currentStage.name}.`,
+    correlationId: result.id,
+    metadata: {
+      clientId: result.clientId,
+      patientPathwayId: result.id,
+      pathwayName: result.pathway.name,
+      stageName: result.currentStage.name,
+    },
+  }).catch((err) => console.error("[notification] new_patient emit failed:", err));
 
   return jsonSuccess(
     {
@@ -155,6 +169,7 @@ export async function POST(request: Request) {
         client: result.client,
         pathway: result.pathway,
         currentStage: result.currentStage,
+        enteredStageAt: result.enteredStageAt.toISOString(),
         createdAt: result.createdAt.toISOString(),
       },
     },

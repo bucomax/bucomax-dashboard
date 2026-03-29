@@ -42,7 +42,10 @@ export const authOptions: NextAuthOptions = {
       if (user?.id) {
         token.userId = user.id;
       }
-      const uid = (token.userId ?? user?.id) as string | undefined;
+      if (!token.userId && token.sub) {
+        token.userId = token.sub;
+      }
+      const uid = (token.userId ?? user?.id ?? token.sub) as string | undefined;
       if (uid) {
         const row = await prisma.user.findFirst({
           where: { id: uid, deletedAt: null },
@@ -62,15 +65,17 @@ export const authOptions: NextAuthOptions = {
         session.expires = new Date(0).toISOString();
         return session;
       }
-      if (!session.user || !token.userId) return session;
+      const userId = (token.userId ?? token.sub) as string | undefined;
+      if (!session.user || !userId) return session;
 
-      session.user.id = token.userId as string;
+      session.user.id = userId;
       session.user.globalRole = (token.globalRole as string) ?? "user";
       session.user.tenantId = null;
       session.user.tenantRole = null;
+      session.user.tenantName = null;
 
       const row = await prisma.user.findFirst({
-        where: { id: token.userId as string, deletedAt: null },
+        where: { id: userId, deletedAt: null },
         select: { activeTenantId: true, globalRole: true },
       });
 
@@ -79,21 +84,30 @@ export const authOptions: NextAuthOptions = {
       const membership = await prisma.tenantMembership.findUnique({
         where: {
           userId_tenantId: {
-            userId: token.userId as string,
+            userId,
             tenantId: row.activeTenantId,
           },
+        },
+        include: {
+          tenant: { select: { name: true } },
         },
       });
 
       if (membership) {
         session.user.tenantId = membership.tenantId;
         session.user.tenantRole = membership.role;
+        session.user.tenantName = membership.tenant.name;
         return session;
       }
 
       if (row.globalRole === "super_admin") {
         session.user.tenantId = row.activeTenantId;
         session.user.tenantRole = null;
+        const tenant = await prisma.tenant.findUnique({
+          where: { id: row.activeTenantId },
+          select: { name: true },
+        });
+        session.user.tenantName = tenant?.name ?? null;
       }
 
       return session;

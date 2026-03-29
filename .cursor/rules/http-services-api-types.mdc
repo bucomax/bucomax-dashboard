@@ -1,0 +1,34 @@
+---
+description: DTOs HTTP em src/types/api; services sem tipos inline; reexport na feature
+globs: src/types/api/**/*.ts,**/services/*.service.ts,**/app/services/*.ts
+alwaysApply: false
+---
+
+# Contratos HTTP (`src/types/api`) e services
+
+## Onde fica cada coisa
+
+- **`src/types/api/<domínio>-v1.ts`** — tipos de request/response alinhados ao envelope `{ success, data, meta }` e às rotas `/api/v1/...`: DTOs de entidade usados no JSON, `*QueryParams`, `*ResponseData` (corpo interno de `data`), etc.
+- **`src/features/<feature>/app/types/api.ts`** — barrel que reexporta `export type * from "@/types/api/<arquivo>"` quando a feature é dona do contrato no front, para imports estáveis (`@/features/.../types/api`).
+- **`src/features/**/services/*.service.ts`** — **apenas** funções que chamam `apiClient` / HTTP. **Não** declarar `type`/`interface` locais de contrato; importar de `@/types/api/...` (ou do barrel da feature).
+
+## Nomes
+
+- Query string: sufixo **`QueryParams`** (ex.: `ListClientsQueryParams`).
+- Corpo `data` de sucesso: sufixo **`ResponseData`** (ex.: `ClientsListResponseData`, `ClientDetailResponseData`).
+- Reutilizar tipos de domínio compartilhados (`ApiPagination`, `SlaHealthStatus`) em vez de duplicar unions.
+
+## Paginação
+
+- Listas paginadas seguem `data[]` + `pagination` (`buildPagination` em `@/lib/api/pagination`).
+
+## Objetivo (SOLID)
+
+- **SRP:** o service é o adaptador HTTP; os tipos são contrato estável testável e reutilizável em hooks e componentes.
+- Evita acoplamento “tipo escondido no .service.ts” e mantém paridade com a regra geral em `code-organization.mdc` (DTOs em `src/types/api/`).
+
+## Toasts globais (`apiClient`)
+
+- **`src/lib/api/http-client.ts`:** em falhas de rede/HTTP, exibe **`toast.error`** com mensagem normalizada (`normalizeApiError` em `axios-error.ts`). Sucesso opcional: passe **`toastSuccessMessage`** no config da requisição.
+- **`skipErrorToast: true`** no config para chamadas auxiliares (ex.: breadcrumb, prefetch) ou quando a UI já trata o erro de forma específica — evitar toast duplicado.
+- Em **Client Components**, não repetir `toast.error` no `catch` só para propagar mensagem da API; o interceptor já cobre. Mantém `toast.error` para **validação local** (formulário) e mensagens que não vêm de `apiClient`.

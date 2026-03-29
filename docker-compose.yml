@@ -1,15 +1,33 @@
+name: bucomax
+
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: idoctor
-      POSTGRES_PASSWORD: idoctor
-      POSTGRES_DB: idoctor
+      POSTGRES_USER: bucomax
+      POSTGRES_PASSWORD: bucomax
+      POSTGRES_DB: bucomax
     ports:
       - "5432:5432"
     volumes:
-      - idoctor_pg:/var/lib/postgresql/data
+      - bucomax_pg:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --maxclients 1000
+      --save 60 100
+      --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - bucomax_redis:/data
 
 volumes:
-  idoctor_pg:
+  bucomax_pg:
+  bucomax_redis:

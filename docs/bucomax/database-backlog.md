@@ -24,10 +24,12 @@ Com isso já é possível um **MVP** de listar estágios publicados + pacientes 
 
 ## P0 — Recomendado antes ou junto ao Kanban “completo” operacional
 
+**Implementado no schema + migration `20260328120000_pathway_sla_entered_stage_at`** (aplicar migrate no ambiente).
+
 | # | Mudança | Model/campo | Motivo | Páginas / features |
 |---|---------|-------------|--------|---------------------|
 | P0.1 | Data de entrada na etapa atual | `PatientPathway.enteredStageAt` `DateTime` (atualizar em toda transição) | “Dias na fase”, alertas, status ok/warning/danger | Dashboard, lista, detalhe, relatórios |
-| P0.2 | SLA por etapa (MVP) | `PathwayStage` campo opcional `Json? metadata` **ou** colunas `alertWarningDays Int?`, `alertCriticalDays Int?` | Limiares por coluna sem tabela extra | Dashboard alertas, config fases |
+| P0.2 | SLA por etapa (MVP) | `PathwayStage.alertWarningDays`, `alertCriticalDays` opcionais | Limiares por coluna; podem vir do `graphJson` ao publicar | Dashboard alertas, config fases |
 
 *Índice sugerido:* `(tenantId)` já em entidades filhas; em `PatientPathway` considerar índice para queries Kanban `(pathwayVersionId, currentStageId)` se ainda não houver.
 
@@ -37,9 +39,9 @@ Com isso já é possível um **MVP** de listar estágios publicados + pacientes 
 
 | # | Mudança | Model/campo | Motivo | Páginas |
 |---|---------|-------------|--------|---------|
-| P1.1 | E-mail do paciente | `Client.email String?` | Lista/tabela e detalhe | `page-patients-list`, `page-patient-detail` |
-| P1.2 | Responsável | `Client.assignedToUserId String?` → `User` | Mock “responsável” | Dashboard modal, detalhe |
-| P1.3 | Fornecedor OPME | Nova `OpmeSupplier` (`id`, `tenantId`, `name`, `active`) + `Client.opmeSupplierId String?` | Filtros e badges OPME | Dashboard, lista, relatórios, settings |
+| P1.1 | E-mail do paciente | `Client.email String?` | Lista/tabela e detalhe | `page-patients-list`, `page-patient-detail` — **implementado** |
+| P1.2 | Responsável | `Client.assignedToUserId String?` → `User` | Mock “responsável” | Dashboard modal, detalhe — **implementado** |
+| P1.3 | Fornecedor OPME | Nova `OpmeSupplier` (`id`, `tenantId`, `name`, `active`) + `Client.opmeSupplierId String?` | Filtros e badges OPME | Dashboard, lista, relatórios, settings — **implementado** (cadastro rápido na ficha para `tenant_admin`) |
 | P1.4 | Dados da clínica | `Tenant` campos extras **ou** `TenantSettings Json` / model `TenantClinicProfile` | CNPJ, endereço, hospitais | `page-settings` clínica |
 
 ---
@@ -48,9 +50,9 @@ Com isso já é possível um **MVP** de listar estágios publicados + pacientes 
 
 | # | Mudança | Motivo |
 |---|---------|--------|
-| P2.1 | `StageDocument` (etapa ↔ arquivo/template ordenado) | Preview no modal de fase, pacote no envio |
+| P2.1 | `StageDocument` (etapa ↔ arquivo/template ordenado) | Preview no modal de fase, pacote no envio — **modelo + API POST + detalhe GET**; associar arquivos: `POST /api/v1/stage-documents` |
 | P2.2 | Evolução de `ChannelDispatch` / tabela dedicada | Rastrear envio WhatsApp, status |
-| P2.3 | Ligação estágio ↔ checklist template | Checklist no detalhe do paciente |
+| P2.3 | Ligação estágio ↔ checklist template (**feito**) | Checklist no detalhe do paciente |
 
 *(Nomes exatos alinhar com `docs/ARCHITECTURE.md` na hora de modelar.)*
 
@@ -60,8 +62,8 @@ Com isso já é possível um **MVP** de listar estágios publicados + pacientes 
 
 | # | Mudança | Motivo |
 |---|---------|--------|
-| P3.1 | `PathwayStageChecklistItem` + progresso por `PatientPathway` | UI checklist do mock |
-| P3.2 | `PatientNote` ou notas versionadas | Anotações no detalhe |
+| P3.1 | `PathwayStageChecklistItem` + progresso por `PatientPathway` (**feito**) | UI checklist do mock |
+| P3.2 | `PatientNote` ou notas versionadas (**feito**) | Anotações no detalhe |
 | P3.3 | `InsuranceAuthorization` ou campos em `Client` | Alerta “prazo convênio” |
 | P3.4 | Eventos de cirurgia / datas agendadas | KPIs “cirurgias agendadas/realizadas” nos relatórios |
 

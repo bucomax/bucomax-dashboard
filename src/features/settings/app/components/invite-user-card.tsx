@@ -1,30 +1,21 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { sendAdminInvite } from "@/features/settings/app/services/admin-invites.service";
+import { useAdminInvite } from "@/features/settings/app/hooks/use-admin-invite";
 import { inviteUserFormSchema, type InviteUserFormValues } from "@/features/settings/app/utils/schemas";
 import { toast } from "@/lib/toast";
 import { Form, FormInput, FormSelect } from "@/shared/components/forms";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Loader2 } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { Loader2, Send } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 
 export function InviteUserCard() {
   const t = useTranslations("settings.invites");
-  const { data: session, status } = useSession();
-
-  const tenantId = session?.user?.tenantId ?? null;
-  const tenantRole = session?.user?.tenantRole ?? null;
-  const globalRole = session?.user?.globalRole ?? null;
-
-  const canInvite = Boolean(
-    tenantId && (tenantRole === "tenant_admin" || globalRole === "super_admin"),
-  );
+  const { canInvite, submitInvite, sessionStatus } = useAdminInvite();
 
   const roleOptions = useMemo(
     () => [
@@ -44,12 +35,10 @@ export function InviteUserCard() {
   });
 
   async function onSubmit(values: InviteUserFormValues) {
-    if (!tenantId) return;
     try {
-      const result = await sendAdminInvite({
+      const result = await submitInvite({
         email: values.email.trim(),
         name: values.name?.trim() || undefined,
-        tenantId,
         role: values.role,
       });
       toast.success(t("success"));
@@ -57,8 +46,8 @@ export function InviteUserCard() {
       if (result.email) {
         toast.message(t("sentTo", { email: result.email }));
       }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("genericError"));
+    } catch {
+      /* erro: toast global no apiClient */
     }
   }
 
@@ -71,7 +60,7 @@ export function InviteUserCard() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col">
           <CardContent className="space-y-4">
-            {status === "loading" ? (
+            {sessionStatus === "loading" ? (
               <Alert>
                 <AlertDescription>{t("loadingSession")}</AlertDescription>
               </Alert>
@@ -105,7 +94,7 @@ export function InviteUserCard() {
           </CardContent>
           <CardFooter className="justify-end border-t pt-4 mt-6">
             <Button type="submit" disabled={!canInvite || form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+              {form.formState.isSubmitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
               {t("submit")}
             </Button>
           </CardFooter>

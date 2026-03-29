@@ -6,12 +6,12 @@
   "brand": "Bucomax",
   "home": {
     "title": "Bucomax",
-    "subtitle": "Plataforma em desenvolvimento. Use login para acessar o dashboard ou abra a documentação da API.",
+    "subtitle": "Orquestração de jornadas clínicas e acompanhamento do paciente. Entre para acessar o seu espaço de trabalho.",
     "login": "Entrar",
-    "apiDocs": "API (Scalar)",
-    "healthLink": "GET /api/v1/health"
+    "loginHint": "Já tem acesso? Use o botão abaixo."
   },
   "locale": {
+    "ariaLabel": "Idioma",
     "ptBR": "Português (Brasil)",
     "en": "English"
   }

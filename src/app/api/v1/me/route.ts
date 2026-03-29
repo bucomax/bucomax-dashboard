@@ -1,4 +1,5 @@
 import { prisma } from "@/infrastructure/database/prisma";
+import { getApiT, type ApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { requireSessionOr401 } from "@/lib/auth/guards";
 import { getSession } from "@/lib/auth/session";
@@ -6,7 +7,7 @@ import { patchMeBodySchema } from "@/lib/validators/profile";
 
 export const dynamic = "force-dynamic";
 
-async function getActiveUserOr401(sessionUserId: string) {
+async function getActiveUserOr401(sessionUserId: string, apiT: ApiT) {
   const user = await prisma.user.findFirst({
     where: { id: sessionUserId, deletedAt: null },
     select: {
@@ -21,18 +22,19 @@ async function getActiveUserOr401(sessionUserId: string) {
     },
   });
   if (!user) {
-    return { user: null, response: jsonError("UNAUTHORIZED", "Conta inválida ou desativada.", 401) };
+    return { user: null, response: jsonError("UNAUTHORIZED", apiT("errors.accountInvalid"), 401) };
   }
   return { user, response: null };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const apiT = await getApiT(request);
   const session = await getSession();
   if (!session?.user?.id) {
-    return jsonError("UNAUTHORIZED", "Sessão ausente ou inválida.", 401);
+    return jsonError("UNAUTHORIZED", apiT("errors.sessionInvalid"), 401);
   }
 
-  const { user, response } = await getActiveUserOr401(session.user.id);
+  const { user, response } = await getActiveUserOr401(session.user.id, apiT);
   if (response) return response;
 
   const membership = user.activeTenantId
@@ -70,14 +72,15 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const auth = await requireSessionOr401();
+  const apiT = await getApiT(request);
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("INVALID_JSON", "Corpo JSON inválido.", 400);
+    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
   }
 
   const parsed = patchMeBodySchema.safeParse(body);
@@ -85,7 +88,7 @@ export async function PATCH(request: Request) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const { user, response } = await getActiveUserOr401(auth.session!.user.id);
+  const { user, response } = await getActiveUserOr401(auth.session!.user.id, apiT);
   if (response) return response;
 
   const data: { name?: string | null; image?: string | null } = {};
@@ -95,7 +98,7 @@ export async function PATCH(request: Request) {
   }
 
   if (Object.keys(data).length === 0) {
-    return jsonError("VALIDATION_ERROR", "Nenhum campo para atualizar.", 422);
+    return jsonError("VALIDATION_ERROR", apiT("errors.noFieldsToUpdate"), 422);
   }
 
   const updated = await prisma.user.update({
@@ -115,11 +118,12 @@ export async function PATCH(request: Request) {
 }
 
 /** Soft delete da própria conta (invalida sessões persistidas no Prisma Adapter). */
-export async function DELETE() {
-  const auth = await requireSessionOr401();
+export async function DELETE(request: Request) {
+  const apiT = await getApiT(request);
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
-  const { user, response } = await getActiveUserOr401(auth.session!.user.id);
+  const { user, response } = await getActiveUserOr401(auth.session!.user.id, apiT);
   if (response) return response;
 
   const now = new Date();
@@ -131,5 +135,5 @@ export async function DELETE() {
     }),
   ]);
 
-  return jsonSuccess({ message: "Conta desativada." });
+  return jsonSuccess({ message: apiT("success.accountDeactivated") });
 }

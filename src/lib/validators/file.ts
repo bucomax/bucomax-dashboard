@@ -13,3 +13,7 @@ export const postFileRegisterBodySchema = z.object({
   sizeBytes: z.number().int().positive().max(500 * 1024 * 1024),
   clientId: z.string().cuid().optional(),
 });
+
+export const postFileDownloadPresignBodySchema = z.object({
+  fileId: z.string().cuid(),
+});

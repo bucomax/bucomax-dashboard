@@ -27,12 +27,20 @@
     "title": "Zona de risco",
     "description": "Desativar sua conta encerra a sessão e impede novos logins.",
     "confirmLabel": "Desativar minha conta",
-    "confirmHelp": "Esta ação desativa o acesso (soft delete). Para voltar, será preciso suporte.",
+    "cardHint": "Só use esta opção se tiver certeza. Para recuperar o acesso depois, será necessário falar com o suporte.",
     "openConfirm": "Desativar conta",
+    "dialogTitle": "Desativar conta",
+    "dialogDescription": "Confirme se deseja desativar seu usuário neste sistema.",
+    "dialogAlertTitle": "Esta ação é séria",
+    "dialogAlertBody": "Você perderá o acesso ao painel imediatamente após confirmar e não poderá entrar de novo com este usuário até que o suporte reative a conta, se aplicável.",
+    "typeWordLabel": "Digite {word} para confirmar",
+    "confirmWord": "deletar",
     "cancel": "Cancelar",
-    "confirm": "Sim, desativar",
+    "confirm": "Confirmar desativação",
+    "deleting": "Desativando…",
     "success": "Conta desativada.",
-    "pending": "Desativando…"
+    "pending": "Desativando…",
+    "genericError": "Não foi possível desativar a conta. Tente novamente."
   },
   "members": {
     "title": "Equipe do tenant",

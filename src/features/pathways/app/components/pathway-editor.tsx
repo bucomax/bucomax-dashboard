@@ -14,99 +14,65 @@ import {
   type Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import {
-  getPathway,
-  getPathwayVersion,
-  patchPathwayVersionDraft,
-  postPathwayVersion,
-  publishPathwayVersion,
-} from "@/features/pathways/app/services/pathways.service";
-import { createDefaultPathwayGraph } from "@/features/pathways/app/utils/default-graph";
+import { PathwayStageChecklistBlock } from "@/features/pathways/app/components/pathway-stage-checklist-block";
+import { usePathwayDraftVersion } from "@/features/pathways/app/hooks/use-pathway-draft-version";
+import { parsePathwayGraph } from "@/features/pathways/app/utils/pathway-graph";
+import { updatePathwayStageNodeChecklistItems } from "@/features/pathways/app/utils/pathway-stage-nodes";
+import type { PathwayEditorProps, SelectedPathwayNodeUpdate } from "@/features/pathways/types/components";
+import type { StageSlaField } from "@/features/pathways/types/column-editor";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
+import { LabeledNonNegativeIntegerUnitField } from "@/shared/components/forms";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/shared/components/ui/card";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
 import { Field, FieldLabel } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Rocket, Save, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useTheme } from "next-themes";
 import { useCallback, useEffect, useState } from "react";
-
-type PathwayEditorProps = {
-  pathwayId: string;
-};
-
-function parseGraph(graphJson: unknown): { nodes: Node[]; edges: Edge[] } {
-  const g = graphJson as { nodes?: Node[]; edges?: Edge[] };
-  return {
-    nodes: Array.isArray(g.nodes) ? g.nodes : [],
-    edges: Array.isArray(g.edges) ? g.edges : [],
-  };
-}
 
 function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
   const t = useTranslations("pathways.editor");
-  const [loading, setLoading] = useState(true);
-  const [versionId, setVersionId] = useState<string | null>(null);
-  const [versionNumber, setVersionNumber] = useState<number | null>(null);
+  const tCol = useTranslations("pathways.columnEditor");
+  const { resolvedTheme } = useTheme();
+  const reactFlowColorMode = resolvedTheme === "dark" ? "dark" : "light";
+  const {
+    loading,
+    error,
+    versionId,
+    graphJson,
+    pathwayName,
+    setPathwayName,
+    saving,
+    publishing,
+    saveDraft,
+    publishDraft,
+    reload,
+  } = usePathwayDraftVersion(pathwayId);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [publishing, setPublishing] = useState(false);
 
   const selectedNode = nodes.find((n) => n.id === selectedId) ?? null;
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const pathway = await getPathway(pathwayId);
-      const drafts = pathway.versions.filter((v) => !v.published).sort((a, b) => b.version - a.version);
-      let vid: string;
-      let vNum: number;
-
-      if (drafts[0]) {
-        vid = drafts[0].id;
-        const detail = await getPathwayVersion(pathwayId, vid);
-        vNum = detail.version;
-        const parsed = parseGraph(detail.graphJson);
-        setNodes(parsed.nodes);
-        setEdges(parsed.edges);
-      } else {
-        const publishedList = pathway.versions.filter((v) => v.published).sort((a, b) => b.version - a.version);
-        if (publishedList[0]) {
-          const prev = await getPathwayVersion(pathwayId, publishedList[0].id);
-          const created = await postPathwayVersion(pathwayId, prev.graphJson);
-          vid = created.id;
-          vNum = created.version;
-          const parsed = parseGraph(prev.graphJson);
-          setNodes(parsed.nodes);
-          setEdges(parsed.edges);
-        } else {
-          const empty = createDefaultPathwayGraph();
-          const created = await postPathwayVersion(pathwayId, empty);
-          vid = created.id;
-          vNum = created.version;
-          const parsed = parseGraph(empty);
-          setNodes(parsed.nodes);
-          setEdges(parsed.edges);
-        }
-      }
-
-      setVersionId(vid);
-      setVersionNumber(vNum);
-      setSelectedId(null);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("loadError"));
-    } finally {
-      setLoading(false);
-    }
-  }, [pathwayId, setEdges, setNodes, t]);
-
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (graphJson == null) return;
+    const parsed = parsePathwayGraph(graphJson);
+    setNodes(parsed.nodes);
+    setEdges(parsed.edges);
+    setSelectedId(null);
+  }, [graphJson, setEdges, setNodes]);
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -117,29 +83,23 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
 
   async function handleSave() {
     if (!versionId) return;
-    setSaving(true);
     try {
-      await patchPathwayVersionDraft(pathwayId, versionId, { nodes, edges });
+      await saveDraft({ nodes, edges });
       toast.success(t("saveSuccess"));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("saveError"));
-    } finally {
-      setSaving(false);
+      const msg = e instanceof Error ? e.message : t("saveError");
+      toast.error(msg);
     }
   }
 
   async function handlePublish() {
     if (!versionId) return;
-    setPublishing(true);
     try {
-      await patchPathwayVersionDraft(pathwayId, versionId, { nodes, edges });
-      await publishPathwayVersion(pathwayId, versionId);
+      await publishDraft({ nodes, edges });
       toast.success(t("publishSuccess"));
-      await load();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("publishError"));
-    } finally {
-      setPublishing(false);
+      const msg = e instanceof Error ? e.message : t("publishError");
+      toast.error(msg);
     }
   }
 
@@ -157,7 +117,18 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
     setSelectedId(id);
   }
 
-  function updateSelectedData(partial: { label?: string; patientMessage?: string }) {
+  function removeSelectedStage() {
+    if (!selectedId) return;
+    if (nodes.length <= 1) {
+      toast.error(t("cannotRemoveLastStage"));
+      return;
+    }
+    setNodes((nds) => nds.filter((n) => n.id !== selectedId));
+    setEdges((eds) => eds.filter((e) => e.source !== selectedId && e.target !== selectedId));
+    setSelectedId(null);
+  }
+
+  function updateSelectedData(partial: SelectedPathwayNodeUpdate) {
     if (!selectedId) return;
     setNodes((nds) =>
       nds.map((n) =>
@@ -175,6 +146,83 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
     );
   }
 
+  function updateSelectedSla(field: StageSlaField, value: number | undefined) {
+    if (!selectedId) return;
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.id !== selectedId) return n;
+        const nextData = { ...n.data } as Record<string, unknown>;
+        if (value === undefined) {
+          delete nextData[field];
+        } else {
+          nextData[field] = value;
+        }
+        return { ...n, data: nextData };
+      }),
+    );
+  }
+
+  function addChecklistItemSelected() {
+    if (!selectedId) return;
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id !== selectedId
+          ? n
+          : {
+              ...n,
+              data: updatePathwayStageNodeChecklistItems(n.data, (items) => [
+                ...items,
+                { id: `checklist-${crypto.randomUUID()}`, label: "" },
+              ]),
+            },
+      ),
+    );
+  }
+
+  function updateChecklistItemSelected(itemId: string, label: string) {
+    if (!selectedId) return;
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id !== selectedId
+          ? n
+          : {
+              ...n,
+              data: updatePathwayStageNodeChecklistItems(n.data, (items) =>
+                items.map((item) => (item.id === itemId ? { ...item, label } : item)),
+              ),
+            },
+      ),
+    );
+  }
+
+  function removeChecklistItemSelected(itemId: string) {
+    if (!selectedId) return;
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id !== selectedId
+          ? n
+          : {
+              ...n,
+              data: updatePathwayStageNodeChecklistItems(n.data, (items) =>
+                items.filter((item) => item.id !== itemId),
+              ),
+            },
+      ),
+    );
+  }
+
+  if (error && !loading && !versionId) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-destructive text-sm">{error}</p>
+        <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
+          <RefreshCw className="size-4" />
+          {t("loadError")}
+        </Button>
+      </div>
+    );
+  }
+
   if (loading || !versionId) {
     return (
       <div className="space-y-3">
@@ -184,17 +232,39 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
     );
   }
 
+  const selectedData = selectedNode?.data as Record<string, unknown> | undefined;
+  const warnRaw = selectedData?.alertWarningDays;
+  const critRaw = selectedData?.alertCriticalDays;
+  const warnDays =
+    typeof warnRaw === "number" && Number.isFinite(warnRaw) ? Math.max(0, Math.floor(warnRaw)) : undefined;
+  const critDays =
+    typeof critRaw === "number" && Number.isFinite(critRaw) ? Math.max(0, Math.floor(critRaw)) : undefined;
+
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+    <div className="grid items-start gap-4 lg:grid-cols-[1fr_minmax(280px,380px)]">
       <Card className="overflow-hidden p-0">
+        <CardHeader className="border-b py-4">
+          <Field className="min-w-0">
+            <FieldLabel htmlFor="pathway-name">{t("pathwayName")}</FieldLabel>
+            <Input
+              id="pathway-name"
+              value={pathwayName}
+              onChange={(e) => setPathwayName(e.target.value)}
+              placeholder={t("pathwayNamePlaceholder")}
+              autoComplete="off"
+            />
+          </Field>
+        </CardHeader>
         <div className="h-[min(520px,70vh)] w-full">
           <ReactFlow
+            colorMode={reactFlowColorMode}
             nodes={nodes}
             edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
             onNodeClick={(_, n) => setSelectedId(n.id)}
+            onPaneClick={() => setSelectedId(null)}
             fitView
             nodesDraggable
             nodesConnectable
@@ -211,64 +281,100 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
             {t("addStage")}
           </Button>
           <Button type="button" size="sm" onClick={() => void handleSave()} disabled={saving}>
-            {saving ? <Loader2 className="size-4 animate-spin" /> : null}
+            {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             {t("save")}
           </Button>
           <Button type="button" size="sm" variant="secondary" onClick={() => void handlePublish()} disabled={publishing}>
-            {publishing ? <Loader2 className="size-4 animate-spin" /> : null}
+            {publishing ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}
             {t("publish")}
           </Button>
         </CardFooter>
       </Card>
 
-      <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("metaTitle")}</CardTitle>
-            <CardDescription>
-              {t("versionLabel")} {versionNumber ?? "—"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-muted-foreground text-sm">
-            {t("draftHint")}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("stagePropsTitle")}</CardTitle>
-            <CardDescription>{t("stagePropsDescription")}</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {!selectedNode ? (
-              <p className="text-muted-foreground text-sm">{t("selectNode")}</p>
-            ) : (
-              <>
-                <Field>
-                  <FieldLabel htmlFor="stage-label">{t("stageName")}</FieldLabel>
+      <Card>
+        <CardHeader>
+          <CardTitle>{t("stagePropsTitle")}</CardTitle>
+          <CardDescription>{t("stagePropsDescription")}</CardDescription>
+          {selectedNode ? (
+            <CardAction>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <span className="inline-flex">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        disabled={nodes.length <= 1}
+                        onClick={removeSelectedStage}
+                        aria-label={t("removeStageAria")}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </span>
+                  }
+                />
+                <TooltipContent side="left">
+                  {nodes.length <= 1 ? t("cannotRemoveLastStage") : t("removeStage")}
+                </TooltipContent>
+              </Tooltip>
+            </CardAction>
+          ) : null}
+        </CardHeader>
+        <CardContent className="space-y-3 pb-6">
+          {!selectedNode ? (
+            <p className="text-muted-foreground text-sm">{t("selectNode")}</p>
+          ) : (
+            <>
+              <div className="grid gap-3">
+                <Field className="min-w-0">
+                  <FieldLabel htmlFor="stage-label">{tCol("stageName")}</FieldLabel>
                   <Input
                     id="stage-label"
                     value={String(selectedNode.data?.label ?? "")}
                     onChange={(e) => updateSelectedData({ label: e.target.value })}
                   />
                 </Field>
-                <Field>
-                  <FieldLabel htmlFor="stage-msg">{t("patientMessage")}</FieldLabel>
-                  <textarea
-                    id="stage-msg"
-                    rows={4}
-                    value={String(selectedNode.data?.patientMessage ?? "")}
-                    onChange={(e) => updateSelectedData({ patientMessage: e.target.value })}
-                    className={cn(
-                      "border-input bg-transparent placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-[4.5rem] w-full rounded-lg border px-2.5 py-2 text-base transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
-                    )}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <LabeledNonNegativeIntegerUnitField
+                    id="stage-warn"
+                    label={tCol("alertWarningDays")}
+                    unitLabel={tCol("daysUnit")}
+                    value={warnDays}
+                    onChange={(v) => updateSelectedSla("alertWarningDays", v)}
                   />
-                </Field>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                  <LabeledNonNegativeIntegerUnitField
+                    id="stage-crit"
+                    label={tCol("alertCriticalDays")}
+                    unitLabel={tCol("daysUnit")}
+                    value={critDays}
+                    onChange={(v) => updateSelectedSla("alertCriticalDays", v)}
+                  />
+                </div>
+              </div>
+              <Field>
+                <FieldLabel htmlFor="stage-msg">{t("patientMessage")}</FieldLabel>
+                <textarea
+                  id="stage-msg"
+                  rows={4}
+                  value={String(selectedNode.data?.patientMessage ?? "")}
+                  onChange={(e) => updateSelectedData({ patientMessage: e.target.value })}
+                  className={cn(
+                    "border-input bg-transparent placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-[4.5rem] w-full rounded-lg border px-2.5 py-2 text-base transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
+                  )}
+                />
+              </Field>
+              <PathwayStageChecklistBlock
+                checklistItems={selectedNode.data?.checklistItems}
+                onAdd={addChecklistItemSelected}
+                onUpdate={updateChecklistItemSelected}
+                onRemove={removeChecklistItemSelected}
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

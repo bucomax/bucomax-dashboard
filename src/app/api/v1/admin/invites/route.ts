@@ -3,6 +3,7 @@ import { AuthTokenPurpose, GlobalRole } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getInviteSetPasswordHtml } from "@/infrastructure/email/email-templates";
 import { isEmailConfigured, sendEmail, buildInviteSetPasswordUrl } from "@/infrastructure/email/resend.client";
+import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { assertTenantInvitePermission, requireSessionOr401 } from "@/lib/auth/guards";
 import { normalizeEmail } from "@/lib/utils/email";
@@ -12,22 +13,19 @@ export const dynamic = "force-dynamic";
 
 /** Convida usuário ao tenant: cria conta sem senha e envia link para definir senha (Resend). */
 export async function POST(request: Request) {
+  const apiT = await getApiT(request);
   if (!isEmailConfigured()) {
-    return jsonError(
-      "SERVICE_UNAVAILABLE",
-      "Convites por email não configurados. Defina RESEND_API_KEY.",
-      503,
-    );
+    return jsonError("SERVICE_UNAVAILABLE", apiT("errors.invitesNotConfigured"), 503);
   }
 
-  const auth = await requireSessionOr401();
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("INVALID_JSON", "Corpo JSON inválido.", 400);
+    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
   }
 
   const parsed = adminInviteSchema.safeParse(body);
@@ -38,12 +36,12 @@ export async function POST(request: Request) {
   const { email, name, tenantId, role } = parsed.data;
   const emailNorm = normalizeEmail(email);
 
-  const perm = await assertTenantInvitePermission(auth.session!, tenantId);
+  const perm = await assertTenantInvitePermission(auth.session!, tenantId, request, apiT);
   if (perm) return perm;
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
   if (!tenant) {
-    return jsonError("NOT_FOUND", "Tenant não encontrado.", 404);
+    return jsonError("NOT_FOUND", apiT("errors.tenantNotFound"), 404);
   }
 
   const existing = await prisma.user.findFirst({
@@ -53,12 +51,12 @@ export async function POST(request: Request) {
 
   if (existing) {
     if (existing.deletedAt) {
-      return jsonError("CONFLICT", "Email associado a conta desativada.", 409);
+      return jsonError("CONFLICT", apiT("errors.emailDisabledAccount"), 409);
     }
     if (existing.memberships.length > 0) {
-      return jsonError("CONFLICT", "Este usuário já é membro deste tenant.", 409);
+      return jsonError("CONFLICT", apiT("errors.userAlreadyMember"), 409);
     }
-    return jsonError("CONFLICT", "Email já cadastrado. Use outro email ou reenvie convite (em breve).", 409);
+    return jsonError("CONFLICT", apiT("errors.emailAlreadyRegistered"), 409);
   }
 
   const token = randomBytes(32).toString("hex");
@@ -105,12 +103,12 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error("Erro ao enviar convite:", error);
-    return jsonError("EMAIL_SEND_FAILED", "Usuário criado, mas o email não foi enviado.", 500);
+    return jsonError("EMAIL_SEND_FAILED", apiT("errors.emailSendFailedAfterUser"), 500);
   }
 
   return jsonSuccess(
     {
-      message: "Convite enviado por email.",
+      message: apiT("success.inviteSent"),
       email: emailNorm,
     },
     { status: 201 },

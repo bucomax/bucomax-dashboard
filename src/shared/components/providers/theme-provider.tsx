@@ -15,7 +15,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       defaultTheme="system"
       enableSystem
       disableTransitionOnChange
-      storageKey="bucomax-nt-theme"
+      storageKey="next-theme"
     >
       <ThemePreferenceBridge />
       {children}

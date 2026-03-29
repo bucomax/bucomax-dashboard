@@ -1,13 +1,15 @@
 import { z } from "zod";
 
-/** Apenas dígitos, 10–11 (BR com DDD). */
+import { zodApiMsg } from "@/lib/api/zod-i18n";
+
+/** Apenas dígitos, 10–11 (BR com DDD). Mensagens via `@api/...` para tradução na API/RHF. */
 export const phoneDigitsSchema = z
   .string()
-  .min(1, "Informe o telefone")
+  .min(1, { message: zodApiMsg("errors.validationPhoneRequired") })
   .refine((v) => {
     const d = v.replace(/\D/g, "");
     return d.length >= 10 && d.length <= 11;
-  }, "Telefone inválido (use DDD + número).");
+  }, zodApiMsg("errors.validationPhoneBrDigits"));
 
 export function formatPhoneBrDisplay(digits: string): string {
   const d = digits.replace(/\D/g, "").slice(0, 11);

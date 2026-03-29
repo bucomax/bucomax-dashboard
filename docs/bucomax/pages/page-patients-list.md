@@ -9,6 +9,20 @@
 
 Listar **todos os pacientes** do tenant com **busca**, **filtros** (fase, status, fluxo), alternância **cards / tabela**, **paginação** e CTA **Novo paciente** → detalhe ao clicar.
 
+**Regra global:** [../listings-pagination-and-filters.md](../listings-pagination-and-filters.md) — listagem **sempre paginada no servidor**; filtros alinhados ao mock e ao dashboard.
+
+---
+
+## Filtros (mock `pacientes.html` + paridade produto)
+
+| Filtro | Mock | API (exemplo) |
+|--------|------|----------------|
+| Busca | Nome, telefone, e-mail | `search` |
+| Fase | Select “Todas as fases” / estágio | `stageId` (UUID do `PathwayStage` na versão publicada relevante — não valores fixos do HTML) |
+| Status | ok / warning / danger | `status` |
+| Fluxo | Completo, Direto, Convênio, Judicial | `pathwayId` ou tipo acordado |
+| OPME | (não está no HTML; presente no dashboard) | `opmeSupplierId` opcional para alinhar com dashboard/relatórios |
+
 ---
 
 ## Rota sugerida
@@ -23,7 +37,7 @@ Listar **todos os pacientes** do tenant com **busca**, **filtros** (fase, status
 | Bloco | Implementação |
 |-------|----------------|
 | Cabeçalho (título + subtítulo + Novo paciente) | `Page` header pattern + `Button` |
-| Barra de filtro | `Input` busca; `Select` fase / status / fluxo |
+| Barra de filtro | `Input` busca; `Select` fase / status / fluxo (+ OPME quando schema existir) |
 | Toggle Cards / Tabela | `ToggleGroup` ou dois botões; mesmos dados, views diferentes |
 | Grid de cards | `Card` por paciente: avatar iniciais, nome, telefone, badges fluxo/fase/OPME, status, dias na fase |
 | Tabela | `Table` (shadcn) colunas: paciente (nome+email), telefone, fluxo, fase atual, dias, OPME, status |
@@ -56,7 +70,7 @@ Listar **todos os pacientes** do tenant com **busca**, **filtros** (fase, status
 
 ### Endpoint sugerido
 
-- `GET /api/v1/clients?search=&stageId=&status=&pathwayId=&page=&pageSize=`
+- `GET /api/v1/clients?search=&stageId=&status=&pathwayId=&opmeSupplierId=&page=&pageSize=`
   - Resposta: lista com DTO enriquecido (`currentStageName`, `pathwayName`, `daysInStage`, `healthStatus`, …)
 - Ou separar `GET /api/v1/patient-pathways` com includes — evitar N+1
 
@@ -97,6 +111,7 @@ Listar **todos os pacientes** do tenant com **busca**, **filtros** (fase, status
 
 ## Documentação relacionada
 
+- [../listings-pagination-and-filters.md](../listings-pagination-and-filters.md)
 - [page-patient-detail.md](./page-patient-detail.md)
 - [page-dashboard.md](./page-dashboard.md) (pipeline complementar)
 - [../BUCOMAX-INTERFACES-AND-DATA.md](../../BUCOMAX-INTERFACES-AND-DATA.md)

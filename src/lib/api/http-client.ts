@@ -1,6 +1,18 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { normalizeApiError, shouldSilenceApiErrorToast } from "@/lib/api/axios-error";
+import { routing } from "@/i18n/routing";
 import { getAccessToken, getRefreshToken, setAuthTokens } from "@/lib/api/token-storage";
+import { toast } from "@/lib/toast";
 import type { ApiErrorEnvelope } from "@/shared/types/api/v1";
+
+/** Alinha mensagens da API v1 ao locale da UI (segmento `[locale]` ou padrão). */
+function acceptLanguageForApiRequest(): string {
+  if (typeof window === "undefined") return routing.defaultLocale;
+  const seg = window.location.pathname.split("/").filter(Boolean)[0];
+  if (seg === "en") return "en";
+  if (seg === "pt-BR") return "pt-BR";
+  return routing.defaultLocale;
+}
 
 /**
  * Cliente HTTP da aplicação (browser e futuros usos server com cuidado).
@@ -43,6 +55,7 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (token) {
     config.headers.set("Authorization", `Bearer ${token}`);
   }
+  config.headers.set("Accept-Language", acceptLanguageForApiRequest());
   return config;
 });
 
@@ -57,7 +70,13 @@ function requestHadBearer(config: InternalAxiosRequestConfig | undefined): boole
 }
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const cfg = response.config as InternalAxiosRequestConfig & { toastSuccessMessage?: string };
+    if (typeof window !== "undefined" && cfg.toastSuccessMessage?.trim()) {
+      toast.success(cfg.toastSuccessMessage.trim());
+    }
+    return response;
+  },
   async (error: AxiosError<ApiErrorEnvelope>) => {
     const original = error.config;
     const status = error.response?.status;
@@ -78,6 +97,19 @@ apiClient.interceptors.response.use(
       if (newAccess) {
         original.headers.set("Authorization", `Bearer ${newAccess}`);
         return apiClient(original);
+      }
+    }
+
+    const cfg = original as (InternalAxiosRequestConfig & { skipErrorToast?: boolean }) | undefined;
+    if (
+      typeof window !== "undefined" &&
+      original &&
+      !cfg?.skipErrorToast &&
+      !shouldSilenceApiErrorToast(error)
+    ) {
+      const err = normalizeApiError(error);
+      if (err.message !== "Request aborted") {
+        toast.error(err.message);
       }
     }
 

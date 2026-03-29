@@ -15,6 +15,14 @@ const BRAND = {
   link: "#0f766e",
 } as const;
 
+function escapeHtmlText(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function baseLayout(content: string, preheader?: string): string {
   const base = getPublicAppUrl();
   return `
@@ -157,4 +165,42 @@ export function getInviteSetPasswordHtml(params: { name: string | null; setPassw
     </p>
   `;
   return baseLayout(content, `Defina sua senha — convite Bucomax`);
+}
+
+/** Equipe da clínica: paciente concluiu auto-cadastro pelo link/QR (mesmo padrão visual dos demais e-mails transacionais). */
+export function getPatientSelfRegisteredStaffHtml(params: {
+  staffName: string | null;
+  patientName: string;
+  clinicName: string;
+  openPatientUrl: string;
+}): string {
+  const whoRaw = params.staffName?.trim() || "Olá";
+  const who = escapeHtmlText(whoRaw);
+  const patient = escapeHtmlText(params.patientName);
+  const clinic = escapeHtmlText(params.clinicName);
+  const content = `
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND.text}; line-height: 1.3;">
+      Novo paciente — cadastro pelo paciente
+    </h1>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      ${who},
+    </p>
+    <p style="margin: 0 0 8px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      <strong>${patient}</strong> concluiu o formulário em <strong>${clinic}</strong>.
+    </p>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      Acesse o painel para escolher o tipo de tratamento / jornada deste paciente.
+    </p>
+    ${ctaButton(params.openPatientUrl, "Abrir ficha do paciente")}
+    <p style="margin: 16px 0 0; font-size: 13px; color: ${BRAND.textMuted}; line-height: 1.5;">
+      Ou copie o link:
+    </p>
+    <p style="margin: 4px 0 0; font-size: 12px; color: ${BRAND.textMuted}; word-break: break-all;">
+      <a href="${params.openPatientUrl}" style="color: ${BRAND.link}; text-decoration: underline;">${params.openPatientUrl}</a>
+    </p>
+    <p style="margin: 24px 0 0; padding-top: 20px; border-top: 1px solid ${BRAND.border}; font-size: 12px; color: ${BRAND.textMuted}; line-height: 1.5;">
+      Este aviso foi enviado porque você é membro da equipe desta clínica no Bucomax. Se não deveria recebê-lo, ignore esta mensagem.
+    </p>
+  `;
+  return baseLayout(content, `Novo paciente em ${escapeHtmlText(params.clinicName)} — Bucomax`);
 }

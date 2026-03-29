@@ -6,7 +6,7 @@ import { getPersistSecret } from "@/lib/storage/persist-secret";
  * Uma única chave no `localStorage`; valor = blob criptografado (AES) contendo
  * um JSON `{ [persistName]: serializedState }` para permitir mais de um `persist` no futuro.
  */
-export const ENCRYPTED_LOCAL_STORAGE_KEY = "bucomax.persisted.v1";
+export const ENCRYPTED_LOCAL_STORAGE_KEY = "app.persisted.v1";
 
 type PersistBucket = Record<string, string>;
 

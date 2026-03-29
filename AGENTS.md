@@ -8,6 +8,7 @@ Instruções para assistentes de código neste repositório.
 
 - Arquitetura e modelo de dados (**§8**): [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 - Escopo de produto: [`docs/PRODUCT-SCOPE.md`](docs/PRODUCT-SCOPE.md)
+- Regras consolidadas Bucomax: [`docs/bucomax/business-logic.md`](docs/bucomax/business-logic.md)
 - Etapas de dev (backend primeiro, NextAuth): [`docs/DEV-PHASES.md`](docs/DEV-PHASES.md)
 - Doc de API (Scalar + OpenAPI): [`docs/API-DOCS.md`](docs/API-DOCS.md)
 
@@ -26,6 +27,7 @@ Regras persistentes em [`.cursor/rules/`](.cursor/rules/) (`.mdc`):
 | `infrastructure.mdc` | Infra — Prisma, R2, HTTP, webhooks entrada |
 | `frontend-dashboard.mdc` | `.tsx` — layout, Query, telas jornada/paciente |
 | `code-organization.mdc` | Sempre — `src/types/`, `src/lib/utils/`, sem tipos soltos em rotas/componentes |
+| `http-services-api-types.mdc` | `src/types/api/**`, `**/*.service.ts` — DTOs em `types/api`, services só HTTP |
 
 ## Skills do projeto
 

@@ -1,0 +1,23 @@
+{
+  "bell": {
+    "title": "Notificações",
+    "empty": "Nenhuma notificação.",
+    "markAllRead": "Marcar todas como lidas",
+    "markAllReadSuccess": "Todas as notificações foram marcadas como lidas.",
+    "markAllReadError": "Não foi possível marcar todas como lidas. Tente novamente.",
+    "loadMore": "Carregar mais"
+  },
+  "types": {
+    "sla_critical": "Alerta crítico",
+    "sla_warning": "Atenção",
+    "stage_transition": "Transição de etapa",
+    "new_patient": "Novo paciente",
+    "checklist_complete": "Checklist completo"
+  },
+  "time": {
+    "justNow": "Agora",
+    "minutesAgo": "{count, plural, =1 {1 min atrás} other {# min atrás}}",
+    "hoursAgo": "{count, plural, =1 {1 h atrás} other {# h atrás}}",
+    "daysAgo": "{count, plural, =1 {1 dia atrás} other {# dias atrás}}"
+  }
+}

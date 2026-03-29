@@ -9,6 +9,8 @@ declare module "next-auth" {
       tenantId?: string | null;
       /** Papel no tenant ativo; `null` se super_admin sem membership neste tenant. */
       tenantRole?: string | null;
+      /** Nome do tenant ativo (para UI; não substitui checagem de membership no servidor). */
+      tenantName?: string | null;
     };
   }
 }

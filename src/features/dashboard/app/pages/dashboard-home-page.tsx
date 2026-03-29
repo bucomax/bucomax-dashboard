@@ -1,7 +1,19 @@
+import { DashboardPipelineSection } from "@/features/dashboard/app/components/dashboard-pipeline-section";
 import { prisma } from "@/infrastructure/database/prisma";
 import { DashboardPage } from "@/shared/components/layout/dashboard-page";
 import type { AppShellUser } from "@/shared/types/layout";
+import { Skeleton } from "@/shared/components/ui/skeleton";
+import {
+  Activity,
+  BarChart3,
+  Clock,
+  Lightbulb,
+  PieChart,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import { Suspense } from "react";
 
 type DashboardHomePageProps = {
   user: AppShellUser;
@@ -16,6 +28,29 @@ export async function DashboardHomePage({ user }: DashboardHomePageProps) {
   startToday.setHours(0, 0, 0, 0);
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const staleThreshold = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+
+  const pathwayOptions = tenantId
+    ? await prisma.carePathway.findMany({
+        where: { tenantId },
+        orderBy: { name: "asc" },
+        select: {
+          id: true,
+          name: true,
+          versions: {
+            where: { published: true },
+            orderBy: { version: "desc" },
+            take: 1,
+            select: { id: true, version: true },
+          },
+        },
+      })
+    : [];
+
+  const pipelinePathways = pathwayOptions.map((p) => ({
+    id: p.id,
+    name: p.name,
+    publishedVersion: p.versions[0] ?? null,
+  }));
 
   const metrics = tenantId
     ? await (async () => {
@@ -96,29 +131,44 @@ export async function DashboardHomePage({ user }: DashboardHomePageProps) {
   ];
 
   return (
-    <DashboardPage title={t("title")}>
+    <DashboardPage>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="bg-card text-card-foreground rounded-xl border p-5 shadow-sm">
-          <p className="text-muted-foreground text-xs">{t("cards.inProgress")}</p>
+        <div className="rounded-xl border border-l-4 border-l-sky-500 bg-sky-50/60 p-5 text-card-foreground shadow-sm dark:bg-sky-950/25">
+          <div className="flex items-center gap-2">
+            <Users className="size-4 text-sky-500" aria-hidden />
+            <p className="text-muted-foreground text-xs">{t("cards.inProgress")}</p>
+          </div>
           <p className="mt-2 text-2xl font-semibold">{metrics.inProgress}</p>
         </div>
-        <div className="bg-card text-card-foreground rounded-xl border p-5 shadow-sm">
-          <p className="text-muted-foreground text-xs">{t("cards.completedToday")}</p>
+        <div className="rounded-xl border border-l-4 border-l-emerald-500 bg-emerald-50/60 p-5 text-card-foreground shadow-sm dark:bg-emerald-950/25">
+          <div className="flex items-center gap-2">
+            <Activity className="size-4 text-emerald-500" aria-hidden />
+            <p className="text-muted-foreground text-xs">{t("cards.completedToday")}</p>
+          </div>
           <p className="mt-2 text-2xl font-semibold">{metrics.completedToday}</p>
         </div>
-        <div className="bg-card text-card-foreground rounded-xl border p-5 shadow-sm">
-          <p className="text-muted-foreground text-xs">{t("cards.awaitingAction")}</p>
+        <div className="rounded-xl border border-l-4 border-l-amber-500 bg-amber-50/70 p-5 text-card-foreground shadow-sm dark:bg-amber-950/30">
+          <div className="flex items-center gap-2">
+            <Clock className="size-4 text-amber-500" aria-hidden />
+            <p className="text-muted-foreground text-xs">{t("cards.awaitingAction")}</p>
+          </div>
           <p className="mt-2 text-2xl font-semibold">{metrics.awaitingAction}</p>
         </div>
-        <div className="bg-card text-card-foreground rounded-xl border p-5 shadow-sm">
-          <p className="text-muted-foreground text-xs">{t("cards.conversionRate")}</p>
+        <div className="rounded-xl border border-l-4 border-l-violet-500 bg-violet-50/60 p-5 text-card-foreground shadow-sm dark:bg-violet-950/25">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="size-4 text-violet-500" aria-hidden />
+            <p className="text-muted-foreground text-xs">{t("cards.conversionRate")}</p>
+          </div>
           <p className="mt-2 text-2xl font-semibold">{metrics.conversionRate}%</p>
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <div className="bg-card text-card-foreground rounded-xl border p-6 shadow-sm">
-          <p className="text-muted-foreground mb-3 text-sm font-medium">{t("insights.title")}</p>
+          <p className="text-foreground mb-3 flex items-center gap-2 text-[15px] font-bold">
+            <Lightbulb className="size-4 text-amber-500" aria-hidden />
+            {t("insights.title")}
+          </p>
           <ul className="text-muted-foreground list-inside list-disc space-y-2 text-sm">
             {insights.map((item) => (
               <li key={item}>{item}</li>
@@ -126,7 +176,10 @@ export async function DashboardHomePage({ user }: DashboardHomePageProps) {
           </ul>
         </div>
         <div className="bg-card text-card-foreground rounded-xl border p-6 shadow-sm">
-          <p className="text-muted-foreground mb-4 text-sm font-medium">{t("charts.transitions7d")}</p>
+          <p className="text-foreground mb-4 flex items-center gap-2 text-[15px] font-bold">
+            <BarChart3 className="size-4 text-primary" aria-hidden />
+            {t("charts.transitions7d")}
+          </p>
           <div className="flex h-36 items-end gap-2">
             {dailyTransitionChart.map((item) => (
               <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
@@ -140,7 +193,10 @@ export async function DashboardHomePage({ user }: DashboardHomePageProps) {
           </div>
         </div>
         <div className="bg-card text-card-foreground rounded-xl border p-6 shadow-sm">
-          <p className="text-muted-foreground mb-4 text-sm font-medium">{t("charts.distribution.title")}</p>
+          <p className="text-foreground mb-4 flex items-center gap-2 text-[15px] font-bold">
+            <PieChart className="size-4 text-primary" aria-hidden />
+            {t("charts.distribution.title")}
+          </p>
           <div className="space-y-3">
             {distributionChart.map((item) => {
               const pct = distributionTotal > 0 ? Math.round((item.value / distributionTotal) * 100) : 0;
@@ -161,6 +217,10 @@ export async function DashboardHomePage({ user }: DashboardHomePageProps) {
           </div>
         </div>
       </div>
+
+      <Suspense fallback={<Skeleton className="mt-8 h-64 w-full rounded-xl" />}>
+        <DashboardPipelineSection pathways={pipelinePathways} />
+      </Suspense>
     </DashboardPage>
   );
 }

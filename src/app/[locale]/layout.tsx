@@ -1,5 +1,7 @@
 import { routing } from "@/i18n/routing";
 import { AuthSessionProvider } from "@/shared/components/providers/session-provider";
+import { ThemeBlockingScript } from "@/shared/components/providers/theme-blocking-script";
+import { LocalePreferenceBridge } from "@/shared/components/providers/locale-preference-bridge";
 import { ThemeProvider } from "@/shared/components/providers/theme-provider";
 import { Toaster } from "@/shared/components/ui/sonner";
 import { TooltipProvider } from "@/shared/components/ui/tooltip";
@@ -59,10 +61,12 @@ export default async function LocaleLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <NextIntlClientProvider locale={locale} messages={messages}>
+        <ThemeBlockingScript />
+        <NextIntlClientProvider key={locale} locale={locale} messages={messages}>
           <AuthSessionProvider>
             <ThemeProvider>
               <TooltipProvider>
+                <LocalePreferenceBridge />
                 {children}
                 <Toaster position="top-right" richColors closeButton />
               </TooltipProvider>

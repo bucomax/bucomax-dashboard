@@ -3,34 +3,37 @@
     "superAdminBanner": "Super admin — active tenant context for APIs and screens.",
     "tenantFooter": "Multi-tenant clinical platform",
     "signOut": "Sign out",
-    "account": "Account"
+    "account": "Account",
+    "editAccount": "Edit account"
   },
   "nav": {
     "principal": "Main",
     "operacao": "Operations",
     "conta": "Account",
+    "sistema": "System",
     "home": "Home",
     "clients": "Patients",
     "pathways": "Pathways",
     "attendance": "Attendance",
     "files": "Files",
     "accountPage": "Account",
-    "settings": "Users"
+    "settings": "Settings",
+    "reports": "Reports",
+    "new": "New"
   },
   "home": {
     "title": "Home",
-    "loggedInAs": "Signed in as",
     "cards": {
-      "inProgress": "Patients in progress",
-      "completedToday": "Completed today",
-      "awaitingAction": "Awaiting next action",
-      "conversionRate": "Completion rate (7 days)"
+      "inProgress": "Patients in pathway",
+      "completedToday": "Transitions today",
+      "awaitingAction": "Idle for 48 h",
+      "conversionRate": "Movement rate (7 d)"
     },
     "insights": {
       "title": "Operational insights",
-      "first": "{count} patients are waiting for a stage transition — prioritize the longest pending cases.",
-      "second": "{count} discharges today indicate healthy flow in the current shift.",
-      "third": "With {percent}% weekly completion, there is room to improve adherence mid-journey."
+      "first": "{count, plural, =0 {All patients are on track.} =1 {1 patient idle for over 48 h — check the queue.} other {{count} patients idle for over 48 h — prioritize the longest pending.}}",
+      "second": "{count, plural, =0 {No stage transitions today.} =1 {1 stage transition today.} other {{count} stage transitions today — good flow.}}",
+      "third": "{percent}% of patients had stage changes in the last 7 days."
     },
     "charts": {
       "transitions7d": "Transitions per day (7 days)",
@@ -40,10 +43,135 @@
         "active": "In progress",
         "completedToday": "Completed today"
       }
+    }
+  },
+  "pipeline": {
+    "pipelineTitle": "Patients by stage",
+    "pipelineDescription": "Each column is an active pathway stage: who is where, deadlines and alerts.",
+    "noPublishedPathway": "Publish a pathway version in Settings or Pathways to see the board.",
+    "newPatient": "New patient",
+    "reports": "Reports",
+    "export": "Export CSV",
+    "pathwayLabel": "Pathway",
+    "stats": {
+      "total": "Total patients",
+      "ok": "On track",
+      "warning": "Attention",
+      "danger": "Critical"
     },
-    "shortcuts": "Shortcuts:",
-    "apiDocLink": "API documentation (Scalar)",
-    "meEndpoint": "GET /api/v1/me",
-    "withSession": "(with session)"
+    "alerts": {
+      "title": "Active alerts",
+      "description": "Patients past the critical SLA threshold in this pathway.",
+      "stagnation": "{days} days in stage \"{stage}\"",
+      "viewPatient": "View patient"
+    },
+    "filters": {
+      "search": "Search",
+      "searchPlaceholder": "Name or phone…",
+      "status": "Status filter",
+      "opme": "OPME supplier",
+      "opmeAll": "All suppliers",
+      "opmeUnassigned": "No supplier",
+      "all": "All",
+      "clear": "Clear filters"
+    },
+    "column": {
+      "patients": "in column",
+      "countAria": "{display} patients in this column",
+      "empty": "No patients in this stage",
+      "loadMore": "Load more",
+      "loadMoreDisabledWithStatus": "Clear the status filter to load more (pagination is server-wide for this view)."
+    },
+    "drag": {
+      "hint": "Drag a card to another column to change stage.",
+      "cardActions": "Patient actions",
+      "daysInStage": "{count, plural, =0 {since today in this stage} one {# day in this stage} other {# days in this stage}}",
+      "changeStage": "Change stage",
+      "openJourney": "Open journey",
+      "openPatient": "Patient record",
+      "transitionSuccess": "Stage updated.",
+      "transitionError": "Could not change stage.",
+      "disabledWithStatus": "Clear the status filter to move cards between columns."
+    },
+    "loadError": "Could not load pipeline.",
+    "loadMoreError": "Could not load more patients.",
+    "modals": {
+      "newPatient": {
+        "title": "New patient",
+        "description": "Register the patient and start a published pathway."
+      },
+      "changeStage": {
+        "title": "Change stage",
+        "description": "Move this patient to another stage in the same published pathway.",
+        "client": "Patient:",
+        "currentStage": "Current stage:",
+        "targetStage": "Target stage",
+        "targetPlaceholder": "Select a stage",
+        "note": "Note (optional)",
+        "cancel": "Cancel",
+        "submit": "Confirm",
+        "loadError": "Could not load journey details.",
+        "pickStage": "Select a target stage.",
+        "sameStage": "Choose a different stage than the current one.",
+        "success": "Stage updated.",
+        "submitError": "Could not change stage.",
+        "noOtherStages": "There are no other stages to move to in this pathway.",
+        "completeTreatment": "Complete treatment",
+        "completeConfirmTitle": "Complete treatment?",
+        "completeConfirmDescription": "The patient will be removed from the active board. Stage history and documents are preserved and a new journey can be started later.",
+        "completeConfirmCancel": "Cancel",
+        "completeConfirmSubmit": "Complete",
+        "completeSuccess": "Treatment completed.",
+        "completeError": "Could not complete the treatment."
+      }
+    }
+  },
+  "reports": {
+    "title": "Reports",
+    "description": "Consolidated tenant view with period, pathway, OPME filters and CSV export.",
+    "refresh": "Refresh",
+    "exportCsv": "Export CSV",
+    "loadError": "Could not load reports.",
+    "empty": "No data found for the current filters.",
+    "unassignedOpme": "Unassigned supplier",
+    "filters": {
+      "period": "Period",
+      "period7": "Last 7 days",
+      "period30": "Last 30 days",
+      "period90": "Last 90 days",
+      "period365": "Last 365 days",
+      "pathway": "Pathway",
+      "opme": "OPME supplier",
+      "allPathways": "All pathways",
+      "allOpme": "All suppliers"
+    },
+    "cards": {
+      "patientsInScope": "Patients in scope",
+      "criticalPatients": "Critical patients",
+      "transitionsInPeriod": "Transitions in period",
+      "pathwaysInScope": "Pathways with patients"
+    },
+    "status": {
+      "ok": "On track",
+      "warning": "Warning",
+      "danger": "Critical"
+    },
+    "charts": {
+      "byStageTitle": "Patients by stage",
+      "byStageDescription": "Current distribution by stage within the filtered scope.",
+      "byStatusTitle": "Patients by SLA status",
+      "byStatusDescription": "Comparison between on track, warning and critical.",
+      "byPathwayTitle": "Patients by pathway",
+      "byPathwayDescription": "Volume by active flow in the current scope.",
+      "byOpmeTitle": "Patients by OPME",
+      "byOpmeDescription": "Distribution by supplier linked to the patient."
+    },
+    "criticalTitle": "Critical cases",
+    "criticalDescription": "Patients above critical SLA within the current scope.",
+    "criticalDays": "{days} days in stage",
+    "viewPatient": "View patient",
+    "range": "{from}-{to} of {total}",
+    "prev": "Previous",
+    "next": "Next"
   }
 }

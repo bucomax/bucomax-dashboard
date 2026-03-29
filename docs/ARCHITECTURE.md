@@ -35,6 +35,7 @@ Documento de referência da plataforma: dashboard multi-tenant, autenticação J
 | Storage | Cloudflare R2 via API compatível S3 (`@aws-sdk/client-s3`) |
 | Validação | Zod |
 | Doc API | **Scalar** (`@scalar/nextjs-api-reference`) + **`public/openapi.json`** (OpenAPI 3) |
+| Fila / jobs (opcional) | **BullMQ** + **Redis 7** (ativado por `REDIS_URL`); sem Redis, notificações rodam inline — ver §7.7 |
 
 **Referência estrutural:** organização em `app/`, `src/application`, `src/domain`, `src/infrastructure`, `src/lib`, como no kaber.ai.
 
@@ -272,7 +273,7 @@ Campos alinhados ao produto:
 
 **Produto (negócio):** a **jornada do paciente** é um fluxo **por tenant**; o tenant pode ter **vários** fluxos (ex.: tipos de tratamento), com **templates padrão** da plataforma e **edição visual** com **@xyflow/react** (adicionar/remover etapas), persistida no banco. Ao **iniciar** a jornada num paciente: **um único** fluxo → associação **automática**; **mais de um** → escolha explícita do fluxo. Ao **entrar** numa etapa nova, o paciente recebe o **pacote integral** de documentos; o **chatbot** envia mensagem + anexos. Detalhe em [PRODUCT-SCOPE.md](./PRODUCT-SCOPE.md) §3.1–3.2.
 
-**Implementação:** `CarePathway` (múltiplos por tenant), `PathwayVersion` com **JSON React Flow** + **`PathwayStage`** materializado, `StageDocument`, **`PatientPathway`** (referência a `pathwayId` + `currentStageId`), **`StageTransition`**, **`ChannelDispatch`**. Motor n8n genérico (`WorkflowDefinition`) permanece **opcional** para cenários futuros. Detalhe em **§8**.
+**Implementação atual:** `CarePathway` (múltiplos por tenant), `PathwayVersion` com **JSON React Flow** + **`PathwayStage`** materializado, `StageDocument`, **`PatientPathway`** (referência a `pathwayId` + `currentStageId`), **`StageTransition`** com **`dispatchStub`** para snapshot do bundle documental. `ChannelDispatch` / `AiJob` permanecem evolução futura. Motor n8n genérico (`WorkflowDefinition`) permanece **opcional** para cenários futuros. Detalhe em **§8**.
 
 ### 7.1 Conceitos (motor genérico / n8n)
 
@@ -291,9 +292,189 @@ Campos alinhados ao produto:
 ### 7.3 Execução
 
 - **Motor síncrono:** use case `execute-step` — dado `runId`, avança conforme tipo do node.
-- **Motor assíncrono:** jobs (tabela de fila, Cloudflare Queue ou worker) para HTTP externo, delays longos, integrações.
+- **Motor assíncrono:** **BullMQ + Redis** como direção preferida para HTTP externo, delays longos, integrações, retries e tarefas agendadas.
 
 Webhooks de retorno (paralelo ao padrão de webhooks do kaber.ai) podem atualizar `WorkflowRun` e disparar o próximo passo.
+
+### 7.4 Central de notificações in-app
+
+O sistema de notificações persiste registros por usuário com status `read/unread`, entregue em **tempo real via SSE** (Server-Sent Events) e visível no **sininho + popover** do painel. É **independente** dos alertas do dashboard (que calculam SLA em tempo real sem persistir).
+
+**Tipos de notificação:**
+
+| Tipo | Evento-gatilho | Destinatário |
+|------|---------------|-------------|
+| `sla_critical` | Paciente entra em SLA danger | Membros do tenant |
+| `sla_warning` | Paciente entra em SLA warning | Membros do tenant |
+| `stage_transition` | Transição de etapa executada | Membros do tenant |
+| `new_patient` | Novo paciente + jornada criados | Membros do tenant |
+| `checklist_complete` | Checklist da etapa 100% concluído | Membros do tenant |
+
+**Modelo:** `Notification` (`tenantId`, `userId`, `type`, `title`, `body?`, `metadata` Json, `readAt?`, `createdAt`). Um registro por membro destinatário — permite `readAt` individual. Índice `(userId, readAt, createdAt)` cobre a query principal.
+
+**Fluxo de emissão (dual-mode):**
+
+1. Evento de negócio (transição, novo paciente, checklist, SLA) chama `INotificationEmitter.emit()`
+2. O emitter resolve destinatários e escolhe o modo:
+   - **Com Redis:** publica **job** na fila `notifications` do **BullMQ** → worker consome, faz `Notification.createMany()` no Postgres e publica via **Redis pub/sub** → SSE entrega em tempo real
+   - **Sem Redis (inline):** `Notification.createMany()` direto no Postgres; frontend usa **polling** para atualizar
+
+**Deduplicação SLA:** antes de emitir `sla_warning`/`sla_critical`, verificar se já existe notificação recente (24 h) para o mesmo `(patientPathwayId, stageId, type)` via campo `metadata`.
+
+**API:**
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/api/v1/notifications` | Lista paginada (cursor) do usuário autenticado |
+| `GET` | `/api/v1/notifications/unread-count` | `{ count }` para badge (fallback) |
+| `GET` | `/api/v1/notifications/stream` | **SSE** — push em tempo real (unread-count inicial + notification events) |
+| `PATCH` | `/api/v1/notifications/:id/read` | Marca como lida |
+| `POST` | `/api/v1/notifications/read-all` | Marca todas como lidas |
+
+**Frontend:** `<NotificationBell />` no header tenta `EventSource` para `/stream`; reconexão automática em 5 s. Após 3 falhas consecutivas (ex.: sem Redis / Vercel), degrada para **polling** de `unread-count` a cada 30 s. Lista no painel com scroll infinito (cursor pagination) e deep link via `metadata`.
+
+### 7.5 BullMQ + Redis (opcional — ativado por `REDIS_URL`)
+
+O processamento assíncrono utiliza **BullMQ + Redis** para notificações quando `REDIS_URL` está configurada. Sem ela, notificações são persistidas de forma síncrona (ver §7.7). A arquitetura está pronta para novas filas conforme o produto crescer.
+
+**Stack:**
+
+- **Redis 7** (docker-compose) como broker
+- **BullMQ** (`npm bullmq` + `ioredis`) para filas, retries e agendamento
+- **Worker** inicializado via `src/instrumentation.ts` (Next.js `register()`)
+- **Redis pub/sub** para broadcast SSE em tempo real
+
+**Infra atual (`src/infrastructure/queue/`):**
+
+| Arquivo | Responsabilidade |
+|---------|-----------------|
+| `redis-connection.ts` | Conexão singleton IORedis; `isRedisEnabled()` + retorno `null` quando sem `REDIS_URL` |
+| `notification-queue.ts` | Fila `notifications` com retry exponencial |
+| `notification-job-types.ts` | Tipagem do payload do job |
+| `notification-worker.ts` | Worker: `createMany` + pub/sub SSE |
+
+**Fila ativa:**
+
+- `notifications` — 3 attempts, exponential backoff 2 s, concurrency 5
+
+**Filas futuras (quando necessário):**
+
+- `sla-check` — verificação periódica de SLA com cron
+- `reports-export` — exportações pesadas / PDF
+- `maintenance` — reconciliação e limpeza de dados
+
+**Princípios obrigatórios:**
+
+1. **Idempotência** no handler do job
+2. **Deduplicação** com `jobId` derivado do contexto (`tenantId`, entidade, evento)
+3. **Port + adapter**: caso de uso não conhece BullMQ diretamente
+4. **Persistência de negócio fora da fila**: eventos relevantes continuam no Postgres (`StageTransition`, `Notification`)
+5. **Retry controlado**: falha externa não vira erro síncrono do request
+
+**Modelo operacional:**
+
+- `attempts` + `exponential backoff`
+- filas separadas por throughput e criticidade
+- `removeOnComplete` / `removeOnFail` com limite para não lotar Redis
+- logs com `tenantId`, `jobName`, `jobId`
+
+### 7.6 Segurança e resiliência (implementado)
+
+Camada de proteção transversal em `src/lib/api/` e `src/infrastructure/queue/`, usando Redis como backing store. Todas as primitivas degradam graciosamente quando Redis não está disponível (ver §7.7): rate limit e locks fazem **fail-open**, SSE retorna 501 e o frontend faz polling.
+
+#### Rate limiting (`src/lib/api/rate-limit.ts`)
+
+Limita requisições por janela de tempo via `INCR` + `EXPIRE` no Redis. Três presets:
+
+| Preset | Limite | Identificador | Onde se aplica |
+|--------|--------|---------------|----------------|
+| `auth` | 5/min | IP do cliente | `forgot-password`, `reset-password` |
+| `api` | 120/min | `userId` (sessão) | Todas as rotas autenticadas (via `requireSessionOr401`) |
+| `sse` | 3 conexões | `userId` | SSE `/notifications/stream` |
+
+Resposta 429 inclui `Retry-After` e `X-RateLimit-*`. Falha no Redis = **allow** (fail-open; sem bloquear request legítimo).
+
+#### Limite de conexões SSE (`/api/v1/notifications/stream`)
+
+Counter Redis `sse:conn:{userId}` com TTL — no máximo 3 conexões SSE simultâneas por usuário. Cada conexão incrementa ao abrir e decrementa ao fechar (via `cancel()` da `ReadableStream`). Impede exaustão de subscribers Redis por abas abertas em excesso.
+
+#### Lock distribuído (`src/lib/api/distributed-lock.ts`)
+
+`SET NX EX` no Redis para operações que não devem ser concorrentes:
+
+| Operação | Key | TTL | Efeito |
+|----------|-----|-----|--------|
+| Transição de etapa | `lock:transition:{patientPathwayId}` | 10 s | 409 se já em progresso |
+| SLA check throttle | `sla-check:{pathwayId}:{versionId}` | 60 s | Skip se já rodou neste minuto |
+
+#### Teto em queries pesadas
+
+`findMany` de dashboard-summary, dashboard-alerts e reports/summary usam `take: 5000` para limitar materialização em memória. Impede que um tenant com volume muito alto derrube a performance do request.
+
+#### Conexões Redis separadas
+
+| Slot | Uso | Motivo |
+|------|-----|--------|
+| `default` | Queue producers, rate limit, locks, counters | Comandos não-bloqueantes |
+| `worker` | Worker BullMQ | Comandos bloqueantes (`BRPOPLPUSH`) — conexão dedicada evita contenção |
+| subscriber (por-SSE) | `SUBSCRIBE` no pub/sub | Cada SSE cria a própria; não compartilha com pool |
+
+#### Redis hardening (docker-compose)
+
+```
+maxmemory 256mb
+maxmemory-policy allkeys-lru
+maxclients 1000
+save 60 100
+appendonly yes
+```
+
+#### Tratamento de erros nas emissões
+
+Todas as chamadas a `notificationEmitter.emit()` usam `.catch(err => console.error(...))` em vez de `void` — erros na fila são logados sem rejeição silenciosa.
+
+#### Autenticação e isolamento multi-tenant
+
+- **Todas** as rotas API (exceto `health`, `forgot-password`, `reset-password`) exigem sessão JWT via `requireSessionOr401`.
+- `tenantId` **nunca** aceito do body — derivado do JWT + membership via `getActiveTenantIdOr400`.
+- `super_admin` acessa contexto de qualquer tenant via `POST /auth/context`, mas todo acesso passa por `activeTenantId` na sessão.
+- Validação Zod em todos os bodies de POST/PATCH; queries paginadas validadas com limites explícitos.
+
+### 7.7 Modos de deploy — Redis opcional
+
+A aplicação suporta dois modos de operação controlados pela presença (ou ausência) da variável `REDIS_URL`:
+
+| | Modo **queue** (com Redis) | Modo **inline** (sem Redis) |
+|--|---|---|
+| **Ativação** | `REDIS_URL` definida | `REDIS_URL` vazia ou não definida |
+| **Notificações** | Job BullMQ → Worker → Prisma → Redis pub/sub SSE | Escrita direta no Prisma (síncrona) |
+| **Tempo real (SSE)** | `/notifications/stream` funcional via pub/sub | Endpoint retorna `501`; frontend faz **polling** automático a cada 30 s |
+| **Rate limiting** | Redis `INCR`/`EXPIRE` | **Desativado** (fail-open) |
+| **Locks distribuídos** | `SET NX EX` no Redis | **Desativado** (sempre concede) |
+| **Worker BullMQ** | Iniciado via `instrumentation.ts` | **Não inicia** |
+| **Ideal para** | Docker local, VPS, servidor dedicado | **Vercel**, serverless, protótipo rápido |
+
+**Como funciona internamente:**
+
+- `isRedisEnabled()` (`src/infrastructure/queue/redis-connection.ts`) checa `process.env.REDIS_URL`.
+- `getRedisConnection()` / `getWorkerRedisConnection()` / `createSubscriberConnection()` retornam `null` quando Redis não está habilitado.
+- `notificationEmitter.emit()` decide entre `emitViaQueue` (BullMQ) e `emitInline` (Prisma direto) com base em `isRedisEnabled()`.
+- `rateLimit()` e `tryAcquire()` retornam **allow** / **true** quando o Redis não está disponível.
+- O hook `useNotifications` tenta SSE; após 3 falhas consecutivas, degrada automaticamente para polling via `GET /notifications/unread-count`.
+- `instrumentation.ts` só importa e inicia o worker quando `REDIS_URL` existe.
+
+**Deploy na Vercel (sem Redis):**
+
+1. Não definir `REDIS_URL` nas environment variables.
+2. `vercel.json` já configurado com framework `nextjs`.
+3. `postinstall` executa `prisma generate` automaticamente.
+4. Todas as features funcionam — sem tempo real (SSE) e sem proteções Redis, mas com notificações persistidas e polling.
+
+**Deploy local / VPS (com Redis):**
+
+1. `docker-compose up` sobe Postgres + Redis.
+2. Definir `REDIS_URL=redis://localhost:6379` no `.env`.
+3. BullMQ worker inicia automaticamente; SSE, rate limiting e locks ativos.
 
 ---
 
@@ -301,71 +482,74 @@ Webhooks de retorno (paralelo ao padrão de webhooks do kaber.ai) podem atualiza
 
 Esta secção fixa **como** o produto se materializa em **PostgreSQL/Prisma** e nas **camadas** da aplicação. É o contraponto entre um motor genérico tipo n8n e a **jornada clínica** que adotamos no MVP.
 
-### 8.1 Relação com um “workflow genérico n8n”
+### 8.1 Resumo do modelo atual
 
-| Antes (só técnico) | Depois (produto atual) |
-|--------------------|-------------------------|
-| `WorkflowDefinition` com grafo livre como centro | **Jornada clínica** (`CarePathway`): **vários** por tenant; **templates** padrão; edição com **@xyflow/react** persistida em JSON + etapas materializadas. |
-| `WorkflowRun` abstrato | **Estado do paciente** (`PatientPathway`): **qual fluxo** (`pathwayId`), etapa atual, versão, transições. **Seleção de fluxo** na entrada: automática se só existir um. |
-| “Notificar externo” genérico | **Pacote de documentos da etapa** + mensagem → **API do chatbot**; persistência de **cada disparo** (idempotência, suporte). |
-| Arquivo solto no R2 | **`File`** na biblioteca do tenant; **N:N** etapa ↔ arquivo (`StageDocument`) para montar `documents[]` na transição. |
+- **`CarePathway`**: jornada clínica por tenant; um tenant pode ter várias.
+- **`PathwayVersion`**: snapshot versionado do editor (`graphJson`) com flag `published`.
+- **`PathwayStage`**: etapa materializada para consultas, timeline, SLA e transição.
+- **`PathwayStageChecklistItem`**: checklist operacional materializado por etapa publicada.
+- **`StageDocument`**: vínculo ordenado entre etapa e `FileAsset`; representa o pacote integral da etapa.
+- **`PatientPathway`**: estado do paciente na jornada (`pathwayId`, `pathwayVersionId`, `currentStageId`, `enteredStageAt`).
+- **`PatientPathwayChecklistItem`**: progresso do checklist por paciente na etapa/versionamento atual.
+- **`PatientNote`**: nota clínica/operacional dedicada do paciente, com autor e histórico.
+- **`StageTransition`**: histórico da mudança de etapa + `dispatchStub` com snapshot do bundle.
 
-O **schema mínimo** é **pathway (múltiplos) + version (graphJson + stages) + patient_pathway + dispatch**. Grafo n8n genérico é **opcional** além disso.
+O **núcleo já implementado** é: **jornada + versão + etapas + checklist/documentos por etapa + paciente na jornada + notas dedicadas + transição + notificações in-app**. `ChannelDispatch`, `AiJob` e dispatch HTTP real continuam como evolução.
+- **`Notification`**: notificação in-app persistida por usuário (`tenantId`, `userId`, `type`, `title`, `body?`, `metadata` Json, `readAt?`). Tipos: `sla_critical`, `sla_warning`, `stage_transition`, `new_patient`, `checklist_complete`. Ver §7.4.
 
 ### 8.2 Tabelas e relacionamentos (núcleo)
 
-#### Núcleo da jornada (por tenant)
+| Modelo | Campos-chave | Observação |
+|--------|--------------|------------|
+| `Tenant` | `id`, `name`, `slug`, `taxId?`, `phone?`, `addressLine?`, `city?`, `postalCode?`, `affiliatedHospitals?`, flags `notify*` | Tenant/clínica: contexto principal de isolamento, dados institucionais leves e preferências operacionais simples. |
+ 
+| Modelo | Campos-chave | Observação |
+|--------|--------------|------------|
+| `CarePathway` | `id`, `tenantId`, `name`, `description?`, `createdAt` | **Múltiplos** por tenant. |
+| `PathwayVersion` | `id`, `pathwayId`, `version`, `published`, `graphJson`, `createdAt` | Canvas **@xyflow/react** persistido; ao publicar, **sincronizar** `PathwayStage` com os nodes de etapa. |
+| `PathwayStage` | `id`, `pathwayVersionId`, `stageKey`, `name`, `sortOrder`, `patientMessage?`, flags SLA | Materialização para queries, FKs, `StageDocument` e checklist. |
+| `PathwayStageChecklistItem` | `id`, `pathwayStageId`, `label`, `sortOrder` | Checklist operacional da etapa publicada; nasce do `graphJson` ao publicar. |
+| `StageDocument` | `id`, `pathwayStageId`, `fileAssetId`, `sortOrder` | **N:N** etapa ↔ `FileAsset` (R2); **pacote integral** ao WhatsApp. |
+
+**Índices atuais/recomendados:** `PathwayStage(pathwayVersionId, stageKey)` único, `PathwayStage(pathwayVersionId, sortOrder)`, `PathwayStageChecklistItem(pathwayStageId, sortOrder)`, `StageDocument(pathwayStageId, sortOrder)` e `StageDocument(pathwayStageId, fileAssetId)` único.
 
 | Modelo | Campos-chave | Observação |
 |--------|--------------|------------|
-| `PathwayTemplate` (opcional) | `id`, `key`, `name`, `graphJson` ou definição seed | Templates **padrão** da plataforma (ex.: jornada “cirurgia”); clonados para o tenant. |
-| `CarePathway` | `id`, `tenantId`, `name`, `slug?`, `clonedFromTemplateId?`, `createdAt` | **Múltiplos** por tenant; slug único no tenant para URLs. |
-| `PathwayVersion` | `id`, `pathwayId`, `version`, `status`, `graphJson` (React Flow: `nodes`, `edges`), `publishedAt`, `createdAt` | Canvas **@xyflow/react** persistido; ao salvar/publicar, **sincronizar** `PathwayStage` com os nodes de etapa. |
-| `PathwayStage` | `id`, `pathwayVersionId`, `order` ou `nodeId`, `title`, `patientMessageTemplate?`, flags (notificar, IA) | Materialização para queries, FKs e `StageDocument`. |
-| `StageDocument` | `id`, `pathwayStageId`, `fileId`, `sortOrder` | **N:N** etapa ↔ arquivo; **pacote integral** ao WhatsApp. |
-
-**Índices sugeridos:** `PathwayStage(pathwayVersionId, order)` único; `StageDocument(pathwayStageId, sortOrder)`.
-
-#### Paciente na jornada
-
-| Modelo | Campos-chave | Observação |
-|--------|--------------|------------|
-| `Client` | `tenantId`, cadastro, `phone` (E.164) | Telefone para o chatbot. |
-| `PatientPathway` | `tenantId`, `clientId`, **`pathwayId`**, `pathwayVersionId`, **`currentStageId`** → `PathwayStage`, `startedAt`, `status` | **Qual fluxo** o paciente segue. **UX:** ao criar, se o tenant tiver **um** fluxo publicado, preencher `pathwayId` automaticamente; se **vários**, exigir escolha na UI antes de persistir. |
+| `Client` | `tenantId`, `name`, `phone`, `documentId`, `email?`, `assignedToUserId?`, `opmeSupplierId?` | Ficha base do paciente no tenant. |
+| `PatientPathway` | `tenantId`, `clientId`, **`pathwayId`**, `pathwayVersionId`, **`currentStageId`** → `PathwayStage`, `enteredStageAt`, `createdAt` | **Qual fluxo** o paciente segue. **UX:** ao criar, se o tenant tiver **um** fluxo publicado, preencher `pathwayId` automaticamente; se **vários**, exigir escolha na UI antes de persistir. |
+| `PatientPathwayChecklistItem` | `patientPathwayId`, `checklistItemId`, `completedAt?`, `completedByUserId?` | Progresso por paciente; update permitido só para item da etapa atual. |
+| `PatientNote` | `tenantId`, `clientId`, `authorUserId`, `content`, `createdAt` | Histórico dedicado de anotações clínicas/operacionais do paciente. |
 
 **Regras:** `currentStageId` pertence ao `pathwayVersionId` ativo; `pathwayId` coerente com a versão.
 
-#### Transições e canal
-
 | Modelo | Campos-chave | Observação |
 |--------|--------------|------------|
-| `StageTransition` | `tenantId`, `clientId`, `fromStageId?`, `toStageId`, `pathwayVersionId`, `actorUserId`, `createdAt`, `correlationId` | Histórico; `correlationId` amarra um disparo. |
-| `ChannelDispatch` | `transitionId`, `channel` (`whatsapp`), `payloadSnapshot`, `status`, `externalMessageId?`, `error?`, `createdAt` | Idempotência e diagnóstico. |
-
-#### Arquivos e IA
+| `StageTransition` | `patientPathwayId`, `fromStageId?`, `toStageId`, `actorUserId`, `note?`, `dispatchStub`, `createdAt` | Histórico; `dispatchStub.correlationId` amarra o snapshot do bundle. |
+| `ChannelDispatch` | Futuro | Evolução para persistência dedicada de dispatch/status/erro. |
 
 | Modelo | Observação |
 |--------|------------|
-| `File` | `tenantId`, `key`, `mimeType`, `size`; opcional `purpose` (`library` \| `stage_attachment`). Upload na biblioteca **não** dispara WhatsApp sozinho. |
-| `AiJob` | `tenantId`, `clientId`, `pathwayStageId?`, `transitionId?`, `type`, `idempotencyKey`, `status`, `externalJobId`, `resultJson?`, … |
+| `FileAsset` | `tenantId`, `r2Key`, `mimeType`, `sizeBytes`, `clientId?`; upload na biblioteca **não** dispara WhatsApp sozinho. |
+| `OpmeSupplier` | Catálogo por tenant para relacionamento opcional em `Client`. |
+| `AiJob` | Futuro | Evolução para integração assíncrona com IA. |
 
 Auth/plataforma (`User.globalRole`, `TenantMembership`, `RefreshToken`, `AuditLog`) permanece como já descrito nas secções anteriores.
 
 ### 8.3 Consultas que o modelo precisa suportar
 
-1. **Payload WhatsApp ao mover etapa:** `StageDocument` ⋈ `File` filtrando `pathwayStageId = toStageId`, `ORDER BY sortOrder` + URLs assinadas em lote.  
+1. **Payload WhatsApp ao mover etapa:** `StageDocument` ⋈ `FileAsset` filtrando `pathwayStageId = toStageId`, `ORDER BY sortOrder`; hoje o snapshot fica em `dispatchStub`, e URLs assinadas são geradas sob demanda.  
 2. **Pacientes “na etapa X”:** `PatientPathway` com `currentStageId` nas etapas de ordem desejada.  
-3. **Ficha / timeline:** `StageTransition` + `ChannelDispatch` + `AiJob` por `clientId`.
+3. **Ficha / timeline:** `StageTransition` + `dispatchStub` por `clientId`; `ChannelDispatch` / `AiJob` entram depois.
+4. **Checklist da etapa atual:** `PathwayStageChecklistItem` + `PatientPathwayChecklistItem` filtrando a etapa atual do paciente.
 
 ### 8.4 Impacto no código (camadas)
 
 | Camada | O que entra |
 |--------|-------------|
-| **`src/domain`** | Entidades/VOs: pathway, stage, `PatientPathway`, transição, `DispatchPayload`; erros: `InvalidStageTransition`, `DispatchFailed`. |
-| **`src/application`** | Casos de uso: `CreateOrUpdatePathwayDraft`, `PublishPathwayVersion`, **`TransitionPatientStage`** (persistir → bundle → `DispatchWhatsApp` → opcional `EnqueueAiJob`), `BuildStageDocumentBundle`, `DispatchWhatsApp`. |
-| **`src/infrastructure`** | Repositórios (sempre `tenantId`); `R2Presigner` em lote; `WhatsAppChannelClient`; `AiClient`. |
-| **`app/api/v1`** | `…/pathways`, `…/templates`, `…/versions` (save `graphJson`), `…/stages`; `POST …/patients/:id/pathway` (início / troca de fluxo); `POST …/transition`; `GET …/timeline`; webhooks. |
-| **Frontend** | **Editor @xyflow/react** + painel de propriedades da etapa (docs); ficha paciente: **seletor de fluxo** se `count(pathways) > 1`; transição de etapa + invalidação de cache. |
+| **`src/domain` / `src/application`** | Direção desejada: regras de pathway, bundle documental, transição e dispatch desacopladas de rotas. |
+| **`src/infrastructure`** | Prisma, R2/presign e futuros clientes externos de WhatsApp/IA. |
+| **`app/api/v1`** | Hoje concentra parte da orquestração: `clients`, `pathways`, `patient-pathways`, `stage-documents`, `files`. |
+| **Frontend** | Editor **@xyflow/react**, dashboard, lista/ficha do paciente e modal de transição com preview do pacote. |
 
 Eventos de domínio (opcional): após `TransitionPatientStage`, worker assíncrono só para IA — desacopla HTTP.
 
@@ -374,21 +558,20 @@ Eventos de domínio (opcional): após `TransitionPatientStage`, worker assíncro
 - Motor **n8n** genérico (`WorkflowDefinition` arbitrário) além do fluxo clínico com **XYFlow + stages**.
 - Ramificações complexas no grafo: o MVP pode restringir a **topologia linear** no canvas (uma “linha” de etapas) e evoluir depois.
 
-### 8.6 Ordem sugerida de migração
+### 8.6 Evolução natural
 
-1. `CarePathway` → `PathwayVersion` → `PathwayStage` → `StageDocument` + `File`.  
-2. `PatientPathway`.  
-3. `StageTransition` + `ChannelDispatch` + stub WhatsApp.  
-4. `AiJob` + webhook.  
-5. UI: editor **@xyflow/react** + templates + ficha (seleção de fluxo quando >1).
+1. Consolidar a lógica hoje espalhada em `app/api/v1` em casos de uso dedicados.  
+2. Introduzir `ChannelDispatch` e cliente HTTP real do canal.  
+3. Introduzir `AiJob` + webhooks.  
+4. Evoluir notas e regras de topologia do fluxo.  
 
 ### 8.7 Resumo
 
 | Camada | Mudança principal |
 |--------|-------------------|
-| **BD** | Núcleo **pathway / version / stage / stage_document** + **patient_pathway** + **stage_transition** + **channel_dispatch** + **ai_job**. |
-| **Código** | Orquestração centrada em **transição de etapa** e **bundle de documentos**; APIs REST alinhadas. |
-| **Front** | Editor **XYFlow** + ficha; canvas n8n genérico só se precisar além da jornada. |
+| **BD** | Núcleo atual: **pathway / version / stage / stage_checklist_item / stage_document** + **patient_pathway / patient_pathway_checklist_item / patient_note** + **stage_transition** + **file_asset** + extensões de cliente (`email`, responsável, OPME). |
+| **Código** | Orquestração centrada em **transição de etapa** e **bundle de documentos**, ainda parcialmente nas rotas. |
+| **Front** | Editor **XYFlow**, dashboard, lista e ficha do paciente; integração de canal/IA ainda evolutiva. |
 
 ---
 
@@ -398,34 +581,39 @@ Eventos de domínio (opcional): após `TransitionPatientStage`, worker assíncro
 |---------|---------------------|
 | Bucket | Um bucket; isolamento por **prefixo** `tenants/{tenantId}/...` |
 | Upload | Presigned URL para upload direto do browser **ou** `POST` multipart para API que grava no R2 (como referência no kaber.ai) |
-| Metadados | Tabela `File` (ou `Asset`): `tenantId`, `clientId` opcional, `key`, `mimeType`, `size`, `createdAt` |
+| Metadados | Tabela `FileAsset`: `tenantId`, `clientId` opcional, `r2Key`, `mimeType`, `sizeBytes`, `createdAt` |
 | Exclusão | Política de lifecycle ou job de limpeza ao apagar entidade dona do arquivo |
 
 Variáveis de ambiente típicas: endpoint R2, `accessKeyId`, `secretAccessKey`, nome do bucket, região (se aplicável).
 
 ---
 
-## 10. API — visão de endpoints (alvo)
+## 10. API — visão de endpoints
 
 Prefixo: `/api/v1`.
 
-| Área | Métodos | Descrição resumida |
-|------|---------|---------------------|
-| Auth | POST | login, refresh, logout, register, forgot/reset password |
-| Auth / context | POST, DELETE | definir ou limpar **tenant ativo** no token (super admin e usuários com membership) |
-| Admin / tenants | GET, POST, PATCH | **super admin:** listar todos, criar tenant (slug/subdomínio), suspender |
-| Tenants | GET | tenants **acessíveis** ao usuário (membership + política super admin) |
-| Members | GET, POST, DELETE | membros e **papéis no tenant** (`tenant_admin`, `tenant_user`) |
-| Clients | GET, POST, PATCH, DELETE | CRUD com escopo tenant |
-| Pathways / templates | GET, POST | listar **templates**; criar `CarePathway` a partir de template ou vazio |
-| Pathways / versions / stages | GET, POST, PATCH | salvar **`graphJson`** (React Flow), publicar; etapas + `StageDocument` |
-| Patients / pathway | GET, POST, PATCH | iniciar jornada (**escolher fluxo** se >1); estado `PatientPathway`; `POST …/transition` |
-| Patients / timeline | GET | transições, dispatches, jobs IA |
-| Workflows (opcional) | GET, POST, PATCH | grafo n8n; publicar versão |
-| Workflow runs (opcional) | GET, POST | se usar grafo paralelo |
-| Webhooks | POST | `ai`, `chatbot` |
-| Storage | POST, GET | URL de upload; metadados |
-| Health | GET | saúde da API e conexão com banco |
+| Área | Métodos | Estado atual |
+|------|---------|--------------|
+| Auth | `POST` | Contexto de tenant, forgot/reset password e endpoints de autenticação já existem em `/api/v1/auth/*`. |
+| Me | `GET`, `PATCH`, `DELETE` | Perfil do usuário autenticado (`/api/v1/me`, `/api/v1/me/password`). |
+| Admin / tenants | `GET`, `POST` | Gestão global em `/api/v1/admin/tenants`; membros por tenant em `/api/v1/admin/tenants/:tenantId/members`. |
+| Tenants | `GET` | `/api/v1/tenants` lista tenants acessíveis ao usuário. |
+| Clients | `GET`, `POST`, `PATCH`, `DELETE` | `/api/v1/clients`, `/api/v1/clients/:id`; detalhe rico em `/api/v1/clients/:id`; arquivos em `/api/v1/clients/:id/files`. |
+| Patient pathways | `GET`, `POST` | `/api/v1/patient-pathways` lista/inicia jornada; detalhe em `/api/v1/patient-pathways/:id`; transição em `POST /api/v1/patient-pathways/:id/transition`. |
+| Pathways | `GET`, `POST`, `PATCH` | `/api/v1/pathways`, `/api/v1/pathways/:id`, `/versions`, `PATCH /versions/:versionId`, `POST /publish`, `GET /published-stages`, `GET /kanban`, `GET /dashboard-summary`, `GET /dashboard-alerts`. |
+| Stage documents | `POST` | `/api/v1/stage-documents` vincula `FileAsset` a etapa publicada. |
+| Tenant members (picker) | `GET` | `/api/v1/tenant/members` lista membros do tenant ativo para pickers operacionais. |
+| OPME suppliers | `GET`, `POST` | `/api/v1/opme-suppliers` lista/cria fornecedores do tenant. |
+| Files / storage | `POST` | `/api/v1/files/presign`, `/api/v1/files`, `/api/v1/files/presign-download`. |
+| Notifications | `GET`, `PATCH`, `POST` | `/api/v1/notifications` (lista cursor), `/api/v1/notifications/unread-count`, `/api/v1/notifications/stream` (SSE), `PATCH .../notifications/:id/read`, `POST .../notifications/read-all`. |
+| Health | `GET` | `/api/v1/health`. |
+
+### 10.0 Evoluções previstas
+
+- `ChannelDispatch` dedicado e endpoints/contratos de dispatch reais.
+- `AiJob` e webhooks de IA.
+- Webhooks do chatbot / WhatsApp.
+- Eventual camada de workflow genérico, se a jornada clínica deixar de ser suficiente.
 
 ### 10.1 Documentação interativa (Scalar + OpenAPI)
 
@@ -470,7 +658,7 @@ Prefixo: `/api/v1`.
 3. CRUD `Client` com isolamento por tenant.
 4. Integração R2 + entidade de metadados de arquivo.
 5. **Jornada:** `CarePathway` → `PathwayVersion` → `PathwayStage` + `StageDocument`; UI editor (lista de etapas + docs).
-6. **Paciente na jornada:** `PatientPathway` + `POST …/transition` + `StageTransition` + `ChannelDispatch` + cliente WhatsApp (stub).
+6. **Paciente na jornada:** `PatientPathway` + `POST …/transition` + `StageTransition` + `dispatchStub`; `ChannelDispatch` entra na evolução seguinte.
 7. `AiJob` + webhook IA; opcional: `WorkflowDefinition` + React Flow se precisar de ramificações.
 8. Formulários dinâmicos (se necessário) e dashboard analítico (gráficos).
 

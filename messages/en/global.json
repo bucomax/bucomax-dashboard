@@ -6,12 +6,12 @@
   "brand": "Bucomax",
   "home": {
     "title": "Bucomax",
-    "subtitle": "Platform under development. Sign in to access the dashboard or open the API documentation.",
+    "subtitle": "Clinical care pathways and patient journey orchestration. Sign in to open your workspace.",
     "login": "Sign in",
-    "apiDocs": "API (Scalar)",
-    "healthLink": "GET /api/v1/health"
+    "loginHint": "Already have access? Use the button below."
   },
   "locale": {
+    "ariaLabel": "Language",
     "ptBR": "Portuguese (Brazil)",
     "en": "English"
   }

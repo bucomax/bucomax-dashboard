@@ -9,11 +9,13 @@
 
 **Recomendação de migração:** uma **única rota** no app que una o melhor dos dois: cabeçalho com ações (avançar, WhatsApp, editar), **timeline** com estado por etapa, **checklist da etapa atual**, **documentos**, **feed de atividades**, **notas**, **modal de transição** com pacote de documentos.
 
+**Paginação:** o mock não traz barra de filtros globais no detalhe, mas **cada lista longa** (transições, documentos, atividades, anotações com histórico) deve ser **paginada** ou “carregar mais”. Ver [../listings-pagination-and-filters.md](../listings-pagination-and-filters.md).
+
 ---
 
-## Rota sugerida
+## Rota atual
 
-- `/[locale]/clients/[clientId]` (dynamic segment)
+- `/[locale]/dashboard/clients/[clientId]` (dynamic segment)
 - Breadcrumb: Clients → Nome
 
 ---
@@ -28,7 +30,7 @@
 | Checklist fase atual | Itens marcáveis com progresso N/M | checkboxes + mutation |
 | Documentos enviados | Lista nome, data, status enviado/pendente/visualizado | `Table` ou lista; link presign R2 quando existir |
 | Atividades recentes | Linha do tempo de eventos | lista a partir de `StageTransition` + futuros eventos |
-| Anotações | Textarea + Salvar | `Textarea`, `Button`; persistência gap ou `caseDescription` |
+| Anotações | Lista cronológica + nova nota | `Textarea`, `Button`; recurso dedicado `PatientNote` |
 | Ações rápidas | Agendar, solicitar exames, lembrete, histórico | botões → modais ou rotas futuras |
 | Modal avanço | Lista de PDFs que serão enviados + confirmar | `Dialog`; dados de `StageDocument`/dispatch |
 
@@ -42,10 +44,11 @@
 | Jornada | `PatientPathway` + `PathwayVersion` + `CarePathway` |
 | Etapa atual | `PathwayStage` |
 | Histórico de mudanças | `StageTransition` (+ `User` actor) |
-| Documentos | `FileAsset` + **StageDocument**/dispatch quando existir |
-| Checklist | **Gap:** templates por etapa + progresso por paciente |
-| Dias na fase | **Gap:** `enteredStageAt` |
-| Responsável | **Gap:** `Client.assignedToUserId` |
+| Documentos | `FileAsset` + `StageDocument` (pacote por etapa) |
+| Checklist | `PathwayStageChecklistItem` + `PatientPathwayChecklistItem` (toggle só na etapa atual) |
+| Anotações | `PatientNote` paginada por paciente |
+| Dias na fase | `PatientPathway.enteredStageAt` |
+| Responsável | `Client.assignedToUserId` |
 
 ---
 
@@ -57,7 +60,9 @@
 - `StageTransition` (histórico)
 - `User` (ator)
 - `FileAsset` (arquivos)
-- Futuro: checklist, notes, dispatch status
+- `PathwayStageChecklistItem`, `PatientPathwayChecklistItem`
+- `PatientNote`
+- Futuro: dispatch status dedicado (`ChannelDispatch`)
 
 ### Endpoints sugeridos
 
@@ -65,16 +70,17 @@
 |------|----------|
 | Detalhe completo | `GET /api/v1/clients/:id` ou `GET /api/v1/patient-pathways/by-client/:clientId` com includes profundos |
 | Transição | `POST /api/v1/patient-pathways/:id/transition` com `toStageId`, `note?` |
-| Checklist toggle | `PATCH .../checklist-items/:itemId` (quando schema existir) |
-| Salvar nota | `PATCH /api/v1/clients/:id` (campo notes) ou recurso dedicado |
-| Preview docs da etapa destino | `GET .../stages/:stageId/documents` ou embutido na resposta de transição candidata |
+| Checklist toggle | `PATCH /api/v1/patient-pathways/:id/checklist-items/:itemId` |
+| Notas dedicadas | `GET|POST /api/v1/clients/:id/notes` |
+| Preview docs da etapa destino | Embutido em `GET /api/v1/clients/:id` (etapas da versão com `documents[]`) |
 
 ### Checklist backend
 
 - [ ] GET detalhe com tenant guard e sem vazar dados de outros tenants
 - [ ] Transição reutilizando use case único
-- [ ] Lista de transições ordenada `createdAt desc`
-- [ ] Extensões de schema conforme checklist/notas/SLA forem priorizadas
+- [ ] Lista de transições ordenada `createdAt desc`, **paginada** (`page`/`cursor` + `limit`)
+- [ ] Listas de documentos / atividades / notas com histórico: **paginadas**
+- [ ] Extensões de schema para dispatch conforme priorização
 
 ---
 
@@ -82,7 +88,7 @@
 
 ### Rotas / arquivos
 
-- `src/app/[locale]/(dashboard)/clients/[clientId]/page.tsx`
+- `src/app/[locale]/(dashboard)/dashboard/clients/[clientId]/page.tsx`
 - Componentes em `src/features/clients/...` ou `features/patient-pathway/...`
 
 ### Navegação
@@ -101,6 +107,7 @@
 
 ## Documentação relacionada
 
+- [../listings-pagination-and-filters.md](../listings-pagination-and-filters.md)
 - [page-patients-list.md](./page-patients-list.md)
 - [../persistence-api-and-transitions.md](../persistence-api-and-transitions.md)
 - Skill/projeto: transição de etapa e bundle de documentos (regras de domínio)

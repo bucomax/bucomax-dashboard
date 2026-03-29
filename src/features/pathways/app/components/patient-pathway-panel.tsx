@@ -1,9 +1,7 @@
 "use client";
 
-import {
-  getPatientPathway,
-  transitionPatientStage,
-} from "@/features/pathways/app/services/patient-pathways.service";
+import { usePatientPathway } from "@/features/pathways/app/hooks/use-patient-pathway";
+import type { PatientPathwayPanelProps } from "@/features/pathways/types/components";
 import { toast } from "@/lib/toast";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -19,46 +17,21 @@ import {
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useState } from "react";
-
-type PatientPathwayPanelProps = {
-  patientPathwayId: string;
-};
+import { useEffect, useState } from "react";
 
 export function PatientPathwayPanel({ patientPathwayId }: PatientPathwayPanelProps) {
   const t = useTranslations("pathways.patient");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error, submitting, reload, submitTransition, nextOptions } =
+    usePatientPathway(patientPathwayId);
   const [toStageId, setToStageId] = useState<string>("");
   const [note, setNote] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [data, setData] = useState<Awaited<ReturnType<typeof getPatientPathway>> | null>(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const row = await getPatientPathway(patientPathwayId);
-      setData(row);
-      setToStageId("");
-      setNote("");
-    } catch (e) {
-      setError(e instanceof Error ? e.message : t("loadError"));
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [patientPathwayId, t]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
-
-  const nextOptions = useMemo(() => {
-    if (!data?.pathwayVersion?.stages?.length) return [];
-    const cur = data.currentStage?.id;
-    return data.pathwayVersion.stages.filter((s) => s.id !== cur);
-  }, [data]);
+    if (data) {
+      setToStageId("");
+      setNote("");
+    }
+  }, [data?.id, data?.currentStage?.id]);
 
   async function handleSubmit() {
     if (!toStageId) {
@@ -69,18 +42,14 @@ export function PatientPathwayPanel({ patientPathwayId }: PatientPathwayPanelPro
       toast.error(t("sameStage"));
       return;
     }
-    setSubmitting(true);
     try {
-      await transitionPatientStage(patientPathwayId, {
+      await submitTransition({
         toStageId,
         note: note.trim() || undefined,
       });
       toast.success(t("success"));
-      await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : t("loadError"));
-    } finally {
-      setSubmitting(false);
+    } catch {
+      /* erro: toast global no apiClient */
     }
   }
 
@@ -97,7 +66,7 @@ export function PatientPathwayPanel({ patientPathwayId }: PatientPathwayPanelPro
     return (
       <div className="flex flex-col gap-2">
         <p className="text-destructive text-sm">{error ?? t("loadError")}</p>
-        <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
+        <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
           {t("retry")}
         </Button>
       </div>

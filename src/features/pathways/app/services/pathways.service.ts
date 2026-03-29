@@ -1,33 +1,16 @@
 import { normalizeApiError } from "@/lib/api/axios-error";
 import { apiClient } from "@/lib/api/http-client";
 import type { ApiEnvelope } from "@/shared/types/api/v1";
-
-export type PathwayListItem = {
-  id: string;
-  name: string;
-  description: string | null;
-  publishedVersion: { id: string; version: number } | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type PathwayDetail = {
-  id: string;
-  name: string;
-  description: string | null;
-  versions: { id: string; version: number; published: boolean; createdAt: string }[];
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type PathwayVersionDetail = {
-  id: string;
-  pathwayId: string;
-  version: number;
-  published: boolean;
-  graphJson: unknown;
-  createdAt: string;
-};
+import type {
+  CreatedPathway,
+  CreatedPathwayVersion,
+  CreatePathwayInput,
+  PatchPathwayInput,
+  PathwayDetail,
+  PathwayListItem,
+  PathwayVersionDetail,
+  UpdatePathwayDraftInput,
+} from "@/features/pathways/types/pathways";
 
 export async function listPathways(): Promise<PathwayListItem[]> {
   try {
@@ -36,6 +19,17 @@ export async function listPathways(): Promise<PathwayListItem[]> {
       throw new Error(res.data.error.message);
     }
     return res.data.data.pathways;
+  } catch (e) {
+    throw normalizeApiError(e);
+  }
+}
+
+export async function patchPathway(pathwayId: string, body: PatchPathwayInput): Promise<void> {
+  try {
+    const res = await apiClient.patch<ApiEnvelope<{ pathway: unknown }>>(`/api/v1/pathways/${pathwayId}`, body);
+    if (!res.data.success) {
+      throw new Error(res.data.error.message);
+    }
   } catch (e) {
     throw normalizeApiError(e);
   }
@@ -53,7 +47,7 @@ export async function getPathway(pathwayId: string): Promise<PathwayDetail> {
   }
 }
 
-export async function postPathway(body: { name: string; description?: string }): Promise<{ id: string; name: string }> {
+export async function postPathway(body: CreatePathwayInput): Promise<CreatedPathway> {
   try {
     const res = await apiClient.post<ApiEnvelope<{ pathway: { id: string; name: string } }>>("/api/v1/pathways", body);
     if (!res.data.success) {
@@ -79,7 +73,10 @@ export async function getPathwayVersion(pathwayId: string, versionId: string): P
   }
 }
 
-export async function postPathwayVersion(pathwayId: string, graphJson: unknown): Promise<{ id: string; version: number }> {
+export async function postPathwayVersion(
+  pathwayId: string,
+  graphJson: unknown,
+): Promise<CreatedPathwayVersion> {
   try {
     const res = await apiClient.post<ApiEnvelope<{ version: { id: string; version: number } }>>(
       `/api/v1/pathways/${pathwayId}/versions`,
@@ -102,7 +99,7 @@ export async function patchPathwayVersionDraft(
   try {
     const res = await apiClient.patch<ApiEnvelope<{ version: unknown }>>(
       `/api/v1/pathways/${pathwayId}/versions/${versionId}`,
-      { graphJson },
+      { graphJson } satisfies UpdatePathwayDraftInput,
     );
     if (!res.data.success) {
       throw new Error(res.data.error.message);

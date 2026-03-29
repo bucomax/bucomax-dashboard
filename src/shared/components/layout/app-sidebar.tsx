@@ -1,12 +1,12 @@
 "use client";
 
 import { Link, usePathname } from "@/i18n/navigation";
-import { routing } from "@/i18n/routing";
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import {
@@ -25,29 +25,28 @@ import {
 } from "@/shared/components/ui/sidebar";
 import type { AppShellUser } from "@/shared/types/layout";
 import {
+  BarChart3,
   ChevronDown,
-  ClipboardList,
-  FolderOpen,
   GitBranch,
   Home,
   LogOut,
   Settings,
   Stethoscope,
-  UserCircle,
+  UserPen,
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { signOut } from "next-auth/react";
 
 type NavItem = {
   href: string;
-  labelKey: "home" | "clients" | "pathways" | "attendance" | "files" | "accountPage" | "settings";
+  labelKey: "home" | "clients" | "pathways" | "reports" | "settings";
   icon: LucideIcon;
   match: (p: string) => boolean;
 };
 
-const navGroups: { labelKey: "principal" | "operacao" | "conta"; items: NavItem[] }[] = [
+const navGroups: { labelKey: "principal" | "sistema"; items: NavItem[] }[] = [
   {
     labelKey: "principal",
     items: [
@@ -69,42 +68,20 @@ const navGroups: { labelKey: "principal" | "operacao" | "conta"; items: NavItem[
         icon: GitBranch,
         match: (p) => p.startsWith("/dashboard/pathways"),
       },
-    ],
-  },
-  {
-    labelKey: "operacao",
-    items: [
       {
-        href: "/dashboard/attendance",
-        labelKey: "attendance",
-        icon: ClipboardList,
-        match: (p) => p.startsWith("/dashboard/attendance"),
+        href: "/dashboard/reports",
+        labelKey: "reports",
+        icon: BarChart3,
+        match: (p) => p.startsWith("/dashboard/reports"),
       },
       {
-        href: "/dashboard/files",
-        labelKey: "files",
-        icon: FolderOpen,
-        match: (p) => p.startsWith("/dashboard/files"),
-      },
-    ],
-  },
-  {
-    labelKey: "conta",
-    items: [
-      {
-        href: "/dashboard/account",
-        labelKey: "accountPage",
-        icon: UserCircle,
-        match: (p) => p.startsWith("/dashboard/account"),
-      },
-      {
-        href: "/dashboard/settings",
+        href: "/dashboard/settings#account",
         labelKey: "settings",
         icon: Settings,
         match: (p) => p.startsWith("/dashboard/settings"),
-      },
+      }
     ],
-  },
+  }
 ];
 
 type AppSidebarProps = {
@@ -116,15 +93,14 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const t = useTranslations("dashboard");
   const tBrand = useTranslations("global");
   const tShell = useTranslations("dashboard.shell");
-  const locale = useLocale();
-  const loginCallback = locale === routing.defaultLocale ? "/login" : `/${locale}/login`;
+  const loginCallback = "/login";
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-sidebar-border border-b">
+      <SidebarHeader className="border-sidebar-border flex h-14 shrink-0 flex-row items-center border-b px-2 py-0">
         <Link
           href="/dashboard"
-          className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm font-semibold outline-none ring-sidebar-ring focus-visible:ring-2"
+          className="flex h-14 w-full items-center gap-2 rounded-md px-2 text-sm font-semibold outline-none ring-sidebar-ring focus-visible:ring-2"
         >
           <Stethoscope className="size-5 shrink-0 text-sidebar-primary" />
           <span className="group-data-[collapsible=icon]:hidden">{tBrand("brand")}</span>
@@ -171,6 +147,14 @@ export function AppSidebar({ user }: AppSidebarProps) {
             }
           />
           <DropdownMenuContent side="top" align="start" className="min-w-[14rem]">
+            <DropdownMenuItem
+              className="cursor-pointer"
+              render={<Link href="/dashboard/settings#account" />}
+            >
+              <UserPen className="size-4" />
+              {tShell("editAccount")}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => void signOut({ callbackUrl: loginCallback })}>
               <LogOut className="size-4" />
               {tShell("signOut")}

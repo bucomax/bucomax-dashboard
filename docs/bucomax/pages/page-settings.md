@@ -7,20 +7,31 @@
 
 ## Objetivo no produto
 
-Centralizar **perfil**, **dados da clínica**, **fases do tratamento** (DnD + SLA), **notificações**, **equipe**, **fornecedores OPME** e **integrações** — parte disso já existe no app (conta, membros, convites); o mock antecipa escopo Bucomax ampliado.
+Centralizar **perfil**, **dados da clínica**, **fases do tratamento** (DnD + SLA), **notificações**, **equipe**, **fornecedores OPME** e **integrações**. No código atual, **perfil/segurança/equipe** passaram a viver na própria `settings`; a rota antiga de conta virou apenas redirecionamento compatível para `/dashboard/settings`. Para `super_admin`, a página também expõe um bloco adicional de **gestão global de tenants** (fora do mock original).
+
+**Listagens:** equipe, OPME, convites e quaisquer tabelas CRUD nesta área seguem [../listings-pagination-and-filters.md](../listings-pagination-and-filters.md) (paginação obrigatória). **Editor DnD de fases:** a lista vertical de etapas deve suportar **virtualização ou paginação** quando o número de linhas passar do limite acordado (evitar DOM e `graphJson` gigantes).
 
 ---
 
 ## Rota sugerida
 
-- `/[locale]/settings` com **sub-rotas ou tabs** alinhadas ao mock:
-  - `/settings/profile` — já pode coincidir com área “account”
-  - `/settings/clinic` — novo ou extensão de `Tenant`
-  - `/settings/pathway-stages` — **editor DnD de colunas** ([../column-editor-drag-drop.md](../column-editor-drag-drop.md))
-  - `/settings/notifications` — preferências (gap)
-  - `/settings/team` — overlap com `users-management` / convites existentes
-  - `/settings/opme` — CRUD fornecedores (gap)
-  - `/settings/integrations` — flags (gap)
+- Atual: `/[locale]/dashboard/settings` com seções na mesma página:
+  - perfil e segurança do usuário
+  - dados da clínica do tenant ativo
+  - equipe / convites
+  - fornecedores OPME
+  - editor de fases do tratamento
+  - gestão de tenants para `super_admin`
+- Evolução natural: manter a mesma rota e introduzir **sub-rotas ou tabs** alinhadas ao mock:
+  - `/dashboard/settings/profile`
+  - `/dashboard/settings/clinic`
+  - `/dashboard/settings/pathway-stages`
+  - `/dashboard/settings/notifications`
+  - `/dashboard/settings/team`
+  - `/dashboard/settings/opme`
+  - `/dashboard/settings/integrations`
+
+`/dashboard/account` fica como rota legada e deve redirecionar para `settings`, sem nova lógica própria.
 
 Ou uma única página com `Tabs`/`Sidebar` client-side (como o mock).
 
@@ -36,7 +47,7 @@ Ou uma única página com `Tabs`/`Sidebar` client-side (como o mock).
 | CRO, especialidade | **Gap:** `User.metadata` JSON ou tabela `ProfessionalProfile` |
 
 **Backend:** `PATCH /api/v1/users/me` ou rota já existente de perfil.  
-**Frontend:** formulário reutilizando cards de account se já houver.
+**Frontend:** já consolidado em `settings` com cards de perfil, senha e desativação de conta.
 
 ---
 
@@ -45,11 +56,11 @@ Ou uma única página com `Tabs`/`Sidebar` client-side (como o mock).
 | Campo mock | Persistência sugerida |
 |------------|------------------------|
 | Nome da clínica | `Tenant.name` |
-| CNPJ, telefone, endereço, cidade, CEP | **Gap:** `Tenant` campos extras ou `TenantSettings` JSON |
-| Hospitais conveniados (textarea) | **Gap:** texto em settings ou tabela `AffiliatedHospital` |
+| CNPJ, telefone, endereço, cidade, CEP | **Implementado:** `Tenant.taxId`, `Tenant.phone`, `Tenant.addressLine`, `Tenant.city`, `Tenant.postalCode` |
+| Hospitais conveniados (textarea) | **Implementado:** `Tenant.affiliatedHospitals` (`TEXT`) |
 
-**Backend:** `PATCH /api/v1/tenants/:id` restrito a `tenant_admin`.  
-**Frontend:** form com validação (CNPJ opcional formatado).
+**Backend:** `GET|PATCH /api/v1/tenant` no **tenant ativo**; `PATCH` restrito a `tenant_admin` / `super_admin`.  
+**Frontend:** `ClinicSettingsCard` na `SettingsPage`, com formulário, reload, toast e bloqueio visual para quem não pode editar. **Pendência opcional:** máscara/validação mais específica de CNPJ/CEP se o produto exigir.
 
 ---
 
@@ -57,7 +68,7 @@ Ou uma única página com `Tabs`/`Sidebar` client-side (como o mock).
 
 | Comportamento mock | Implementação real |
 |--------------------|---------------------|
-| Lista de fases com “alerta após N dias” e “X documentos automáticos” | **Ordem e CRUD de colunas:** lista **DnD** ([../column-editor-drag-drop.md](../column-editor-drag-drop.md)); SLA por etapa em metadata ou tabela; contagem de docs quando `StageDocument` existir |
+| Lista de fases com “alerta após N dias” e “X documentos automáticos” | **Ordem e CRUD de colunas:** lista **DnD** ([../column-editor-drag-drop.md](../column-editor-drag-drop.md)); SLA por etapa em metadata; checklist por etapa no rascunho/publicação; contagem de docs quando `StageDocument` existir |
 
 **Backend:** mesmos endpoints de [../persistence-api-and-transitions.md](../persistence-api-and-transitions.md) + eventual `PATCH` em metadata de SLA por `PathwayStage`.  
 **Frontend:** substituir inputs estáticos do HTML por editor conectado à API + botão Publicar.
@@ -68,10 +79,10 @@ Ou uma única página com `Tabs`/`Sidebar` client-side (como o mock).
 
 | Toggle mock | Realidade |
 |-------------|-----------|
-| Alertas críticos, lembretes cirurgia, novos pacientes, relatório semanal, confirmação envio docs | **Gap:** `UserNotificationPrefs` ou `TenantNotificationPrefs` + jobs futuros |
+| Alertas críticos, lembretes cirurgia, novos pacientes, relatório semanal, confirmação envio docs | **Implementado parcialmente:** flags leves em `Tenant` (`notifyCriticalAlerts`, `notifySurgeryReminders`, `notifyNewPatients`, `notifyWeeklyReport`, `notifyDocumentDelivery`) |
 
-**Backend:** CRUD preferências; workers/envio fora do escopo mínimo.  
-**Frontend:** `Switch` persistindo por campo.
+**Backend:** `GET|PATCH /api/v1/tenant/notifications` no tenant ativo; `PATCH` restrito a `tenant_admin` / `super_admin`.  
+**Frontend:** `TenantNotificationsCard` na `SettingsPage`, com toggles persistidos e feedback de save/reload. **Escopo desta rodada:** só persistência das preferências; workers/envio real continuam evolutivos.
 
 ---
 
@@ -79,7 +90,7 @@ Ou uma única página com `Tabs`/`Sidebar` client-side (como o mock).
 
 | Mock | App atual |
 |------|-----------|
-| Lista membros, papéis, adicionar/editar/excluir | `TenantMembership` + telas de invite/users já previstas |
+| Lista membros, papéis, adicionar/editar/excluir | `TenantMembership` + painel consolidado em `settings` |
 
 **Backend:** reutilizar `/api/v1/...` de membros/convites (RBAC).  
 **Frontend:** alinhar ao `users-management-panel` / cards existentes.
@@ -90,10 +101,10 @@ Ou uma única página com `Tabs`/`Sidebar` client-side (como o mock).
 
 | Mock | Persistência |
 |------|----------------|
-| Lista Art Fix, Evolve, etc.; contagem pacientes ativos | **Gap:** `OpmeSupplier` + FK em `Client` |
+| Lista Art Fix, Evolve, etc.; contagem pacientes ativos | **Implementado parcialmente:** `OpmeSupplier` + FK em `Client`; listagem paginada com `activePatientsCount` |
 
-**Backend:** CRUD `/api/v1/tenants/:id/opme-suppliers` + agregação count por supplier.  
-**Frontend:** lista + dialog criar/editar.
+**Backend:** `GET|POST /api/v1/opme-suppliers` no tenant ativo; `GET` com `page`, `limit`, `q`, `includeInactive`; `POST` restrito a `tenant_admin` / `super_admin`.  
+**Frontend:** card na `SettingsPage` com busca, paginação e criação. **Pendências:** editar/inativar fornecedor.
 
 ---
 
@@ -101,10 +112,21 @@ Ou uma única página com `Tabs`/`Sidebar` client-side (como o mock).
 
 | Mock | Notas |
 |------|--------|
-| WhatsApp, Google Calendar, financeiro, prontuário | **Flags** em `TenantSettings`; integrações reais em fases posteriores ([../../BUCOMAX-INTERFACES-AND-DATA.md](../../BUCOMAX-INTERFACES-AND-DATA.md)) |
+| WhatsApp, Google Calendar, financeiro, prontuário | **Flags** em `TenantSettings`; integrações reais em fases posteriores ([../../BUCOMAX-INTERFACES-AND-DATA.md](../../BUCOMAX-INTERFACES-AND-DATA.md)). **Decisão atual:** esta seção pode permanecer como **“em desenvolvimento”** / placeholder, sem fechamento funcional nesta rodada. |
 
 **Backend:** `PATCH` settings JSON.  
-**Frontend:** `Switch` + texto explicativo.
+**Frontend:** `Switch` + texto explicativo, ou bloco apenas informativo/placeholder enquanto as integrações reais não entram.
+
+---
+
+### 8. Gestão de tenants (`super_admin`)
+
+| Escopo extra | Implementação |
+|--------------|---------------|
+| Criar tenant e trocar contexto explicitamente | **Implementado:** card adicional na `SettingsPage` visível só para `super_admin`, reaproveitando `POST /api/v1/admin/tenants`, `GET /api/v1/tenants` e `POST /api/v1/auth/context` |
+
+**Backend:** já existente; mantido como fluxo de administração global.  
+**Frontend:** `SuperAdminTenantsCard` com formulário de criação e botão para ativar o tenant recém-criado ou qualquer tenant listado.
 
 ---
 
@@ -114,13 +136,16 @@ Ou uma única página com `Tabs`/`Sidebar` client-side (como o mock).
 
 - `User`, `Tenant`, `TenantMembership`
 - `CarePathway`, `PathwayVersion`, `PathwayStage` (fases)
-- Novas conforme gaps: settings clínica, OPME, notificações, perfil profissional
+- `Tenant` agora concentra os campos clínicos leves (`taxId`, `phone`, `addressLine`, `city`, `postalCode`, `affiliatedHospitals`)
+- `Tenant` agora também concentra flags leves de notificações operacionais
+- Novas conforme gaps restantes: perfil profissional
 
 ### Checklist backend
 
 - [ ] Política de autorização por sub-seção (`tenant_admin` vs `tenant_user`)
 - [ ] Endpoints de pathway/stages/publicação
-- [ ] Migrações para campos que forem aprovados (CNPJ, OPME, etc.)
+- [ ] Listagens (membros, OPME, convites) com **paginação** e filtros quando aplicável
+- [x] Migração para campos clínicos leves em `Tenant`
 
 ---
 
@@ -128,7 +153,11 @@ Ou uma única página com `Tabs`/`Sidebar` client-side (como o mock).
 
 ### Checklist frontend
 
-- [ ] Navegação lateral espelhando seções do mock
+- [ ] Navegação lateral interna/tabs espelhando seções do mock
+- [x] Perfil/segurança/equipe consolidados em `settings`
+- [x] Card de clínica conectado ao tenant ativo
+- [x] Card de notificações com persistência simples
+- [x] Card de gestão de tenants para `super_admin`
 - [ ] Cada seção em componente lazy ou rota filha
 - [ ] Estados salvos com feedback (toast) e tratamento de erro
 - [ ] i18n para todas as strings
@@ -137,7 +166,8 @@ Ou uma única página com `Tabs`/`Sidebar` client-side (como o mock).
 
 ## Documentação relacionada
 
+- [../listings-pagination-and-filters.md](../listings-pagination-and-filters.md)
 - [../column-editor-drag-drop.md](../column-editor-drag-drop.md)
 - [../persistence-api-and-transitions.md](../persistence-api-and-transitions.md)
 - [../frontend-backend-scope.md](../frontend-backend-scope.md)
-- Conta/membros existentes: `src/features/account/`, `src/features/settings/`
+- Implementação atual: `src/features/settings/`

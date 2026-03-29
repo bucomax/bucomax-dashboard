@@ -1,7 +1,12 @@
 import { prisma } from "@/infrastructure/database/prisma";
 import { keyBelongsToTenant, publicUrlForKey } from "@/infrastructure/storage/r2-presign";
+import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
+import {
+  assertActiveTenantMembership,
+  getActiveTenantIdOr400,
+  requireSessionOr401,
+} from "@/lib/auth/guards";
 import { postFileRegisterBodySchema } from "@/lib/validators/file";
 
 export const dynamic = "force-dynamic";
@@ -10,19 +15,22 @@ export const dynamic = "force-dynamic";
  * Registra metadados após upload via URL pré-assinada (`POST /files/presign`).
  */
 export async function POST(request: Request) {
-  const auth = await requireSessionOr401();
+  const apiT = await getApiT(request);
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
-  const ctx = getActiveTenantIdOr400(auth.session!);
+  const ctx = await getActiveTenantIdOr400(auth.session!, request, apiT);
   if (ctx.response) return ctx.response;
   const { tenantId } = ctx;
+  const forbidden = await assertActiveTenantMembership(auth.session!, tenantId, request, apiT);
+  if (forbidden) return forbidden;
   const userId = auth.session!.user.id;
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("INVALID_JSON", "Corpo JSON inválido.", 400);
+    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
   }
 
   const parsed = postFileRegisterBodySchema.safeParse(body);
@@ -31,7 +39,7 @@ export async function POST(request: Request) {
   }
 
   if (!keyBelongsToTenant(parsed.data.key, tenantId)) {
-    return jsonError("FORBIDDEN", "Chave de objeto inválida para este tenant.", 403);
+    return jsonError("FORBIDDEN", apiT("errors.invalidObjectKey"), 403);
   }
 
   const existingKey = await prisma.fileAsset.findUnique({
@@ -39,7 +47,7 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   if (existingKey) {
-    return jsonError("CONFLICT", "Arquivo já registrado.", 409);
+    return jsonError("CONFLICT", apiT("errors.fileAlreadyRegistered"), 409);
   }
 
   if (parsed.data.clientId) {
@@ -48,7 +56,7 @@ export async function POST(request: Request) {
       select: { id: true },
     });
     if (!c) {
-      return jsonError("NOT_FOUND", "Paciente não encontrado neste tenant.", 404);
+      return jsonError("NOT_FOUND", apiT("errors.patientNotFoundInTenant"), 404);
     }
   }
 

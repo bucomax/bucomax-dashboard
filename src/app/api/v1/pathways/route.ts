@@ -1,15 +1,17 @@
 import { prisma } from "@/infrastructure/database/prisma";
+import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
 import { postPathwayBodySchema } from "@/lib/validators/pathway";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const auth = await requireSessionOr401();
+export async function GET(request: Request) {
+  const apiT = await getApiT(request);
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
-  const ctx = getActiveTenantIdOr400(auth.session!);
+  const ctx = await getActiveTenantIdOr400(auth.session!, request, apiT);
   if (ctx.response) return ctx.response;
   const { tenantId } = ctx;
 
@@ -39,10 +41,11 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireSessionOr401();
+  const apiT = await getApiT(request);
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
-  const ctx = getActiveTenantIdOr400(auth.session!);
+  const ctx = await getActiveTenantIdOr400(auth.session!, request, apiT);
   if (ctx.response) return ctx.response;
   const { tenantId } = ctx;
 
@@ -50,7 +53,7 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return jsonError("INVALID_JSON", "Corpo JSON inválido.", 400);
+    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
   }
 
   const parsed = postPathwayBodySchema.safeParse(body);

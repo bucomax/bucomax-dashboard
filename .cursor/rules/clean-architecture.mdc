@@ -18,6 +18,7 @@ alwaysApply: true
 |------|----------------------|
 | `IPathwayRepository` / `IPatientPathwayRepository` | Prisma |
 | `IFileStorage` | Presign R2 + metadados `File` |
+| `INotificationEmitter` | BullMQ queue + Prisma + SSE pub/sub |
 | `IWhatsAppOutbound` | HTTP para projeto chatbot |
 | `IAiJobClient` | HTTP para serviço de IA |
 

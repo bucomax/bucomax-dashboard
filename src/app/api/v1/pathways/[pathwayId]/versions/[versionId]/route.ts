@@ -2,6 +2,7 @@ import {
   getPathwayVersionForTenant,
   updateDraftPathwayVersionForTenant,
 } from "@/infrastructure/database/pathway-version";
+import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
 import { patchPathwayVersionBodySchema } from "@/lib/validators/pathway";
@@ -10,22 +11,23 @@ export const dynamic = "force-dynamic";
 
 type RouteCtx = { params: Promise<{ pathwayId: string; versionId: string }> };
 
-export async function GET(_request: Request, ctx: RouteCtx) {
-  const auth = await requireSessionOr401();
+export async function GET(request: Request, ctx: RouteCtx) {
+  const apiT = await getApiT(request);
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
-  const t = getActiveTenantIdOr400(auth.session!);
-  if (t.response) return t.response;
+  const tenantCtx = await getActiveTenantIdOr400(auth.session!, request, apiT);
+  if (tenantCtx.response) return tenantCtx.response;
 
   const { pathwayId, versionId } = await ctx.params;
 
   const row = await getPathwayVersionForTenant({
-    tenantId: t.tenantId,
+    tenantId: tenantCtx.tenantId,
     pathwayId,
     versionId,
   });
   if (!row) {
-    return jsonError("NOT_FOUND", "Jornada ou versão não encontrada.", 404);
+    return jsonError("NOT_FOUND", apiT("errors.pathwayOrVersionNotFound"), 404);
   }
 
   return jsonSuccess({
@@ -41,11 +43,12 @@ export async function GET(_request: Request, ctx: RouteCtx) {
 }
 
 export async function PATCH(request: Request, ctx: RouteCtx) {
-  const auth = await requireSessionOr401();
+  const apiT = await getApiT(request);
+  const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
-  const t = getActiveTenantIdOr400(auth.session!);
-  if (t.response) return t.response;
+  const tenantCtx = await getActiveTenantIdOr400(auth.session!, request, apiT);
+  if (tenantCtx.response) return tenantCtx.response;
 
   const { pathwayId, versionId } = await ctx.params;
 
@@ -53,7 +56,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
   try {
     body = await request.json();
   } catch {
-    return jsonError("INVALID_JSON", "Corpo JSON inválido.", 400);
+    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
   }
 
   const parsed = patchPathwayVersionBodySchema.safeParse(body);
@@ -62,20 +65,16 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
   }
 
   const row = await updateDraftPathwayVersionForTenant({
-    tenantId: t.tenantId,
+    tenantId: tenantCtx.tenantId,
     pathwayId,
     versionId,
     graphJson: parsed.data.graphJson as object,
   });
   if (row === "NOT_FOUND") {
-    return jsonError("NOT_FOUND", "Jornada ou versão não encontrada.", 404);
+    return jsonError("NOT_FOUND", apiT("errors.pathwayOrVersionNotFound"), 404);
   }
   if (row === "CONFLICT") {
-    return jsonError(
-      "CONFLICT",
-      "Versão publicada não pode ser editada. Crie uma nova versão.",
-      409,
-    );
+    return jsonError("CONFLICT", apiT("errors.publishedVersionCannotEdit"), 409);
   }
 
   return jsonSuccess({

@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 let s3Client: S3Client | null = null;
@@ -48,6 +48,27 @@ export async function presignPutObject(key: string, mimeType: string): Promise<s
     ContentType: mimeType,
   });
   return getSignedUrl(s3, command, { expiresIn: 3600 });
+}
+
+/** URL de leitura com TTL curto (LGPD / URLs assinadas). */
+export async function presignGetObject(key: string, expiresInSeconds = 300): Promise<string> {
+  const s3 = getS3();
+  const command = new GetObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME!,
+    Key: key,
+  });
+  return getSignedUrl(s3, command, { expiresIn: expiresInSeconds });
+}
+
+/** Remove objeto do bucket (uso interno; não expor detalhe de storage na UI). */
+export async function deleteObjectFromBucket(key: string): Promise<void> {
+  const s3 = getS3();
+  await s3.send(
+    new DeleteObjectCommand({
+      Bucket: process.env.R2_BUCKET_NAME!,
+      Key: key,
+    }),
+  );
 }
 
 export function publicUrlForKey(key: string): string | null {

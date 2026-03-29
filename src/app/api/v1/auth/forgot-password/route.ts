@@ -3,6 +3,7 @@ import { AuthTokenPurpose } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getResetPasswordHtml } from "@/infrastructure/email/email-templates";
 import { isEmailConfigured, sendEmail, buildResetPasswordUrl } from "@/infrastructure/email/resend.client";
+import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { normalizeEmail } from "@/lib/utils/email";
 import { forgotPasswordSchema } from "@/lib/validators/auth";
@@ -10,19 +11,20 @@ import { forgotPasswordSchema } from "@/lib/validators/auth";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const { rateLimit } = await import("@/lib/api/rate-limit");
+  const limited = await rateLimit("auth");
+  if (limited) return limited;
+
+  const apiT = await getApiT(request);
   if (!isEmailConfigured()) {
-    return jsonError(
-      "SERVICE_UNAVAILABLE",
-      "Recuperação de senha não configurada. Defina RESEND_API_KEY.",
-      503,
-    );
+    return jsonError("SERVICE_UNAVAILABLE", apiT("errors.passwordResetNotConfigured"), 503);
   }
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("INVALID_JSON", "Corpo JSON inválido.", 400);
+    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
   }
 
   const parsed = forgotPasswordSchema.safeParse(body);
@@ -37,9 +39,8 @@ export async function POST(request: Request) {
     select: { id: true, name: true, email: true, passwordHash: true },
   });
 
-  // Mensagem genérica (não revelar se o email existe)
   const okMessage = {
-    message: "Se o email existir e a conta tiver senha, você receberá um link para redefinir.",
+    message: apiT("success.forgotPasswordHint"),
   };
 
   if (!user?.passwordHash) {
@@ -67,11 +68,7 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error("Erro ao enviar email de recuperação:", error);
-    return jsonError(
-      "EMAIL_SEND_FAILED",
-      "Não foi possível enviar o email. Tente novamente em instantes.",
-      500,
-    );
+    return jsonError("EMAIL_SEND_FAILED", apiT("errors.emailSendFailedGeneric"), 500);
   }
 
   return jsonSuccess(okMessage);

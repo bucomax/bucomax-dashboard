@@ -2,6 +2,7 @@ import { PathwayEditor } from "@/features/pathways/app/components/pathway-editor
 import { DashboardPage } from "@/shared/components/layout/dashboard-page";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 type PathwayDetailPageProps = {
@@ -21,6 +22,7 @@ export async function PathwayDetailPage({ pathwayId }: PathwayDetailPageProps) {
       }
       actions={
         <Button nativeButton={false} variant="outline" size="sm" render={<Link href="/dashboard/pathways" />}>
+          <ArrowLeft className="size-4" />
           {t("back")}
         </Button>
       }
