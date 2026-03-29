@@ -5,7 +5,12 @@ import {
   listPathwaysForTenant,
   listPublishedStagesForPathway,
 } from "@/features/clients/app/services/clients.service";
-import type { ClientListStatusFilter, PathwayOption, PublishedStageRowDto } from "@/features/clients/types/api";
+import type {
+  ClientListItemDto,
+  ClientListStatusFilter,
+  PathwayOption,
+  PublishedStageRowDto,
+} from "@/features/clients/types/api";
 import type { ApiPagination } from "@/lib/api/pagination";
 import { DEBOUNCE_MS, useDebouncedState } from "@/shared/hooks/use-debounce";
 import { useTranslations } from "next-intl";
