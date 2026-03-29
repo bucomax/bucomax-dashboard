@@ -1,7 +1,6 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "@/i18n/navigation";
 import { routing } from "@/i18n/routing";
 import { signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
@@ -36,7 +35,6 @@ function normalizeCallbackPath(input: string | null, fallback: string) {
 }
 
 export function useLoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("auth");
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -63,8 +61,8 @@ export function useLoginForm() {
       return;
     }
 
-    router.push(callbackUrl);
-    router.refresh();
+    const path = callbackUrl.startsWith("/") ? callbackUrl : `/${callbackUrl}`;
+    window.location.assign(path);
   }
 
   return {
