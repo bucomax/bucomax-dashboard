@@ -12,7 +12,6 @@
     "admin": "Administração"
   },
   "addUser": "Adicionar usuário",
-  "hideAddUser": "Fechar formulário",
   "profile": {
     "title": "Perfil",
     "description": "Nome e foto exibidos na aplicação.",
@@ -68,6 +67,13 @@
     "you": "Você",
     "remove": "Remover",
     "removeConfirm": "Remover este membro do tenant?",
+    "removeDialogTitle": "Remover da equipe",
+    "removeDialogDescription": "Confirme a remoção de {name} deste tenant. A pessoa perde o acesso ao painel neste contexto.",
+    "removeDialogCancel": "Cancelar",
+    "removeDialogConfirm": "Remover",
+    "removeDialogRemoving": "Removendo…",
+    "removeDialogAlertTitle": "Esta ação tem efeito imediato",
+    "removeDialogAlertBody": "O acesso é revogado na hora. Para voltar, será necessário enviar um novo convite.",
     "roleUpdated": "Papel atualizado.",
     "memberRemoved": "Membro removido."
   },
@@ -150,6 +156,7 @@
     "roleAdmin": "Administrador",
     "roleUser": "Usuário",
     "submit": "Enviar convite",
+    "dialogCancel": "Cancelar",
     "success": "Convite enviado com sucesso.",
     "sentTo": "Convite enviado para {email}.",
     "genericError": "Não foi possível enviar o convite."

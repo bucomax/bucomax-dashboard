@@ -5,8 +5,10 @@ import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
+import { TeamMemberRemoveDialog } from "@/features/settings/app/components/team-member-remove-dialog";
 import { getTenantClinicSettings } from "@/features/settings/app/services/tenant-settings.service";
 import { useTenantMembers } from "@/features/settings/app/hooks/use-tenant-members";
+import type { TenantMemberRow } from "@/features/settings/types/account";
 import { toast } from "@/lib/toast";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -28,6 +30,7 @@ import { Skeleton } from "@/shared/components/ui/skeleton";
 export function TenantMembersCard() {
   const t = useTranslations("settings.members");
   const { data: session } = useSession();
+  const [memberToRemove, setMemberToRemove] = useState<TenantMemberRow | null>(null);
   const [tenantNameFromApi, setTenantNameFromApi] = useState<string | null>(null);
   const {
     sessionStatus,
@@ -81,15 +84,20 @@ export function TenantMembersCard() {
     }
   }
 
-  async function handleRemove(memberUserId: string) {
+  function openRemoveDialog(memberUserId: string) {
     const member = sortedRows.find((row) => row.userId === memberUserId);
     if (!member) return;
-    if (!window.confirm(t("removeConfirm"))) return;
+    setMemberToRemove(member);
+  }
+
+  async function handleConfirmRemove() {
+    if (!memberToRemove) return;
     try {
-      await deleteMember(member);
+      await deleteMember(memberToRemove);
       toast.success(t("memberRemoved"));
-    } catch {
+    } catch (e) {
       await reload();
+      throw e;
     }
   }
 
@@ -136,6 +144,15 @@ export function TenantMembersCard() {
 
   return (
     <Card>
+      <TeamMemberRemoveDialog
+        open={memberToRemove !== null}
+        onOpenChange={(open) => {
+          if (!open) setMemberToRemove(null);
+        }}
+        member={memberToRemove}
+        busy={memberToRemove !== null && busyId === memberToRemove.userId}
+        onConfirm={handleConfirmRemove}
+      />
       <CardHeader>
         <CardTitle>{t("title")}</CardTitle>
         <CardDescription>{t("description", { tenantName })}</CardDescription>
@@ -192,7 +209,7 @@ export function TenantMembersCard() {
                         size="icon"
                         className="text-destructive hover:text-destructive"
                         disabled={busy}
-                        onClick={() => void handleRemove(member.userId)}
+                        onClick={() => openRemoveDialog(member.userId)}
                         aria-label={t("remove")}
                       >
                         {busy ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}

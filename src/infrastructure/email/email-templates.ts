@@ -1,18 +1,23 @@
 /**
  * Templates HTML transacionais (Resend).
- * Estrutura alinhada ao kaber.ai (`src/infrastructure/email/email-templates.ts`):
- * layout em tabela, preheader, CTA, footer — marca **Bucomax**.
+ * Layout em tabela, preheader, CTA, footer — marca **Bucomax**; tema **escuro** (fundo preto, texto claro).
  */
 
 import { getPublicAppUrl } from "@/lib/config/urls";
 
+/** Tema escuro único para todos os e-mails transacionais (fundo preto, texto claro). */
 const BRAND = {
-  primary: "#0f766e",
-  background: "#ffffff",
-  text: "#1f2937",
-  textMuted: "#6b7280",
-  border: "#e5e7eb",
-  link: "#0f766e",
+  pageBg: "#000000",
+  cardBg: "#000000",
+  headerBg: "#000000",
+  primary: "#fafafa",
+  ctaBg: "#fafafa",
+  ctaText: "#000000",
+  background: "#000000",
+  text: "#fafafa",
+  textMuted: "#a1a1aa",
+  border: "#3f3f46",
+  link: "#e4e4e7",
 } as const;
 
 function escapeHtmlText(s: string): string {
@@ -31,28 +36,28 @@ function baseLayout(content: string, preheader?: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="dark">
   <title>Bucomax</title>
   ${preheader ? `<style type="text/css">#preheader { display: none !important; }</style>` : ""}
 </head>
-<body style="margin: 0; padding: 0; background-color: #f3f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+<body style="margin: 0; padding: 0; background-color: ${BRAND.pageBg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
   ${preheader ? `<span id="preheader">${preheader}</span>` : ""}
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: ${BRAND.pageBg};">
     <tr>
       <td align="center" style="padding: 32px 16px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: ${BRAND.background}; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: ${BRAND.cardBg}; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.border};">
           <tr>
-            <td style="background-color: ${BRAND.primary}; padding: 24px 32px; text-align: center;">
-              <a href="${base}" style="text-decoration: none; color: #ffffff; font-size: 22px; font-weight: 700;">Bucomax</a>
+            <td style="background-color: ${BRAND.headerBg}; padding: 24px 32px; text-align: center; border-bottom: 1px solid ${BRAND.border};">
+              <a href="${base}" style="text-decoration: none; color: ${BRAND.primary}; font-size: 22px; font-weight: 700;">Bucomax</a>
             </td>
           </tr>
           <tr>
-            <td style="padding: 32px 32px 40px;">
+            <td style="padding: 32px 32px 40px; background-color: ${BRAND.background};">
               ${content}
             </td>
           </tr>
           <tr>
-            <td style="padding: 20px 32px; background-color: #f9fafb; border-top: 1px solid ${BRAND.border};">
+            <td style="padding: 20px 32px; background-color: ${BRAND.cardBg}; border-top: 1px solid ${BRAND.border};">
               <p style="margin: 0; font-size: 12px; color: ${BRAND.textMuted}; text-align: center;">
                 Bucomax — plataforma clínica multi-tenant
               </p>
@@ -75,7 +80,7 @@ function ctaButton(href: string, label: string): string {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0;">
   <tr>
     <td align="center">
-      <a href="${href}" style="display: inline-block; padding: 14px 28px; background-color: ${BRAND.primary}; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">
+      <a href="${href}" style="display: inline-block; padding: 14px 28px; background-color: ${BRAND.ctaBg}; color: ${BRAND.ctaText}; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 8px;">
         ${label}
       </a>
     </td>

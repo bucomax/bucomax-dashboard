@@ -30,4 +30,6 @@ export type AdminInviteInput = {
 export type AdminInviteResult = {
   message: string;
   email: string;
+  /** Quando false, nenhum e-mail foi enviado (ex.: usuário já tinha senha e só foi readicionado ao tenant). */
+  emailDispatched?: boolean;
 };

@@ -7,7 +7,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
 import { Field, FieldLabel } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, Trash2, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 
@@ -74,9 +74,11 @@ export function ClientListDeleteDialog({
             <Button
               type="button"
               variant="outline"
+              className="gap-1.5"
               disabled={deleting}
               onClick={() => onOpenChange(false)}
             >
+              <X className="size-4 shrink-0" aria-hidden />
               {t("cancel")}
             </Button>
             <Button
@@ -86,7 +88,11 @@ export function ClientListDeleteDialog({
               disabled={!matches || deleting}
               onClick={() => void handleConfirm()}
             >
-              {deleting ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden /> : null}
+              {deleting ? (
+                <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+              ) : (
+                <Trash2 className="size-4 shrink-0" aria-hidden />
+              )}
               {deleting ? t("deleting") : t("confirm")}
             </Button>
           </>

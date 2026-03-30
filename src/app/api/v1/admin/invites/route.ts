@@ -11,6 +11,22 @@ import { adminInviteSchema } from "@/lib/validators/auth";
 
 export const dynamic = "force-dynamic";
 
+async function sendInviteSetPasswordEmail(
+  emailNorm: string,
+  name: string | null | undefined,
+  token: string,
+): Promise<{ error?: Error }> {
+  const setPasswordUrl = buildInviteSetPasswordUrl(token);
+  return sendEmail({
+    to: emailNorm,
+    subject: "Bucomax — Defina sua senha",
+    html: getInviteSetPasswordHtml({
+      name: name?.trim() || null,
+      setPasswordUrl,
+    }),
+  });
+}
+
 /** Convida usuário ao tenant: cria conta sem senha e envia link para definir senha (Resend). */
 export async function POST(request: Request) {
   const apiT = await getApiT(request);
@@ -46,7 +62,12 @@ export async function POST(request: Request) {
 
   const existing = await prisma.user.findFirst({
     where: { email: emailNorm },
-    include: { memberships: { where: { tenantId } } },
+    select: {
+      id: true,
+      deletedAt: true,
+      passwordHash: true,
+      memberships: { where: { tenantId }, select: { id: true } },
+    },
   });
 
   if (existing) {
@@ -56,7 +77,75 @@ export async function POST(request: Request) {
     if (existing.memberships.length > 0) {
       return jsonError("CONFLICT", apiT("errors.userAlreadyMember"), 409);
     }
-    return jsonError("CONFLICT", apiT("errors.emailAlreadyRegistered"), 409);
+
+    const token = randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+    const needsInviteEmail = existing.passwordHash === null;
+
+    await prisma.$transaction(async (tx) => {
+      const trimmedName = name?.trim();
+      if (trimmedName) {
+        await tx.user.update({
+          where: { id: existing.id },
+          data: { name: trimmedName },
+        });
+      }
+
+      await tx.tenantMembership.create({
+        data: {
+          userId: existing.id,
+          tenantId,
+          role,
+        },
+      });
+
+      await tx.userAuthToken.deleteMany({
+        where: {
+          userId: existing.id,
+          tenantId,
+          purpose: AuthTokenPurpose.INVITE_SET_PASSWORD,
+          usedAt: null,
+        },
+      });
+
+      if (needsInviteEmail) {
+        await tx.userAuthToken.create({
+          data: {
+            token,
+            userId: existing.id,
+            tenantId,
+            purpose: AuthTokenPurpose.INVITE_SET_PASSWORD,
+            expiresAt,
+          },
+        });
+      }
+    });
+
+    if (!needsInviteEmail) {
+      return jsonSuccess(
+        {
+          message: apiT("success.memberReadded"),
+          email: emailNorm,
+          emailDispatched: false,
+        },
+        { status: 201 },
+      );
+    }
+
+    const { error } = await sendInviteSetPasswordEmail(emailNorm, name, token);
+    if (error) {
+      console.error("Erro ao enviar convite:", error);
+      return jsonError("EMAIL_SEND_FAILED", apiT("errors.emailSendFailedAfterUser"), 500);
+    }
+
+    return jsonSuccess(
+      {
+        message: apiT("success.inviteSent"),
+        email: emailNorm,
+        emailDispatched: true,
+      },
+      { status: 201 },
+    );
   }
 
   const token = randomBytes(32).toString("hex");
@@ -91,16 +180,7 @@ export async function POST(request: Request) {
     });
   });
 
-  const setPasswordUrl = buildInviteSetPasswordUrl(token);
-  const { error } = await sendEmail({
-    to: emailNorm,
-    subject: "Bucomax — Defina sua senha",
-    html: getInviteSetPasswordHtml({
-      name: name?.trim() || null,
-      setPasswordUrl,
-    }),
-  });
-
+  const { error } = await sendInviteSetPasswordEmail(emailNorm, name, token);
   if (error) {
     console.error("Erro ao enviar convite:", error);
     return jsonError("EMAIL_SEND_FAILED", apiT("errors.emailSendFailedAfterUser"), 500);
@@ -110,6 +190,7 @@ export async function POST(request: Request) {
     {
       message: apiT("success.inviteSent"),
       email: emailNorm,
+      emailDispatched: true,
     },
     { status: 201 },
   );

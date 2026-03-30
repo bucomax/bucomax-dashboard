@@ -12,7 +12,6 @@
     "admin": "Administration"
   },
   "addUser": "Add user",
-  "hideAddUser": "Hide form",
   "profile": {
     "title": "Profile",
     "description": "Name and photo shown in the application.",
@@ -68,6 +67,13 @@
     "you": "You",
     "remove": "Remove",
     "removeConfirm": "Remove this member from the tenant?",
+    "removeDialogTitle": "Remove from team",
+    "removeDialogDescription": "Confirm removal of {name} from this tenant. They will lose access to the dashboard in this context.",
+    "removeDialogCancel": "Cancel",
+    "removeDialogConfirm": "Remove",
+    "removeDialogRemoving": "Removing…",
+    "removeDialogAlertTitle": "This takes effect immediately",
+    "removeDialogAlertBody": "Access is revoked right away. To return, a new invite must be sent.",
     "roleUpdated": "Role updated.",
     "memberRemoved": "Member removed."
   },
@@ -150,6 +156,7 @@
     "roleAdmin": "Administrator",
     "roleUser": "User",
     "submit": "Send invite",
+    "dialogCancel": "Cancel",
     "success": "Invite sent successfully.",
     "sentTo": "Invite sent to {email}.",
     "genericError": "Could not send invite."

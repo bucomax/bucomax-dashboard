@@ -15,7 +15,7 @@ import {
 import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
 import { Field, FieldLabel } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
-import { AlertTriangle, Loader2, Trash2 } from "lucide-react";
+import { AlertTriangle, Loader2, Trash2, X } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -85,7 +85,14 @@ export function DeleteAccountCard() {
           description={t("dialogDescription")}
           footer={
             <>
-              <Button type="button" variant="outline" disabled={pending} onClick={() => setDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                className="gap-1.5"
+                disabled={pending}
+                onClick={() => setDialogOpen(false)}
+              >
+                <X className="size-4 shrink-0" aria-hidden />
                 {t("cancel")}
               </Button>
               <Button
@@ -95,7 +102,11 @@ export function DeleteAccountCard() {
                 disabled={!matches || pending}
                 onClick={() => void handleConfirm()}
               >
-                {pending ? <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden /> : null}
+                {pending ? (
+                  <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <Trash2 className="size-4 shrink-0" aria-hidden />
+                )}
                 {pending ? t("deleting") : t("confirm")}
               </Button>
             </>

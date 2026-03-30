@@ -1,9 +1,9 @@
 "use client";
 
-import { InviteUserCard } from "@/features/settings/app/components/invite-user-card";
+import { TeamInviteUserDialog } from "@/features/settings/app/components/team-invite-user-dialog";
 import { TenantMembersCard } from "@/features/settings/app/components/tenant-members-card";
 import { Button } from "@/shared/components/ui/button";
-import { Minus, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -13,7 +13,7 @@ export function UsersManagementPanel() {
   const { data: session, status } = useSession();
   const canManage =
     session?.user?.tenantRole === "tenant_admin" || session?.user?.globalRole === "super_admin";
-  const [showInvite, setShowInvite] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   if (status === "loading") {
     return null;
@@ -25,12 +25,12 @@ export function UsersManagementPanel() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button type="button" onClick={() => setShowInvite((prev) => !prev)}>
-          {showInvite ? <Minus className="size-4" /> : <Plus className="size-4" />}
-          {showInvite ? t("hideAddUser") : t("addUser")}
+        <Button type="button" onClick={() => setInviteOpen(true)}>
+          <Plus className="size-4" />
+          {t("addUser")}
         </Button>
       </div>
-      {showInvite ? <InviteUserCard /> : null}
+      <TeamInviteUserDialog open={inviteOpen} onOpenChange={setInviteOpen} />
       <TenantMembersCard />
     </div>
   );
