@@ -37,6 +37,16 @@ function isAbortError(error: unknown): boolean {
   );
 }
 
+/** `fetch()` nativo (ex.: PUT na URL pré-assinada do GCS) falha assim em CORS/rede — não passa pelo Axios. */
+function isLikelyBrowserFetchFailure(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const msg = error.message || "";
+  if (error.name === "TypeError" && msg === "Failed to fetch") return true;
+  if (msg === "NetworkError when attempting to fetch resource.") return true;
+  if (msg === "Load failed") return true;
+  return false;
+}
+
 /** Converte falha do axios (4xx/5xx com corpo `{ error.message }`) em `Error` legível. */
 export function normalizeApiError(error: unknown): Error {
   if (isAbortError(error)) {
@@ -55,6 +65,14 @@ export function normalizeApiError(error: unknown): Error {
     if (error.message?.startsWith("Request failed with status code") || status != null) {
       return new Error(fallbackServerMessage(status));
     }
+  }
+  if (isLikelyBrowserFetchFailure(error)) {
+    const en = browserLocaleSeg() === "en";
+    return new Error(
+      en
+        ? "Upload to storage failed (network or GCS CORS). Add your app origin to the bucket CORS rules (PUT, GET, HEAD)."
+        : "Upload para o armazenamento falhou (rede ou CORS do GCS). Inclua a origem do app nas regras CORS do bucket (PUT, GET, HEAD).",
+    );
   }
   if (error instanceof Error) return error;
   return new Error(String(error));

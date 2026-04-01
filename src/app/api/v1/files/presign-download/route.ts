@@ -1,5 +1,5 @@
 import { prisma } from "@/infrastructure/database/prisma";
-import { isR2Configured, presignGetObject } from "@/infrastructure/storage/r2-presign";
+import { isGcsConfigured, presignGetObject } from "@/infrastructure/storage/gcs-storage";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import {
@@ -15,8 +15,8 @@ const DOWNLOAD_URL_TTL_SECONDS = 300;
 
 export async function POST(request: Request) {
   const apiT = await getApiT(request);
-  if (!isR2Configured()) {
-    return jsonError("SERVICE_UNAVAILABLE", apiT("errors.r2NotConfigured"), 503);
+  if (!isGcsConfigured()) {
+    return jsonError("SERVICE_UNAVAILABLE", apiT("errors.storageNotConfigured"), 503);
   }
 
   const auth = await requireSessionOr401(request, apiT);

@@ -15,9 +15,13 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { PathwayStageChecklistBlock } from "@/features/pathways/app/components/pathway-stage-checklist-block";
+import { PathwayStageDocumentsBlock } from "@/features/pathways/app/components/pathway-stage-documents-block";
 import { usePathwayDraftVersion } from "@/features/pathways/app/hooks/use-pathway-draft-version";
 import { parsePathwayGraph } from "@/features/pathways/app/utils/pathway-graph";
-import { updatePathwayStageNodeChecklistItems } from "@/features/pathways/app/utils/pathway-stage-nodes";
+import {
+  updatePathwayStageNodeChecklistItems,
+  updatePathwayStageNodeStageDocuments,
+} from "@/features/pathways/app/utils/pathway-stage-nodes";
 import type { PathwayEditorProps, SelectedPathwayNodeUpdate } from "@/features/pathways/types/components";
 import type { StageSlaField } from "@/features/pathways/types/column-editor";
 import { cn } from "@/lib/utils";
@@ -211,6 +215,36 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
     );
   }
 
+  function addStageDocumentsSelected(items: { fileAssetId: string; fileName: string; mimeType: string }[]) {
+    if (!selectedId || items.length === 0) return;
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id !== selectedId
+          ? n
+          : {
+              ...n,
+              data: updatePathwayStageNodeStageDocuments(n.data, (docs) => [...docs, ...items]),
+            },
+      ),
+    );
+  }
+
+  function removeStageDocumentSelected(fileAssetId: string) {
+    if (!selectedId) return;
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id !== selectedId
+          ? n
+          : {
+              ...n,
+              data: updatePathwayStageNodeStageDocuments(n.data, (docs) =>
+                docs.filter((d) => d.fileAssetId !== fileAssetId),
+              ),
+            },
+      ),
+    );
+  }
+
   if (error && !loading && !versionId) {
     return (
       <div className="flex flex-col gap-2">
@@ -370,6 +404,11 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
                 onAdd={addChecklistItemSelected}
                 onUpdate={updateChecklistItemSelected}
                 onRemove={removeChecklistItemSelected}
+              />
+              <PathwayStageDocumentsBlock
+                stageDocuments={selectedNode.data?.stageDocuments}
+                onDocumentsAdded={addStageDocumentsSelected}
+                onRemove={removeStageDocumentSelected}
               />
             </>
           )}

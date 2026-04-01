@@ -50,7 +50,7 @@
     "stagesHavePatients": "Cannot remove stages with linked patients: {stages}. Transfer patients before publishing.",
     "graphNeedsAtLeastOneNode": "The graph must have at least one node (`nodes`) to publish.",
     "publishedVersionCannotEdit": "Published versions cannot be edited. Create a new version.",
-    "r2NotConfigured": "R2 storage is not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME.",
+    "storageNotConfigured": "Storage (GCS) is not configured. Set GCS_BUCKET_NAME and credentials: GCS_SERVICE_ACCOUNT_JSON (service account JSON) or GOOGLE_APPLICATION_CREDENTIALS; use GCS_PROJECT_ID if the JSON has no project_id.",
     "passwordResetNotConfigured": "Password recovery is not configured. Set RESEND_API_KEY.",
     "invitesNotConfigured": "Email invites are not configured. Set RESEND_API_KEY.",
     "emailSendFailedGeneric": "Could not send the email. Try again in a moment.",

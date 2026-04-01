@@ -2,7 +2,7 @@
 
 Ordem geral histórica: **backend** (APIs, dados, e-mail, storage) → **frontend** (login → perfil → shell → jornada). **Estado atual:** núcleo B0–B11 e F1–F8 está **entregue**; evolução segue [docs/bucomax/execution-plan.md](./bucomax/execution-plan.md).
 
-**E-mail:** referência de layout kaber.ai; no repo iDoctor: `src/infrastructure/email/email-templates.ts`. Variáveis Resend/R2 só em `.env` (ver `.env.example`).
+**E-mail:** referência de layout kaber.ai; no repo iDoctor: `src/infrastructure/email/email-templates.ts`. Variáveis Resend/GCS só em `.env` (ver `.env.example`).
 
 ---
 
@@ -20,7 +20,7 @@ Ordem geral histórica: **backend** (APIs, dados, e-mail, storage) → **fronten
 | B7 | ✅ | Resend + templates HTML |
 | B8 | ✅ | Recuperação de senha + convite / definir senha |
 | B9 | ✅ | Perfil, soft delete, membros admin |
-| B10 | ✅ | Client + FileAsset + R2 presign |
+| B10 | ✅ | Client + FileAsset + GCS presign |
 | B11 | ✅ | Jornada (`CarePathway`, versões, `graphJson`, etapas, `PatientPathway`, transição + stub) |
 | **B12** | ✅ | **Notificações in-app** + **BullMQ** (fila `notifications`) + **Redis** + **SSE** (`/api/v1/notifications/stream`); ver `docs/ARCHITECTURE.md` §7.4–7.5 |
 

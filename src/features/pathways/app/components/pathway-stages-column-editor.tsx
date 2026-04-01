@@ -21,6 +21,7 @@ import {
   normalizePathwayStageNodesPositions,
   parsePathwayStageNodes,
   updatePathwayStageNodeChecklistItems,
+  updatePathwayStageNodeStageDocuments,
 } from "@/features/pathways/app/utils/pathway-stage-nodes";
 import type { PathwayStagesColumnEditorProps, StageSlaField } from "@/features/pathways/types/column-editor";
 import { Link } from "@/i18n/navigation";
@@ -179,6 +180,38 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
     );
   }
 
+  function addStageDocuments(
+    stageId: string,
+    items: { fileAssetId: string; fileName: string; mimeType: string }[],
+  ) {
+    if (items.length === 0) return;
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id !== stageId
+          ? n
+          : {
+              ...n,
+              data: updatePathwayStageNodeStageDocuments(n.data, (docs) => [...docs, ...items]),
+            },
+      ),
+    );
+  }
+
+  function removeStageDocument(stageId: string, fileAssetId: string) {
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id !== stageId
+          ? n
+          : {
+              ...n,
+              data: updatePathwayStageNodeStageDocuments(n.data, (docs) =>
+                docs.filter((d) => d.fileAssetId !== fileAssetId),
+              ),
+            },
+      ),
+    );
+  }
+
   function removeStage(id: string) {
     if (nodes.length <= 1) {
       toast.error(t("cannotRemoveLast"));
@@ -226,6 +259,8 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
                       onAddChecklistItem={addChecklistItem}
                       onUpdateChecklistItem={updateChecklistItem}
                       onRemoveChecklistItem={removeChecklistItem}
+                      onAddStageDocuments={addStageDocuments}
+                      onRemoveStageDocument={removeStageDocument}
                       onRemove={removeStage}
                       disableRemove={nodes.length <= 1}
                     />

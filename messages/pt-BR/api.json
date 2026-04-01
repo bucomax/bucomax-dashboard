@@ -50,7 +50,7 @@
     "stagesHavePatients": "Não é possível remover etapas com pacientes vinculados: {stages}. Transfira os pacientes antes de publicar.",
     "graphNeedsAtLeastOneNode": "O grafo precisa ter ao menos um node (`nodes`) para publicar.",
     "publishedVersionCannotEdit": "Versão publicada não pode ser editada. Crie uma nova versão.",
-    "r2NotConfigured": "Armazenamento R2 não configurado. Defina R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME.",
+    "storageNotConfigured": "Armazenamento (GCS) não configurado. Defina GCS_BUCKET_NAME e credenciais: GCS_SERVICE_ACCOUNT_JSON (JSON da service account) ou GOOGLE_APPLICATION_CREDENTIALS; use GCS_PROJECT_ID se o JSON não tiver project_id.",
     "passwordResetNotConfigured": "Recuperação de senha não configurada. Defina RESEND_API_KEY.",
     "invitesNotConfigured": "Convites por email não configurados. Defina RESEND_API_KEY.",
     "emailSendFailedGeneric": "Não foi possível enviar o email. Tente novamente em instantes.",

@@ -41,13 +41,20 @@
     "pathwayNameRequired": "Enter a pathway name before saving.",
     "draftHint": "Save the draft before publishing. Publishing materializes stages for patients.",
     "stagePropsTitle": "Stage settings",
-    "stagePropsDescription": "Edit the name, time-based alerts, patient message, and checklist. Stays in the flow draft until you publish.",
+    "stagePropsDescription": "Edit the name, time-based alerts, patient message, checklist, and documents sent to the patient when they enter the stage (e.g. WhatsApp). Stays in the draft until you publish.",
     "selectNode": "Click a node on the canvas.",
     "removeStage": "Delete stage",
     "removeStageAria": "Remove selected stage from the flow",
     "cannotRemoveLastStage": "At least one stage is required in the flow.",
     "stageName": "Stage name",
-    "patientMessage": "Patient message"
+    "patientMessage": "Patient message",
+    "stageDocumentsTitle": "Documents for the patient in this stage",
+    "stageDocumentsDescription": "PDFs and images from the clinic library are added to the bundle when the patient reaches this stage. Automatic delivery depends on your active integration (e.g. WhatsApp). Publish the pathway version for changes to take effect for patients.",
+    "addStageDocument": "Add file",
+    "stageDocumentsEmpty": "No documents on this stage.",
+    "removeStageDocumentAria": "Remove document from stage",
+    "stageDocumentsUploadError": "Could not upload the file.",
+    "stageDocumentsUploadSuccess": "{count, plural, =1 {1 file added to the stage.} other {{count} files added to the stage.}}"
   },
   "columnEditor": {
     "title": "Treatment stages",

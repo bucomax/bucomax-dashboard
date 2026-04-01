@@ -15,7 +15,7 @@ alwaysApply: true
 
 ## Escopo técnico
 
-- **Dentro do repo:** painel multi-tenant, orquestração da jornada, persistência, R2, APIs `/api/v1`, webhooks que **recebem** callbacks de IA/chatbot.
+- **Dentro do repo:** painel multi-tenant, orquestração da jornada, persistência, GCS (objetos), APIs `/api/v1`, webhooks que **recebem** callbacks de IA/chatbot.
 - **Fora do repo:** implementação do canal WhatsApp/Meta, modelo de ML/inferência, treino — apenas **clientes HTTP** e contratos.
 
 ## Multi-tenant

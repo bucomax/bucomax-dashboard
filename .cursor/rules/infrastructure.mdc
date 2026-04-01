@@ -1,5 +1,5 @@
 ---
-description: Infrastructure — Prisma, R2, clientes HTTP, webhooks
+description: Infrastructure — Prisma, GCS, clientes HTTP, webhooks
 globs: src/infrastructure/**/*.ts,packages/**/*.prisma
 alwaysApply: false
 ---
@@ -12,11 +12,11 @@ alwaysApply: false
 - Índices compostos onde a §8 indica: `(tenantId, …)`, `(pathwayVersionId, order)` único em etapas, etc.
 - **Soft delete** só se produto exigir; caso contrário preferir constraints claras e auditoria em `StageTransition`.
 
-## R2 (object storage)
+## GCS (object storage)
 
 - Chaves: `tenants/{tenantId}/...` (e opcionalmente `clients/{clientId}/`); nunca bucket público sem controle.
-- **Presign:** expiração curta; gerar em lote no bundle da transição para reduzir round-trips.
-- Metadados sempre na tabela `File` (mime, size, `tenantId`).
+- **Presign (v4):** expiração curta; gerar em lote no bundle da transição para reduzir round-trips.
+- Metadados sempre na tabela `FileAsset` (mime, size, `tenantId`); coluna `r2Key` guarda a chave do objeto no bucket.
 
 ## Clientes HTTP externos
 

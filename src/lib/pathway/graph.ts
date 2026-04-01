@@ -4,6 +4,8 @@ type StageNodeData = {
   alertWarningDays?: unknown;
   alertCriticalDays?: unknown;
   checklistItems?: unknown;
+  /** Arquivos da biblioteca do tenant enviados ao paciente (ex.: WhatsApp) ao entrar na etapa — sincronizado em `StageDocument` ao publicar. */
+  stageDocuments?: unknown;
 };
 
 export type StageChecklistDraftItem = {
@@ -39,9 +41,43 @@ export function normalizeStageChecklistDraftItems(value: unknown): StageChecklis
     .filter((item): item is StageChecklistDraftItem => item !== null);
 }
 
+export type PathwayStageDocumentDraft = {
+  fileAssetId: string;
+  fileName: string;
+  mimeType: string;
+};
+
+function isLikelyCuid(value: string): boolean {
+  return /^c[a-z0-9]{20,32}$/i.test(value);
+}
+
+/**
+ * Normaliza a lista de documentos no nó do grafo (rascunho).
+ */
+export function normalizeStageDocumentDraftItems(value: unknown): PathwayStageDocumentDraft[] {
+  if (!Array.isArray(value)) return [];
+  const out: PathwayStageDocumentDraft[] = [];
+  const seen = new Set<string>();
+  for (const raw of value) {
+    if (!raw || typeof raw !== "object") continue;
+    const row = raw as { fileAssetId?: unknown; fileName?: unknown; mimeType?: unknown };
+    const fileAssetId = typeof row.fileAssetId === "string" ? row.fileAssetId.trim() : "";
+    if (!fileAssetId || !isLikelyCuid(fileAssetId) || seen.has(fileAssetId)) continue;
+    seen.add(fileAssetId);
+    const fileName =
+      typeof row.fileName === "string" && row.fileName.trim().length > 0 ? row.fileName.trim() : "arquivo";
+    const mimeType =
+      typeof row.mimeType === "string" && row.mimeType.trim().length > 0
+        ? row.mimeType.trim()
+        : "application/octet-stream";
+    out.push({ fileAssetId, fileName, mimeType });
+  }
+  return out;
+}
+
 /**
  * Extrai etapas a partir do JSON do React Flow (`nodes` / `edges`).
- * Esperado: `{ nodes: [{ id, data?: { label?, patientMessage?, alertWarningDays?, alertCriticalDays? } }] }`.
+ * Esperado: `{ nodes: [{ id, data?: { label?, patientMessage?, …, stageDocuments? } }] }`.
  */
 export function deriveStagesFromGraph(graphJson: unknown): {
   stageKey: string;
@@ -54,6 +90,7 @@ export function deriveStagesFromGraph(graphJson: unknown): {
     label: string;
     sortOrder: number;
   }[];
+  documentFileAssetIds: string[];
 }[] {
   const g = graphJson as {
     nodes?: { id?: string; data?: StageNodeData }[];
@@ -74,6 +111,7 @@ export function deriveStagesFromGraph(graphJson: unknown): {
           label: item.label.trim(),
           sortOrder: itemIndex,
         })),
+      documentFileAssetIds: normalizeStageDocumentDraftItems(data?.stageDocuments).map((d) => d.fileAssetId),
     };
   });
 }

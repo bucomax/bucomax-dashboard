@@ -25,7 +25,7 @@ export function PathwayStageChecklistBlock({
   const items = normalizeStageChecklistDraftItems(checklistItems);
 
   return (
-    <div className="w-full space-y-3 border-t pt-3">
+    <div className="w-full min-w-0 space-y-3 border-t pt-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-sm font-medium">{t("checklistTitle")}</p>

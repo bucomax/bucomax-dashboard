@@ -1,10 +1,10 @@
 import { prisma } from "@/infrastructure/database/prisma";
 import {
   buildTenantUploadKey,
-  isR2Configured,
+  isGcsConfigured,
   presignPutObject,
   publicUrlForKey,
-} from "@/infrastructure/storage/r2-presign";
+} from "@/infrastructure/storage/gcs-storage";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import {
@@ -18,8 +18,8 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   const apiT = await getApiT(request);
-  if (!isR2Configured()) {
-    return jsonError("SERVICE_UNAVAILABLE", apiT("errors.r2NotConfigured"), 503);
+  if (!isGcsConfigured()) {
+    return jsonError("SERVICE_UNAVAILABLE", apiT("errors.storageNotConfigured"), 503);
   }
 
   const auth = await requireSessionOr401(request, apiT);

@@ -1,6 +1,6 @@
 # Arquitetura — iDoctor
 
-Documento de referência da plataforma: dashboard multi-tenant, autenticação JWT, cadastro de clientes, jornada clínica por tenant, armazenamento em Cloudflare R2 e stack alinhada ao projeto de referência **kaber.ai** (mesmo diretório pai do repositório `idoctor`). **Escopo de produto**, **integrações** e **layout do painel** estão em [PRODUCT-SCOPE.md](./PRODUCT-SCOPE.md). O **modelo de dados** (pathway, etapas, paciente, transição, dispatch) e o **impacto nas camadas de código** são decisão arquitetural central — **§8** abaixo.
+Documento de referência da plataforma: dashboard multi-tenant, autenticação JWT, cadastro de clientes, jornada clínica por tenant, armazenamento em Google Cloud Storage e stack alinhada ao projeto de referência **kaber.ai** (mesmo diretório pai do repositório `idoctor`). **Escopo de produto**, **integrações** e **layout do painel** estão em [PRODUCT-SCOPE.md](./PRODUCT-SCOPE.md). O **modelo de dados** (pathway, etapas, paciente, transição, dispatch) e o **impacto nas camadas de código** são decisão arquitetural central — **§8** abaixo.
 
 ---
 
@@ -14,7 +14,7 @@ Documento de referência da plataforma: dashboard multi-tenant, autenticação J
 | Auth stateless | JWT de acesso + refresh persistido (revogável), compatível com web e integrações. |
 | Fluxos configuráveis | Definição de workflow em grafo (nodes/edges); execução com estado persistido. |
 | Cadastro flexível | Formulários e etapas dinâmicas sem deploy a cada mudança de processo. |
-| Arquivos seguros | Objetos no R2 com prefixo por tenant (e opcionalmente por cliente). |
+| Arquivos seguros | Objetos no GCS com prefixo por tenant (e opcionalmente por cliente). |
 
 ---
 
@@ -32,7 +32,7 @@ Documento de referência da plataforma: dashboard multi-tenant, autenticação J
 | ORM | Prisma (`packages/prisma`, workspace npm) |
 | Auth (web) | **NextAuth.js v4** (App Router), **Prisma Adapter**, provider Credentials (email/senha); callbacks para claims (`globalRole`, contexto de tenant) |
 | Auth (API stateless, opcional) | JWT (`jsonwebtoken`) + refresh no banco para clientes externos — mesmo modelo `User` |
-| Storage | Cloudflare R2 via API compatível S3 (`@aws-sdk/client-s3`) |
+| Storage | Google Cloud Storage (`@google-cloud/storage`, URLs assinadas v4) |
 | Validação | Zod |
 | Doc API | **Scalar** (`@scalar/nextjs-api-reference`) + **`public/openapi.json`** (OpenAPI 3) |
 | Fila / jobs (opcional) | **BullMQ** + **Redis 7** (ativado por `REDIS_URL`); sem Redis, notificações rodam inline — ver §7.7 |
@@ -63,7 +63,7 @@ idoctor/
 ├── src/
 │   ├── application/            # casos de uso por módulo (schemas Zod por pasta quando fizer sentido)
 │   ├── domain/                 # entidades, erros de domínio
-│   ├── infrastructure/         # Prisma, R2, e-mail, filas (futuro)
+│   ├── infrastructure/         # Prisma, GCS, e-mail, filas (futuro)
 │   ├── types/                  # interfaces e types compartilhados (API, DTOs, UI); sem tipos soltos em app/
 │   │   └── api/                # opcional: contratos v1 por recurso
 │   └── lib/
@@ -509,7 +509,7 @@ O **núcleo já implementado** é: **jornada + versão + etapas + checklist/docu
 | `PathwayVersion` | `id`, `pathwayId`, `version`, `published`, `graphJson`, `createdAt` | Canvas **@xyflow/react** persistido; ao publicar, **sincronizar** `PathwayStage` com os nodes de etapa. |
 | `PathwayStage` | `id`, `pathwayVersionId`, `stageKey`, `name`, `sortOrder`, `patientMessage?`, flags SLA | Materialização para queries, FKs, `StageDocument` e checklist. |
 | `PathwayStageChecklistItem` | `id`, `pathwayStageId`, `label`, `sortOrder` | Checklist operacional da etapa publicada; nasce do `graphJson` ao publicar. |
-| `StageDocument` | `id`, `pathwayStageId`, `fileAssetId`, `sortOrder` | **N:N** etapa ↔ `FileAsset` (R2); **pacote integral** ao WhatsApp. |
+| `StageDocument` | `id`, `pathwayStageId`, `fileAssetId`, `sortOrder` | **N:N** etapa ↔ `FileAsset` (GCS); **pacote integral** ao WhatsApp. |
 
 **Índices atuais/recomendados:** `PathwayStage(pathwayVersionId, stageKey)` único, `PathwayStage(pathwayVersionId, sortOrder)`, `PathwayStageChecklistItem(pathwayStageId, sortOrder)`, `StageDocument(pathwayStageId, sortOrder)` e `StageDocument(pathwayStageId, fileAssetId)` único.
 
@@ -547,7 +547,7 @@ Auth/plataforma (`User.globalRole`, `TenantMembership`, `RefreshToken`, `AuditLo
 | Camada | O que entra |
 |--------|-------------|
 | **`src/domain` / `src/application`** | Direção desejada: regras de pathway, bundle documental, transição e dispatch desacopladas de rotas. |
-| **`src/infrastructure`** | Prisma, R2/presign e futuros clientes externos de WhatsApp/IA. |
+| **`src/infrastructure`** | Prisma, GCS/presign e futuros clientes externos de WhatsApp/IA. |
 | **`app/api/v1`** | Hoje concentra parte da orquestração: `clients`, `pathways`, `patient-pathways`, `stage-documents`, `files`. |
 | **Frontend** | Editor **@xyflow/react**, dashboard, lista/ficha do paciente e modal de transição com preview do pacote. |
 
@@ -575,16 +575,16 @@ Eventos de domínio (opcional): após `TransitionPatientStage`, worker assíncro
 
 ---
 
-## 9. Armazenamento (Cloudflare R2)
+## 9. Armazenamento (Google Cloud Storage)
 
 | Aspecto | Prática recomendada |
 |---------|---------------------|
 | Bucket | Um bucket; isolamento por **prefixo** `tenants/{tenantId}/...` |
-| Upload | Presigned URL para upload direto do browser **ou** `POST` multipart para API que grava no R2 (como referência no kaber.ai) |
-| Metadados | Tabela `FileAsset`: `tenantId`, `clientId` opcional, `r2Key`, `mimeType`, `sizeBytes`, `createdAt` |
+| Upload | URL assinada (v4) para upload direto do browser (`PUT`) **ou** `POST` multipart para API que grava no bucket |
+| Metadados | Tabela `FileAsset`: `tenantId`, `clientId` opcional, `r2Key` (chave do objeto no GCS), `mimeType`, `sizeBytes`, `createdAt` |
 | Exclusão | Política de lifecycle ou job de limpeza ao apagar entidade dona do arquivo |
 
-Variáveis de ambiente típicas: endpoint R2, `accessKeyId`, `secretAccessKey`, nome do bucket, região (se aplicável).
+Variáveis de ambiente típicas: `GCS_BUCKET_NAME`, credenciais (`GCS_SERVICE_ACCOUNT_JSON` ou `GOOGLE_APPLICATION_CREDENTIALS`), opcional `GCS_PROJECT_ID`, `GCS_PUBLIC_BASE_URL`. CORS no bucket para origens do app (PUT/GET/HEAD).
 
 ---
 
@@ -656,7 +656,7 @@ Prefixo: `/api/v1`.
 1. Monorepo Next + `packages/prisma`: `Tenant`, `User` (com `globalRole`), `TenantMembership` (com `tenant_admin` / `tenant_user`), `RefreshToken`.
 2. Auth `/api/v1/auth/*`, `/api/v1/auth/context` + guards de super admin + middleware (host + dashboard).
 3. CRUD `Client` com isolamento por tenant.
-4. Integração R2 + entidade de metadados de arquivo.
+4. Integração GCS + entidade de metadados de arquivo.
 5. **Jornada:** `CarePathway` → `PathwayVersion` → `PathwayStage` + `StageDocument`; UI editor (lista de etapas + docs).
 6. **Paciente na jornada:** `PatientPathway` + `POST …/transition` + `StageTransition` + `dispatchStub`; `ChannelDispatch` entra na evolução seguinte.
 7. `AiJob` + webhook IA; opcional: `WorkflowDefinition` + React Flow se precisar de ramificações.
@@ -666,7 +666,7 @@ Prefixo: `/api/v1`.
 
 ## 14. Referência externa de projeto
 
-A base de organização (pastas, Prisma em pacote, JWT, R2, rotas `v1`) segue o repositório local **kaber.ai** (`…/kaber.ai`). Adaptações principais: **multi-tenant**, **RBAC**, **jornada clínica** (pathway/stage/paciente/transição/dispatch), **integrações IA e WhatsApp**, **subdomínios**.
+A base de organização (pastas, Prisma em pacote, JWT, armazenamento de objetos, rotas `v1`) segue o repositório local **kaber.ai** (`…/kaber.ai`). Adaptações principais: **multi-tenant**, **RBAC**, **jornada clínica** (pathway/stage/paciente/transição/dispatch), **integrações IA e WhatsApp**, **subdomínios**.
 
 ---
 

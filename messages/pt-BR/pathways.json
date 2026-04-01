@@ -41,13 +41,20 @@
     "pathwayNameRequired": "Informe o nome da jornada antes de salvar.",
     "draftHint": "Salve o rascunho antes de publicar. Ao publicar, as etapas são materializadas para pacientes.",
     "stagePropsTitle": "Configuração da etapa",
-    "stagePropsDescription": "Ajuste nome, alertas por tempo na fase, mensagem ao paciente e checklist. Fica no rascunho do fluxo até você publicar.",
+    "stagePropsDescription": "Ajuste nome, alertas por tempo na fase, mensagem ao paciente, checklist e documentos enviados ao paciente ao entrar na etapa (ex.: WhatsApp). Fica no rascunho até publicar.",
     "selectNode": "Clique em um nó no canvas.",
     "removeStage": "Excluir etapa",
     "removeStageAria": "Excluir etapa selecionada do fluxo",
     "cannotRemoveLastStage": "É necessário ao menos uma etapa no fluxo.",
     "stageName": "Nome da etapa",
-    "patientMessage": "Mensagem ao paciente"
+    "patientMessage": "Mensagem ao paciente",
+    "stageDocumentsTitle": "Documentos para o paciente nesta etapa",
+    "stageDocumentsDescription": "PDFs e imagens da biblioteca da clínica entram no pacote quando o paciente chega nesta etapa. O envio automático depende da integração ativa (ex.: WhatsApp). Publique a versão da jornada para valer para os pacientes.",
+    "addStageDocument": "Adicionar arquivo",
+    "stageDocumentsEmpty": "Nenhum documento nesta etapa.",
+    "removeStageDocumentAria": "Remover documento da etapa",
+    "stageDocumentsUploadError": "Não foi possível enviar o arquivo.",
+    "stageDocumentsUploadSuccess": "{count, plural, =1 {1 arquivo adicionado à etapa.} other {{count} arquivos adicionados à etapa.}}"
   },
   "columnEditor": {
     "title": "Fases do tratamento",

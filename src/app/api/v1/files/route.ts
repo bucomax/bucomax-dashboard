@@ -1,5 +1,5 @@
 import { prisma } from "@/infrastructure/database/prisma";
-import { keyBelongsToTenant, publicUrlForKey } from "@/infrastructure/storage/r2-presign";
+import { keyBelongsToTenant, publicUrlForKey } from "@/infrastructure/storage/gcs-storage";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import {

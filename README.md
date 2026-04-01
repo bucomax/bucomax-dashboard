@@ -12,14 +12,14 @@ Painel clínico **multi-tenant** para orquestrar a **jornada do paciente**: flux
 | UI | **Tailwind CSS**, componentes com **Base UI** |
 | Dados | **PostgreSQL**, **Prisma** (`packages/prisma`) |
 | Auth | **NextAuth** |
-| Arquivos | **Cloudflare R2** (URLs assinadas) |
+| Arquivos | **Google Cloud Storage** (URLs assinadas v4) |
 | Filas / jobs | **BullMQ** + **Redis** (quando configurado) |
 
 ---
 
 ## Começar
 
-1. Copie variáveis de ambiente: `.env.example` → `.env` (inclua `DATABASE_URL`, segredos NextAuth, R2 se for usar uploads).
+1. Copie variáveis de ambiente: `.env.example` → `.env` (inclua `DATABASE_URL`, segredos NextAuth, GCS se for usar uploads).
 2. Instale e suba o banco:
 
 ```bash

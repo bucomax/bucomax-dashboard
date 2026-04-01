@@ -24,7 +24,7 @@ Regras persistentes em [`.cursor/rules/`](.cursor/rules/) (`.mdc`):
 | `clean-architecture.mdc` | Sempre — camadas, ports, DTOs, config |
 | `backend-api.mdc` | `app/api/**` — v1, Zod, auth, webhooks, erros HTTP |
 | `application-layer.mdc` | `src/application`, `src/domain` — use cases, transações, ports |
-| `infrastructure.mdc` | Infra — Prisma, R2, HTTP, webhooks entrada |
+| `infrastructure.mdc` | Infra — Prisma, GCS, HTTP, webhooks entrada |
 | `frontend-dashboard.mdc` | `.tsx` — layout, Query, telas jornada/paciente |
 | `code-organization.mdc` | Sempre — `src/types/`, `src/lib/utils/`, sem tipos soltos em rotas/componentes |
 | `http-services-api-types.mdc` | `src/types/api/**`, `**/*.service.ts` — DTOs em `types/api`, services só HTTP |

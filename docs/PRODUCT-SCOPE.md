@@ -19,7 +19,7 @@ O **iDoctor** é o **painel interno multi-tenant** onde cada **clínica (tenant)
 |--------|-------------------|-----------------------------------------------|
 | **Projeto WhatsApp / chatbot** | Conversa no canal WhatsApp, NLP de triagem, handoff, mensagens de mídia no canal | Persistência do painel, regras de negócio clínicas completas, editor de fluxo visual |
 | **Projeto IA (análise)** | Interpretar exames, TD, textos, imagens; retornar laudos, scores, flags ou JSON estruturado | CRUD do painel, multi-tenant, filas de negócio do tenant |
-| **iDoctor (este repo)** | Tenants, usuários, **modelo de jornada** (etapas do paciente por clínica), **estado do paciente na jornada**, **documentos por etapa**, disparo ao **chatbot**, **runs** / eventos, **armazenamento** (R2), **chamar IA** e **callbacks**, **dashboard** | Modelo de IA, canal WhatsApp em si |
+| **iDoctor (este repo)** | Tenants, usuários, **modelo de jornada** (etapas do paciente por clínica), **estado do paciente na jornada**, **documentos por etapa**, disparo ao **chatbot**, **runs** / eventos, **armazenamento** (GCS), **chamar IA** e **callbacks**, **dashboard** | Modelo de IA, canal WhatsApp em si |
 
 ### 2.1 Diagrama lógico
 
@@ -32,7 +32,7 @@ flowchart LR
   subgraph core [iDoctor]
     API[API + motor de fluxos]
     DB[(Postgres)]
-    R2[(R2 arquivos)]
+    GCS[(GCS arquivos)]
     UI[Dashboard]
   end
 
@@ -44,7 +44,7 @@ flowchart LR
   WA <-->|"enviar msg + docs / eventos"| API
   UI --> API
   API --> DB
-  API --> R2
+  API --> GCS
   API -->|"POST job análise"| IA_API
   IA_API --> IA_W
   IA_API -->|"callback / webhook"| API
@@ -147,7 +147,7 @@ Isso é **uma jornada**; no painel, o médico/atendente **posiciona o paciente**
 
 | Ação | Comportamento sugerido |
 |------|----------------------|
-| **Disparar análise** | Evolução futura: `POST` para a API de IA com `tenantId`, `patientId` ou `runId`, `stageId`, `tipo` (`exam_analysis`, `td_analysis`, …), `input` (URLs do R2, texto). |
+| **Disparar análise** | Evolução futura: `POST` para a API de IA com `tenantId`, `patientId` ou `runId`, `stageId`, `tipo` (`exam_analysis`, `td_analysis`, …), `input` (URLs do GCS, texto). |
 | **Autenticação** | API key ou mTLS; `tenantId` sempre no payload. |
 | **Resposta assíncrona** | Planejado: IA retorna `202` + `jobId`; o painel grava status ligado ao paciente/etapa. |
 | **Callback** | Planejado: `POST /api/v1/webhooks/ai` com `jobId`, `status`, `result` ou erro. |
@@ -165,7 +165,7 @@ Isso é **uma jornada**; no painel, o médico/atendente **posiciona o paciente**
 | Capacidade | Descrição |
 |------------|-----------|
 | **Cadastro de paciente/cliente** | **WhatsApp** (telefone do canal), **nome**, **descrição do caso** / resumo clínico; demais campos opcionais (documento, endereço) — por tenant. Cadastro **antes** de vincular fluxo (passo 1 da ordem operacional). |
-| **Arquivos** | Documentos da **biblioteca da clínica** e os **vinculados a cada etapa** da jornada; exames no R2 para IA. |
+| **Arquivos** | Documentos da **biblioteca da clínica** e os **vinculados a cada etapa** da jornada; exames no GCS para IA. |
 | **Ficha do paciente** | Etapa atual, checklist da etapa atual, **anotações dedicadas**, histórico de etapas, timeline de transições, arquivos, responsável, OPME e snapshot do pacote documental por etapa. |
 | **Auditoria** | Quem moveu o paciente de etapa, disparos ao canal e jobs de IA. |
 
@@ -222,7 +222,7 @@ Use esta tabela como **checklist**; ao importar o PDF, marque **OK** ou **ajusta
 | Entrega | Detalhe |
 |---------|---------|
 | CRUD clientes/pacientes | Campos acordados (nome, doc, telefone, endereço). |
-| R2 | Upload, metadados, URLs assinadas para a IA. |
+| GCS | Upload, metadados, URLs assinadas para a IA. |
 
 ### Fase 2 — Jornada do paciente + disparo ao chatbot (MVP)
 

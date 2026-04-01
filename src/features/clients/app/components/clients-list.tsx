@@ -306,12 +306,18 @@ export function ClientsList() {
                       journeyCompletedAt={c.journeyCompletedAt ?? null}
                     />
                   </span>
-                  <span
-                    className="text-muted-foreground min-w-0 truncate text-xs tabular-nums"
-                    title={updatedAtLabel}
-                  >
-                    {updatedAtLabel}
-                  </span>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <span className="text-muted-foreground inline-flex min-w-0 max-w-full cursor-default justify-end text-xs tabular-nums outline-none">
+                          <span className="min-w-0 truncate">{updatedAtLabel}</span>
+                        </span>
+                      }
+                    />
+                    <TooltipContent side="top" align="end" className="max-w-sm text-left">
+                      {t("updatedTooltip", { at: updatedAtLabel })}
+                    </TooltipContent>
+                  </Tooltip>
                   <span className="flex shrink-0 flex-wrap items-center justify-end gap-1">
                     <Tooltip>
                       <TooltipTrigger

@@ -2,6 +2,8 @@ import type { Node } from "@xyflow/react";
 
 import {
   normalizeStageChecklistDraftItems,
+  normalizeStageDocumentDraftItems,
+  type PathwayStageDocumentDraft,
   type StageChecklistDraftItem,
 } from "@/lib/pathway/graph";
 
@@ -29,6 +31,22 @@ export function updatePathwayStageNodeChecklistItems(
     delete nextData.checklistItems;
   } else {
     nextData.checklistItems = nextItems;
+  }
+
+  return nextData;
+}
+
+export function updatePathwayStageNodeStageDocuments(
+  data: Node["data"],
+  updater: (items: PathwayStageDocumentDraft[]) => PathwayStageDocumentDraft[],
+) {
+  const nextData = { ...(data as Record<string, unknown> | undefined) };
+  const nextDocs = updater(normalizeStageDocumentDraftItems(nextData.stageDocuments));
+
+  if (nextDocs.length === 0) {
+    delete nextData.stageDocuments;
+  } else {
+    nextData.stageDocuments = nextDocs;
   }
 
   return nextData;

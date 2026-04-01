@@ -6,6 +6,7 @@ import { GripVertical, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { PathwayStageChecklistBlock } from "@/features/pathways/app/components/pathway-stage-checklist-block";
+import { PathwayStageDocumentsBlock } from "@/features/pathways/app/components/pathway-stage-documents-block";
 import type { PathwaySortableStageRowProps } from "@/features/pathways/types/column-editor";
 import { cn } from "@/lib/utils";
 import { Button } from "@/shared/components/ui/button";
@@ -20,6 +21,8 @@ export function PathwaySortableStageRow({
   onAddChecklistItem,
   onUpdateChecklistItem,
   onRemoveChecklistItem,
+  onAddStageDocuments,
+  onRemoveStageDocument,
   onRemove,
   disableRemove,
 }: PathwaySortableStageRowProps) {
@@ -98,12 +101,19 @@ export function PathwaySortableStageRow({
         <Trash2 className="size-4" />
       </Button>
 
-      <PathwayStageChecklistBlock
-        checklistItems={data?.checklistItems}
-        onAdd={() => onAddChecklistItem(node.id)}
-        onUpdate={(itemId, label) => onUpdateChecklistItem(node.id, itemId, label)}
-        onRemove={(itemId) => onRemoveChecklistItem(node.id, itemId)}
-      />
+      <div className="flex w-full min-w-0 basis-full flex-col gap-0">
+        <PathwayStageChecklistBlock
+          checklistItems={data?.checklistItems}
+          onAdd={() => onAddChecklistItem(node.id)}
+          onUpdate={(itemId, label) => onUpdateChecklistItem(node.id, itemId, label)}
+          onRemove={(itemId) => onRemoveChecklistItem(node.id, itemId)}
+        />
+        <PathwayStageDocumentsBlock
+          stageDocuments={data?.stageDocuments}
+          onDocumentsAdded={(items) => onAddStageDocuments(node.id, items)}
+          onRemove={(fileAssetId) => onRemoveStageDocument(node.id, fileAssetId)}
+        />
+      </div>
     </div>
   );
 }

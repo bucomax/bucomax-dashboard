@@ -13,6 +13,11 @@ export type PathwaySortableStageRowProps = {
   onAddChecklistItem: (id: string) => void;
   onUpdateChecklistItem: (id: string, itemId: string, label: string) => void;
   onRemoveChecklistItem: (id: string, itemId: string) => void;
+  onAddStageDocuments: (
+    stageId: string,
+    items: { fileAssetId: string; fileName: string; mimeType: string }[],
+  ) => void;
+  onRemoveStageDocument: (stageId: string, fileAssetId: string) => void;
   onRemove: (id: string) => void;
   disableRemove: boolean;
 };

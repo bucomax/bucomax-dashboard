@@ -9,7 +9,7 @@ alwaysApply: true
 
 - **`domain/`** — entidades, value objects, erros; **zero** imports de Prisma, Next.js `headers()`, `fetch` de infra, React.
 - **`application/`** — casos de uso, **ports** (interfaces); depende de `domain` e de tipos declarados nos ports.
-- **`infrastructure/`** — implementações: Prisma repositories, S3/R2, `WhatsAppOutbound`, `AiClient`.
+- **`infrastructure/`** — implementações: Prisma repositories, GCS, `WhatsAppOutbound`, `AiClient`.
 - **`app/`** — adapters: Route Handlers chamam use cases; Server Components podem chamar facades que delegam a use cases (evitar lógica grossa em RSC).
 
 ## Ports recomendados (extensível)
@@ -17,7 +17,7 @@ alwaysApply: true
 | Port | Implementação típica |
 |------|----------------------|
 | `IPathwayRepository` / `IPatientPathwayRepository` | Prisma |
-| `IFileStorage` | Presign R2 + metadados `File` |
+| `IFileStorage` | Presign GCS + metadados `FileAsset` |
 | `INotificationEmitter` | BullMQ queue + Prisma + SSE pub/sub |
 | `IWhatsAppOutbound` | HTTP para projeto chatbot |
 | `IAiJobClient` | HTTP para serviço de IA |

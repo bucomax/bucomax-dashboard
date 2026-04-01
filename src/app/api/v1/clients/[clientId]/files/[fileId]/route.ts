@@ -1,9 +1,9 @@
 import { prisma } from "@/infrastructure/database/prisma";
 import {
   deleteObjectFromBucket,
-  isR2Configured,
+  isGcsConfigured,
   keyBelongsToTenant,
-} from "@/infrastructure/storage/r2-presign";
+} from "@/infrastructure/storage/gcs-storage";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import {
@@ -45,7 +45,7 @@ export async function DELETE(request: Request, ctx: RouteCtx) {
     return jsonError("NOT_FOUND", apiT("errors.clientFileNotFound"), 404);
   }
 
-  if (isR2Configured() && keyBelongsToTenant(asset.r2Key, tenantId)) {
+  if (isGcsConfigured() && keyBelongsToTenant(asset.r2Key, tenantId)) {
     try {
       await deleteObjectFromBucket(asset.r2Key);
     } catch {

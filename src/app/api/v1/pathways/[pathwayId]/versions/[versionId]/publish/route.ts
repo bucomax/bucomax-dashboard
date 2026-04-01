@@ -136,6 +136,28 @@ export async function POST(request: Request, ctx: RouteCtx) {
       await tx.pathwayStageChecklistItem.createMany({ data: checklistRows });
     }
 
+    for (const stage of stages) {
+      const pathwayStageId = stageIdByKey.get(stage.stageKey);
+      if (!pathwayStageId) continue;
+      await tx.stageDocument.deleteMany({ where: { pathwayStageId } });
+      let docOrder = 0;
+      for (const fileAssetId of stage.documentFileAssetIds) {
+        const fileOk = await tx.fileAsset.findFirst({
+          where: { id: fileAssetId, tenantId: tenantCtx.tenantId },
+          select: { id: true },
+        });
+        if (!fileOk) continue;
+        await tx.stageDocument.create({
+          data: {
+            pathwayStageId,
+            fileAssetId,
+            sortOrder: docOrder,
+          },
+        });
+        docOrder += 1;
+      }
+    }
+
     if (oldPublished) {
       await tx.patientPathway.updateMany({
         where: { pathwayVersionId: oldPublished.id },

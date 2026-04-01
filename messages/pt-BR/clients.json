@@ -88,6 +88,7 @@
       "updated": "Atualizado",
       "actions": "Ações"
     },
+    "updatedTooltip": "Última atualização do registro: {at}",
     "actions": {
       "edit": "Editar",
       "editAria": "Abrir ficha do paciente",
