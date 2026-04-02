@@ -14,8 +14,11 @@ import type { Node } from "@xyflow/react";
 import { ExternalLink, Loader2, Plus, RefreshCw, Rocket, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
+import { PATHWAY_STAGE_NONE_ASSIGNEE } from "@/features/pathways/app/constants/stage-default-assignee";
+import { setStageNodeDefaultAssignees } from "@/lib/pathway/stage-node-assignees";
 import { PathwaySortableStageRow } from "@/features/pathways/app/components/pathway-sortable-stage-row";
 import { usePathwayDraftVersion } from "@/features/pathways/app/hooks/use-pathway-draft-version";
+import { listTenantMembersForPicker } from "@/features/settings/app/services/tenant-settings.service";
 import { buildLinearEdges } from "@/features/pathways/app/utils/linear-graph-edges";
 import {
   normalizePathwayStageNodesPositions,
@@ -24,6 +27,7 @@ import {
   updatePathwayStageNodeStageDocuments,
 } from "@/features/pathways/app/utils/pathway-stage-nodes";
 import type { PathwayStagesColumnEditorProps, StageSlaField } from "@/features/pathways/types/column-editor";
+import type { LabeledSelectOption } from "@/shared/components/forms/labeled-select";
 import { Link } from "@/i18n/navigation";
 import { toast } from "@/lib/toast";
 import { Button } from "@/shared/components/ui/button";
@@ -45,8 +49,33 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
     reload,
   } = usePathwayDraftVersion(pathwayId);
   const [nodes, setNodes] = useState<Node[]>([]);
+  const [assigneeOptions, setAssigneeOptions] = useState<LabeledSelectOption[]>([]);
 
   const edges = useMemo(() => buildLinearEdges(nodes), [nodes]);
+
+  const noneAssigneeLabel = tEditor("defaultAssigneeNone");
+  useEffect(() => {
+    let cancelled = false;
+    void listTenantMembersForPicker({ skipErrorToast: true })
+      .then((data) => {
+        if (cancelled) return;
+        setAssigneeOptions([
+          { value: PATHWAY_STAGE_NONE_ASSIGNEE, label: noneAssigneeLabel },
+          ...data.members.map((m) => ({
+            value: m.userId,
+            label: m.name?.trim() ? `${m.name} (${m.email})` : m.email,
+          })),
+        ]);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAssigneeOptions([{ value: PATHWAY_STAGE_NONE_ASSIGNEE, label: noneAssigneeLabel }]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [noneAssigneeLabel]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -131,6 +160,17 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
     );
   }
 
+  function updateDefaultAssignees(stageId: string, userIds: string[]) {
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.id !== stageId) return n;
+        const nextData = { ...n.data } as Record<string, unknown>;
+        setStageNodeDefaultAssignees(nextData, userIds);
+        return { ...n, data: nextData };
+      }),
+    );
+  }
+
   function addChecklistItem(stageId: string) {
     setNodes((nds) =>
       nds.map((n) =>
@@ -159,6 +199,28 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
               ...n,
               data: updatePathwayStageNodeChecklistItems(n.data, (items) =>
                 items.map((item) => (item.id === itemId ? { ...item, label } : item)),
+              ),
+            },
+      ),
+    );
+  }
+
+  function updateChecklistItemRequired(stageId: string, itemId: string, requiredForTransition: boolean) {
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id !== stageId
+          ? n
+          : {
+              ...n,
+              data: updatePathwayStageNodeChecklistItems(n.data, (items) =>
+                items.map((item) => {
+                  if (item.id !== itemId) return item;
+                  if (!requiredForTransition) {
+                    const { requiredForTransition: _r, ...rest } = item;
+                    return rest;
+                  }
+                  return { ...item, requiredForTransition: true };
+                }),
               ),
             },
       ),
@@ -254,10 +316,17 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
                   <li key={node.id} className="list-none">
                     <PathwaySortableStageRow
                       node={node}
+                      assigneeOptions={
+                        assigneeOptions.length > 0
+                          ? assigneeOptions
+                          : [{ value: PATHWAY_STAGE_NONE_ASSIGNEE, label: noneAssigneeLabel }]
+                      }
+                      onUpdateDefaultAssignees={updateDefaultAssignees}
                       onUpdateLabel={updateLabel}
                       onUpdateSla={updateSla}
                       onAddChecklistItem={addChecklistItem}
                       onUpdateChecklistItem={updateChecklistItem}
+                      onUpdateChecklistItemRequired={updateChecklistItemRequired}
                       onRemoveChecklistItem={removeChecklistItem}
                       onAddStageDocuments={addStageDocuments}
                       onRemoveStageDocument={removeStageDocument}

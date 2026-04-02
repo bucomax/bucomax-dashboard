@@ -1,14 +1,19 @@
 "use client";
 
+import { ClientDetailAssigneeOverviewCard } from "@/features/clients/app/components/client-detail-assignee-overview-card";
+import { ClientDetailTimelineSection } from "@/features/clients/app/components/client-detail-timeline-section";
+import { PatientSelfRegisterQrDialog } from "@/features/clients/app/components/patient-self-register-qr-dialog";
 import { ClientCompletedTreatmentsSection } from "@/features/clients/app/components/client-completed-treatments-section";
 import { ClientDetailCardTitle } from "@/features/clients/app/components/client-detail-card-title";
 import { JourneyStagesList } from "@/features/clients/app/components/client-detail-journey-stages-list";
 import { ClientDetailFilesCard } from "@/features/clients/app/components/client-detail-files-card";
 import { ClientDetailNotesCard } from "@/features/clients/app/components/client-detail-notes-card";
 import { ClientDetailProfileCard } from "@/features/clients/app/components/client-detail-profile-card";
+import { createPatientPortalLink } from "@/features/clients/app/services/clients.service";
 import { useClientDetail } from "@/features/clients/app/hooks/use-client-detail";
 import { useClientPathwayActions } from "@/features/clients/app/hooks/use-client-pathway-actions";
 import { useUpdateClient } from "@/features/clients/app/hooks/use-update-client";
+import { TransitionBlockedByChecklistError } from "@/features/pathways/app/services/patient-pathways.service";
 import { Link } from "@/i18n/navigation";
 import { toast } from "@/lib/toast";
 import { formatCpfDisplay } from "@/lib/validators/cpf";
@@ -33,16 +38,16 @@ import {
   ArrowLeft,
   ArrowRightLeft,
   Check,
-  ChevronLeft,
-  ChevronRight,
   ClipboardCheck,
+  ClipboardList,
+  Copy,
   ExternalLink,
   FileText,
   GitBranch,
-  History,
   Info,
   ListChecks,
   Loader2,
+  Mail,
   MapPinned,
   RefreshCw,
   Save,
@@ -71,15 +76,7 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
   const t = useTranslations("clients.detail");
   const tp = useTranslations("pathways.patient");
   const locale = useLocale();
-  const {
-    data,
-    error,
-    loading,
-    transitionsPage,
-    setTransitionsPage,
-    reload,
-    transitionsLimit,
-  } = useClientDetail(clientId);
+  const { data, error, loading, reload } = useClientDetail(clientId);
   const { updateClientById, updating: savingNotes } = useUpdateClient();
   const {
     transitioning: submitting,
@@ -90,8 +87,11 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
 
   const [toStageId, setToStageId] = useState("");
   const [note, setNote] = useState("");
+  const [overrideReason, setOverrideReason] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [draftCaseDescription, setDraftCaseDescription] = useState("");
+  const [timelineRefresh, setTimelineRefresh] = useState(0);
+  const [portalLinkBusy, setPortalLinkBusy] = useState<"email" | "copy" | null>(null);
 
   useEffect(() => {
     const c = data?.client;
@@ -123,21 +123,30 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
 
   async function executeTransition() {
     if (!pp || !toStageId) return;
+    const needsForce = incompleteRequiredChecklist.length > 0;
+    const trimmedOverride = overrideReason.trim();
+    if (needsForce && trimmedOverride.length < 10) {
+      toast.error(t("transition.overrideReasonMin"));
+      return;
+    }
     try {
       await transitionClientStage(pp.id, {
         toStageId,
         note: note.trim() || undefined,
+        ...(needsForce ? { force: true, overrideReason: trimmedOverride } : {}),
       });
       toast.success(tp("success"));
       setConfirmOpen(false);
       setToStageId("");
       setNote("");
-      if (transitionsPage !== 1) {
-        setTransitionsPage(1);
-      } else {
-        reload();
+      setOverrideReason("");
+      reload();
+      setTimelineRefresh((n) => n + 1);
+    } catch (e) {
+      if (e instanceof TransitionBlockedByChecklistError) {
+        toast.error(e.message);
+        return;
       }
-    } catch {
       /* erro: toast global no apiClient */
     }
   }
@@ -154,6 +163,10 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
 
   const currentStageChecklist = pp?.currentStage?.checklistItems ?? [];
   const completedChecklistCount = currentStageChecklist.filter((item) => item.completed).length;
+  const incompleteRequiredChecklist = useMemo(
+    () => currentStageChecklist.filter((item) => item.requiredForTransition && !item.completed),
+    [currentStageChecklist],
+  );
 
   const notesDirty = useMemo(() => {
     if (!data?.client) return false;
@@ -212,11 +225,33 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
 
   const { client } = data;
   const digits = waDigits(client.phone);
-  const tpag = pp?.transitions.pagination;
-  const from =
-    tpag && tpag.totalItems === 0 ? 0 : tpag ? (transitionsPage - 1) * transitionsLimit + 1 : 0;
-  const to =
-    tpag && tpag.totalItems === 0 ? 0 : tpag ? Math.min(transitionsPage * transitionsLimit, tpag.totalItems) : 0;
+
+  async function handlePatientPortalLink(mode: "email" | "copy") {
+    if (portalLinkBusy) return;
+    const sendEmail = mode === "email";
+    if (sendEmail && !client.email?.trim()) {
+      toast.error(t("portalLink.emailRequired"));
+      return;
+    }
+    setPortalLinkBusy(mode);
+    try {
+      const result = await createPatientPortalLink(client.id, { sendEmail });
+      if (result.emailSent) {
+        toast.success(t("portalLink.emailSent"));
+      } else {
+        try {
+          await navigator.clipboard.writeText(result.enterUrl);
+          toast.success(t("portalLink.linkCopied"));
+        } catch {
+          window.prompt(t("portalLink.copyManually"), result.enterUrl);
+        }
+      }
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("portalLink.error"));
+    } finally {
+      setPortalLinkBusy(null);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -232,6 +267,39 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
           ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={portalLinkBusy !== null || !client.email?.trim()}
+            title={!client.email?.trim() ? t("portalLink.emailRequired") : undefined}
+            onClick={() => void handlePatientPortalLink("email")}
+          >
+            {portalLinkBusy === "email" ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Mail className="size-4" />
+            )}
+            {t("portalLink.sendEmail")}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={portalLinkBusy !== null}
+            onClick={() => void handlePatientPortalLink("copy")}
+          >
+            {portalLinkBusy === "copy" ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Copy className="size-4" />
+            )}
+            {t("portalLink.copyOnly")}
+          </Button>
+          <PatientSelfRegisterQrDialog
+            clientId={client.id}
+            triggerLabel={t("selfRegisterLinkThisPatient")}
+          />
           {digits ? (
             <Button nativeButton={false} variant="outline" size="sm" render={<a href={`https://wa.me/${digits}`} target="_blank" rel="noreferrer" />}>
               <ExternalLink className="size-4" />
@@ -245,9 +313,8 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-        <div className="flex min-w-0 flex-col gap-6">
-      <Card>
+      <div className="columns-1 gap-6 [column-fill:balance] lg:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
+      <Card className="min-w-0">
         <CardHeader>
           <ClientDetailCardTitle icon={FileText}>{t("caseNotes.title")}</ClientDetailCardTitle>
           <CardDescription>{t("caseNotes.description")}</CardDescription>
@@ -263,7 +330,7 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
               onChange={(e) => setDraftCaseDescription(e.target.value)}
               disabled={savingNotes}
               className={cn(
-                "border-input bg-transparent placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-[4.5rem] w-full max-w-2xl rounded-lg border px-2.5 py-2 text-base transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
+                "border-input bg-transparent placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-[4.5rem] w-full rounded-lg border px-2.5 py-2 text-base transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
               )}
             />
           </Field>
@@ -281,14 +348,15 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
 
       <ClientDetailNotesCard clientId={clientId} />
 
-      <ClientDetailFilesCard clientId={clientId} />
-        </div>
+      <ClientDetailFilesCard
+        clientId={clientId}
+        onFilesMutated={() => setTimelineRefresh((n) => n + 1)}
+      />
 
-        <div className="flex min-w-0 flex-col gap-6">
       <ClientDetailProfileCard clientId={clientId} client={client} onSaved={reload} />
 
       {!pp ? (
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <ClientDetailCardTitle icon={MapPinned}>{t("noPathway.title")}</ClientDetailCardTitle>
             <CardDescription>
@@ -300,7 +368,7 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
         </Card>
       ) : (
         <>
-          <Card>
+          <Card className="min-w-0">
             <CardHeader>
               <ClientDetailCardTitle icon={GitBranch}>{t("journey.title")}</ClientDetailCardTitle>
               <CardDescription>{pp.pathway.name}</CardDescription>
@@ -339,7 +407,54 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
             </CardContent>
           </Card>
 
-          <Card>
+          <ClientDetailAssigneeOverviewCard
+            overview={pp.assigneeOverview}
+            currentStageAssignee={pp.currentStageAssignee}
+          />
+
+          {pp.completedAt ? null : (
+            <Card className="min-w-0">
+              <CardHeader>
+                <ClientDetailCardTitle icon={ClipboardList}>{t("nextActions.title")}</ClientDetailCardTitle>
+                <CardDescription>{t("nextActions.description")}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-muted-foreground">{t("journey.currentStage")}</span>
+                  <span className="font-medium">{pp.currentStage?.name ?? "—"}</span>
+                  <SlaPill status={pp.slaStatus} label={slaLabel(pp.slaStatus)} />
+                  <span className="text-muted-foreground">
+                    {t("journey.daysInStage", { days: pp.daysInStage })}
+                  </span>
+                </div>
+                {pp.currentStage?.patientMessage?.trim() ? (
+                  <div>
+                    <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
+                      {t("nextActions.stageMessage")}
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap">{pp.currentStage.patientMessage}</p>
+                  </div>
+                ) : null}
+                {incompleteRequiredChecklist.length > 0 ? (
+                  <Alert variant="destructive">
+                    <Info className="size-4" aria-hidden />
+                    <AlertDescription>
+                      <p className="font-medium">{t("nextActions.pendingRequiredTitle")}</p>
+                      <ul className="mt-2 list-inside list-disc space-y-0.5">
+                        {incompleteRequiredChecklist.map((item) => (
+                          <li key={item.id}>{item.label}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <p className="text-muted-foreground text-xs">{t("nextActions.noBlockingChecklist")}</p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card className="min-w-0">
             <CardHeader>
               <ClientDetailCardTitle icon={ListChecks}>{t("checklist.title")}</ClientDetailCardTitle>
               <CardDescription>
@@ -392,6 +507,11 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
                           <span className="min-w-0 flex-1">
                             <span className={cn("block", item.completed && "text-muted-foreground line-through")}>
                               {item.label}
+                              {item.requiredForTransition ? (
+                                <span className="text-muted-foreground ml-2 align-middle text-[10px] font-normal uppercase tracking-wide">
+                                  ({t("checklist.requiredBadge")})
+                                </span>
+                              ) : null}
                             </span>
                             {item.completedAt ? (
                               <span className="text-muted-foreground mt-1 block text-xs">
@@ -413,7 +533,7 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
 
           {pp.completedAt ? null : (
             <>
-              <Card>
+              <Card className="min-w-0">
                 <CardHeader>
                   <ClientDetailCardTitle icon={ArrowRightLeft}>{t("transition.title")}</ClientDetailCardTitle>
                   <CardDescription>{t("transition.description")}</CardDescription>
@@ -458,7 +578,10 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
               <Dialog
                 open={confirmOpen}
                 onOpenChange={(open) => {
-                  if (!submitting) setConfirmOpen(open);
+                  if (!submitting) {
+                    setConfirmOpen(open);
+                    if (!open) setOverrideReason("");
+                  }
                 }}
               >
             <StandardDialogContent
@@ -503,6 +626,31 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
                     {t("transition.notePreview", { text: note.trim() })}
                   </p>
                 ) : null}
+                {incompleteRequiredChecklist.length > 0 ? (
+                  <div className="mt-4 border-t pt-3">
+                    <Alert variant="destructive" className="mb-3">
+                      <AlertDescription className="text-sm">
+                        {t("transition.blockedByChecklist")}
+                      </AlertDescription>
+                    </Alert>
+                    <Field>
+                      <FieldLabel htmlFor="client-detail-override">{t("transition.overrideReasonLabel")}</FieldLabel>
+                      <textarea
+                        id="client-detail-override"
+                        rows={3}
+                        maxLength={2000}
+                        value={overrideReason}
+                        onChange={(e) => setOverrideReason(e.target.value)}
+                        disabled={submitting}
+                        placeholder={t("transition.overrideReasonPlaceholder")}
+                        className={cn(
+                          "border-input bg-transparent placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-[4rem] w-full rounded-lg border px-2.5 py-2 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30",
+                        )}
+                      />
+                    </Field>
+                    <p className="text-muted-foreground mt-1 text-xs">{t("transition.overrideReasonHint")}</p>
+                  </div>
+                ) : null}
                 <div className="mt-4 border-t pt-3">
                   <p className="text-muted-foreground text-xs font-medium">
                     {t("transition.stageDocumentsTitle")}
@@ -528,69 +676,20 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
             </>
           )}
 
-          <Card>
-            <CardHeader>
-              <ClientDetailCardTitle icon={History}>{t("history.title")}</ClientDetailCardTitle>
-              <CardDescription>
-                {tpag && tpag.totalItems > 0
-                  ? t("history.range", { from, to, total: tpag.totalItems })
-                  : t("history.empty")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {pp.transitions.data.length === 0 ? (
-                <p className="text-muted-foreground text-sm">{t("history.noRows")}</p>
-              ) : (
-                <ul className="divide-border divide-y text-sm">
-                  {pp.transitions.data.map((tr) => (
-                    <li key={tr.id} className="flex flex-col gap-1 py-3">
-                      <span className="font-medium">
-                        {tr.fromStage?.name ?? t("history.start")} → {tr.toStage.name}
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {new Date(tr.createdAt).toLocaleString()} ·{" "}
-                        {tr.actor.name ?? tr.actor.email}
-                        {tr.note ? ` · ${tr.note}` : ""}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {tpag && tpag.totalPages > 1 ? (
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={!tpag.hasPreviousPage}
-                    onClick={() => setTransitionsPage((p) => Math.max(1, p - 1))}
-                  >
-                    <ChevronLeft className="size-4" />
-                    {t("history.prev")}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={!tpag.hasNextPage}
-                    onClick={() => setTransitionsPage((p) => p + 1)}
-                  >
-                    {t("history.next")}
-                    <ChevronRight className="size-4" />
-                  </Button>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
         </>
       )}
-        </div>
+
+      <div className="mt-8 min-w-0 w-full [column-span:all]">
+        <ClientDetailTimelineSection clientId={clientId} refreshSignal={timelineRefresh} />
       </div>
 
-      <ClientCompletedTreatmentsSection
-        client={client}
-        items={data.completedTreatments ?? []}
-      />
+      <div className="min-w-0 w-full [column-span:all]">
+        <ClientCompletedTreatmentsSection
+          client={client}
+          items={data.completedTreatments ?? []}
+        />
+      </div>
+      </div>
     </div>
   );
 }

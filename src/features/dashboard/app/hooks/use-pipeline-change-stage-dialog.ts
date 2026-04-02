@@ -63,7 +63,12 @@ export function usePipelineChangeStageDialog(
   }, [detail]);
 
   const submitChange = useCallback(
-    async (input: { toStageId: string; note?: string }) => {
+    async (input: {
+      toStageId: string;
+      note?: string;
+      force?: boolean;
+      overrideReason?: string;
+    }) => {
       if (!patientPathwayId) return;
       setSubmitting(true);
       try {

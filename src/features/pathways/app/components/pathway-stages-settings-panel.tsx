@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { PathwayStagesColumnEditor } from "@/features/pathways/app/components/pathway-stages-column-editor";
 import { usePathways } from "@/features/pathways/app/hooks/use-pathways";
@@ -34,6 +34,12 @@ export function PathwayStagesSettingsPanel({ className }: PathwayStagesSettingsP
   const effectivePathwayId =
     pathways && pathways.length > 0 ? (selectedId ?? pathways[0]!.id) : null;
 
+  /** Base UI Select: sem `items` no Root, o trigger mostra o value cru (ex.: cuid). */
+  const pathwaySelectItems = useMemo(() => {
+    if (!pathways?.length) return undefined;
+    return Object.fromEntries(pathways.map((p) => [p.id, p.name])) as Record<string, string>;
+  }, [pathways]);
+
   return (
     <Card className={cn("mt-8", className)}>
       <CardHeader>
@@ -59,7 +65,11 @@ export function PathwayStagesSettingsPanel({ className }: PathwayStagesSettingsP
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
               <Field className="min-w-0 flex-1 sm:max-w-md">
                 <FieldLabel htmlFor="settings-pathway-select">{t("selectPathway")}</FieldLabel>
-                <Select value={effectivePathwayId!} onValueChange={(v) => setSelectedId(v)}>
+                <Select
+                  value={effectivePathwayId!}
+                  onValueChange={(v) => setSelectedId(v)}
+                  items={pathwaySelectItems}
+                >
                   <SelectTrigger id="settings-pathway-select" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
@@ -84,7 +94,9 @@ export function PathwayStagesSettingsPanel({ className }: PathwayStagesSettingsP
               </Button>
             </div>
             {effectivePathwayId ? (
-              <PathwayStagesColumnEditor key={effectivePathwayId} pathwayId={effectivePathwayId} />
+              <div className="border-border/55 mt-2 space-y-4 border-t pt-8">
+                <PathwayStagesColumnEditor key={effectivePathwayId} pathwayId={effectivePathwayId} />
+              </div>
             ) : null}
           </>
         )}

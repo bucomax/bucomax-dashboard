@@ -6,13 +6,25 @@ import { Button } from "@/shared/components/ui/button";
 import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { Copy, QrCode } from "lucide-react";
+import { toast } from "@/lib/toast";
+import { Copy, MessageCircle, QrCode, Share2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
 import QRCode from "react-qr-code";
-import { toast } from "@/lib/toast";
 
-export function PatientSelfRegisterQrDialog() {
+export type PatientSelfRegisterQrDialogProps = {
+  /** Convite amarrado a um paciente já existente (atualiza cadastro ao usar o link). */
+  clientId?: string;
+  /** Rótulo do botão que abre o diálogo. */
+  triggerLabel?: string;
+  buttonVariant?: "outline" | "secondary" | "ghost";
+};
+
+export function PatientSelfRegisterQrDialog({
+  clientId,
+  triggerLabel,
+  buttonVariant = "outline",
+}: PatientSelfRegisterQrDialogProps) {
   const t = useTranslations("clients.selfRegister");
   const tList = useTranslations("clients.list");
   const locale = useLocale();
@@ -22,13 +34,18 @@ export function PatientSelfRegisterQrDialog() {
   const [registerUrl, setRegisterUrl] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
 
+  const canNativeShare =
+    typeof navigator !== "undefined" && typeof navigator.share === "function";
+
   const loadInvite = useCallback(async () => {
     setLoading(true);
     setError(null);
     setRegisterUrl(null);
     setExpiresAt(null);
     try {
-      const data = await createPatientSelfRegisterInvite();
+      const data = await createPatientSelfRegisterInvite(
+        clientId ? { clientId } : undefined,
+      );
       setRegisterUrl(data.registerUrl);
       setExpiresAt(data.expiresAt);
     } catch {
@@ -36,7 +53,7 @@ export function PatientSelfRegisterQrDialog() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [clientId, t]);
 
   const onOpenChange = useCallback((next: boolean) => {
     setOpen(next);
@@ -71,16 +88,42 @@ export function PatientSelfRegisterQrDialog() {
     }
   }
 
+  async function shareNative() {
+    if (!registerUrl || !navigator.share) return;
+    const text = t("shareMessagePlain", { url: registerUrl });
+    try {
+      await navigator.share({
+        title: t("shareTitle"),
+        text,
+        url: registerUrl,
+      });
+    } catch (e) {
+      const name = e instanceof Error ? e.name : "";
+      if (name === "AbortError") return;
+      toast.error(t("loadError"));
+    }
+  }
+
+  function openWhatsAppShare() {
+    if (!registerUrl) return;
+    const text = encodeURIComponent(t("shareMessagePlain", { url: registerUrl }));
+    window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
+  }
+
+  const label = triggerLabel ?? tList("selfRegisterQr");
+  const title = clientId ? t("dialogTitleForPatient") : t("dialogTitle");
+  const description = clientId ? t("dialogDescriptionForPatient") : t("dialogDescription");
+
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={handleOpen}>
+      <Button type="button" variant={buttonVariant} size="sm" onClick={handleOpen}>
         <QrCode className="size-4" />
-        {tList("selfRegisterQr")}
+        {label}
       </Button>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <StandardDialogContent
-          title={t("dialogTitle")}
-          description={t("dialogDescription")}
+          title={title}
+          description={description}
           size="default"
           bodyClassName="space-y-4"
         >
@@ -112,6 +155,18 @@ export function PatientSelfRegisterQrDialog() {
                     <span className="sr-only">{t("copyLink")}</span>
                   </Button>
                 </div>
+              </div>
+              <div className="flex w-full flex-wrap justify-center gap-2">
+                {canNativeShare ? (
+                  <Button type="button" variant="outline" size="sm" onClick={() => void shareNative()}>
+                    <Share2 className="size-4" />
+                    {t("shareNative")}
+                  </Button>
+                ) : null}
+                <Button type="button" variant="outline" size="sm" onClick={openWhatsAppShare}>
+                  <MessageCircle className="size-4" />
+                  {t("shareWhatsApp")}
+                </Button>
               </div>
             </div>
           ) : null}

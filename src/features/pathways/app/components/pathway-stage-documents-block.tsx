@@ -50,7 +50,7 @@ export function PathwayStageDocumentsBlock({
   );
 
   return (
-    <div className="w-full min-w-0 space-y-3 border-t pt-3">
+    <div className="border-border/55 w-full min-w-0 space-y-4 border-t pt-5">
       <input
         ref={inputRef}
         type="file"
@@ -94,7 +94,7 @@ export function PathwayStageDocumentsBlock({
               <span className="text-muted-foreground hidden shrink-0 text-xs sm:inline">{d.mimeType}</span>
               <Button
                 type="button"
-                variant="outline"
+                variant="destructive"
                 size="icon"
                 className="shrink-0"
                 disabled={uploading}

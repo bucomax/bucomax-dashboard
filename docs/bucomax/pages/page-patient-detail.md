@@ -72,6 +72,9 @@
 | Transição | `POST /api/v1/patient-pathways/:id/transition` com `toStageId`, `note?` |
 | Checklist toggle | `PATCH /api/v1/patient-pathways/:id/checklist-items/:itemId` |
 | Notas dedicadas | `GET|POST /api/v1/clients/:id/notes` |
+| Arquivos na ficha | `GET /api/v1/clients/:id/files` (metadados incl. `patientPortalReviewStatus`, `uploadedBy` opcional) |
+| Validar envio do portal | `PATCH /api/v1/clients/:clientId/files/:fileId/review` com `decision: approve \| reject` |
+| Timeline agregada | `GET /api/v1/clients/:id/timeline` (`AuditEvent` + transições legado) |
 | Preview docs da etapa destino | Embutido em `GET /api/v1/clients/:id` (etapas da versão com `documents[]`) |
 
 ### Checklist backend

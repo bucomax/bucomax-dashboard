@@ -1,0 +1,57 @@
+{
+  "title": "Patient portal",
+  "enter": {
+    "validating": "Validating your link…",
+    "error": "Invalid or expired link. Ask your clinic for a new one.",
+    "redirecting": "Signing you in…"
+  },
+  "timeline": {
+    "title": "Timeline",
+    "description": "Records of your care journey at the clinic.",
+    "empty": "No events yet.",
+    "capped": "Partial list — more events may exist in history.",
+    "stageTransition": "Stage change",
+    "fromTo": "{from} → {to}",
+    "fileUpload": "File received by the clinic",
+    "portalFileSubmitted": "You uploaded a document (under clinic review)",
+    "portalFileApproved": "Document accepted by the clinic",
+    "portalFileRejected": "Document not accepted by the clinic",
+    "selfRegister": "Registration completed",
+    "event": "Recorded event",
+    "by": "Recorded by {name}",
+    "prev": "Previous",
+    "next": "Next",
+    "page": "Page {page} of {totalPages}",
+    "loadError": "Could not load the timeline."
+  },
+  "home": {
+    "retry": "Try again",
+    "loading": "Loading…",
+    "needLink": "To sign in, use the link sent by your clinic by email or message.",
+    "welcome": "Hello, {name}",
+    "clinic": "Clinic: {clinic}",
+    "noJourney": "There is no active care journey right now. Your clinic will guide next steps.",
+    "journeyDescription": "Your treatment stages and progress on the pathway your clinic has set up.",
+    "journeyTitle": "Your journey",
+    "currentStage": "Current stage",
+    "since": "In this stage since {date}",
+    "logout": "Sign out",
+    "loadError": "Could not load your data. Try signing out and opening the link again.",
+    "staffLogin": "Staff sign-in (clinic)"
+  },
+  "files": {
+    "title": "Documents",
+    "description": "Clinic files and your uploads. New uploads are reviewed before download is enabled.",
+    "empty": "No documents yet.",
+    "chooseFile": "Upload file",
+    "uploading": "Uploading…",
+    "uploadError": "Could not upload the file.",
+    "loadError": "Could not load documents.",
+    "downloadError": "Could not open the file.",
+    "download": "Open or download",
+    "statusPending": "Under clinic review — download after approval",
+    "range": "Showing {from}–{to} of {total}",
+    "prev": "Previous",
+    "next": "Next"
+  }
+}

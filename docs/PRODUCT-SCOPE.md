@@ -166,8 +166,14 @@ Isso é **uma jornada**; no painel, o médico/atendente **posiciona o paciente**
 |------------|-----------|
 | **Cadastro de paciente/cliente** | **WhatsApp** (telefone do canal), **nome**, **descrição do caso** / resumo clínico; demais campos opcionais (documento, endereço) — por tenant. Cadastro **antes** de vincular fluxo (passo 1 da ordem operacional). |
 | **Arquivos** | Documentos da **biblioteca da clínica** e os **vinculados a cada etapa** da jornada; exames no GCS para IA. |
-| **Ficha do paciente** | Etapa atual, checklist da etapa atual, **anotações dedicadas**, histórico de etapas, timeline de transições, arquivos, responsável, OPME e snapshot do pacote documental por etapa. |
+| **Ficha do paciente** | Etapa atual, checklist da etapa atual, **anotações dedicadas**, **linha do tempo** (eventos de auditoria + transições legado deduplicadas: mudança de etapa, override de checklist, arquivo vinculado, cadastro pelo link, **ciclo de documentos enviados pelo portal** — envio, aceite ou recusa pela clínica), arquivos (incl. fila **PENDING** para validação de uploads do portal), responsável, OPME e snapshot do pacote documental por etapa. |
 | **Auditoria** | Quem moveu o paciente de etapa, disparos ao canal e jobs de IA. |
+
+### 3.6 Portal web do paciente (MVP técnico)
+
+Área **fora** do painel staff: sessão por **magic link** (cookie dedicado, sem misturar NextAuth da equipe). O paciente enxerga **resumo da clínica e da jornada ativa**, **linha do tempo** somente leitura (dados sanitizados para LGPD) e **documentos** — listagem, envio de arquivo e download apenas quando a clínica **liberou** o arquivo (uploads feitos pelo próprio portal entram como pendentes até aceite ou recusa na ficha). Rotas de produto: `/patient`, `/patient/enter`. Detalhe de APIs e modelo em `docs/ARCHITECTURE.md` e `docs/bucomax/meeting-presentation-action-plan.md` (Fase 8).
+
+**Fora deste MVP:** conta própria com senha/OTP, assinatura de termos no portal, escolha explícita de canal (web vs WhatsApp) para trâmite, formulários dinâmicos e notificação automática à equipe em todo envio (podem entrar como evoluções).
 
 ---
 

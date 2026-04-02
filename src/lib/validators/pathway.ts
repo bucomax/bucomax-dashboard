@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { zodApiMsg } from "@/lib/api/zod-i18n";
+
 export const postPathwayBodySchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(10_000).optional(),
@@ -23,7 +25,21 @@ export const postPatientPathwayBodySchema = z.object({
   pathwayId: z.string().cuid(),
 });
 
-export const postStageTransitionBodySchema = z.object({
-  toStageId: z.string().cuid(),
-  note: z.string().max(2000).optional(),
-});
+export const postStageTransitionBodySchema = z
+  .object({
+    toStageId: z.string().cuid(),
+    note: z.string().max(2000).optional(),
+    force: z.boolean().optional(),
+    overrideReason: z.string().max(2000).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.force) return;
+    const trimmed = data.overrideReason?.trim() ?? "";
+    if (trimmed.length < 10) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: zodApiMsg("errors.validationOverrideReasonMin"),
+        path: ["overrideReason"],
+      });
+    }
+  });

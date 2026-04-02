@@ -3,7 +3,7 @@
 import { ClientDetailCardTitle } from "@/features/clients/app/components/client-detail-card-title";
 import { useClientFileDownload } from "@/features/clients/app/hooks/use-client-file-download";
 import { useClientFiles } from "@/features/clients/app/hooks/use-client-files";
-import { deleteClientFile } from "@/features/clients/app/services/clients.service";
+import { deleteClientFile, reviewPatientPortalClientFile } from "@/features/clients/app/services/clients.service";
 import { toast } from "@/lib/toast";
 import { formatFileSize } from "@/lib/utils/format-bytes";
 import { formatListUpdatedAt } from "@/lib/utils/format-list-updated-at";
@@ -12,21 +12,27 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/shared/compone
 import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
-import { ChevronLeft, ChevronRight, ExternalLink, FolderOpen, Loader2, RefreshCw, Trash2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, ExternalLink, FolderOpen, Loader2, RefreshCw, Trash2, X } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 type ClientDetailFilesCardProps = {
   clientId: string;
+  /** Chamado após mutação na lista (ex.: exclusão) para sincronizar outras seções da ficha. */
+  onFilesMutated?: () => void;
 };
 
-export function ClientDetailFilesCard({ clientId }: ClientDetailFilesCardProps) {
+export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetailFilesCardProps) {
   const t = useTranslations("clients.detail.files");
   const locale = useLocale();
   const { data, error, loading, page, setPage, reload, limit } = useClientFiles(clientId);
   const { downloadingId, openDownload } = useClientFileDownload();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; fileName: string } | null>(null);
+  const [reviewingId, setReviewingId] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<{ id: string; fileName: string } | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
   async function handleOpenDownload(fileId: string) {
     try {
@@ -45,6 +51,7 @@ export function ClientDetailFilesCard({ clientId }: ClientDetailFilesCardProps) 
       toast.success(t("deleteSuccess"));
       setPendingDelete(null);
       reload();
+      onFilesMutated?.();
     } catch {
       /* erro: toast global no apiClient */
     } finally {
@@ -55,6 +62,47 @@ export function ClientDetailFilesCard({ clientId }: ClientDetailFilesCardProps) 
   function handleDeleteDialogOpenChange(open: boolean) {
     if (!open && deletingId === null) {
       setPendingDelete(null);
+    }
+  }
+
+  async function handleApprove(fileId: string) {
+    setReviewingId(fileId);
+    try {
+      await reviewPatientPortalClientFile(clientId, fileId, { decision: "approve" });
+      toast.success(t("reviewApproveSuccess"));
+      reload();
+      onFilesMutated?.();
+    } catch {
+      /* toast global */
+    } finally {
+      setReviewingId(null);
+    }
+  }
+
+  async function confirmReject() {
+    if (!rejectTarget) return;
+    setReviewingId(rejectTarget.id);
+    try {
+      await reviewPatientPortalClientFile(clientId, rejectTarget.id, {
+        decision: "reject",
+        rejectReason: rejectReason.trim() || undefined,
+      });
+      toast.success(t("reviewRejectSuccess"));
+      setRejectTarget(null);
+      setRejectReason("");
+      reload();
+      onFilesMutated?.();
+    } catch {
+      /* toast global */
+    } finally {
+      setReviewingId(null);
+    }
+  }
+
+  function handleRejectDialogOpenChange(open: boolean) {
+    if (!open && reviewingId === null) {
+      setRejectTarget(null);
+      setRejectReason("");
     }
   }
 
@@ -96,7 +144,7 @@ export function ClientDetailFilesCard({ clientId }: ClientDetailFilesCardProps) 
   const to = pag.totalItems === 0 ? 0 : Math.min(page * limit, pag.totalItems);
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
         <ClientDetailCardTitle icon={FolderOpen}>{t("title")}</ClientDetailCardTitle>
         <CardDescription>{t("description")}</CardDescription>
@@ -115,10 +163,46 @@ export function ClientDetailFilesCard({ clientId }: ClientDetailFilesCardProps) 
                     {formatListUpdatedAt(f.createdAt, locale)}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {t("uploadedBy", { name: f.uploadedBy.name ?? f.uploadedBy.email })}
+                    {f.uploadedBy
+                      ? t("uploadedBy", { name: f.uploadedBy.name ?? f.uploadedBy.email })
+                      : t("uploadedByPortal")}
                   </p>
+                  {f.patientPortalReviewStatus === "PENDING" ? (
+                    <p className="text-amber-600 dark:text-amber-500 text-xs font-medium">{t("statusPending")}</p>
+                  ) : null}
+                  {f.patientPortalReviewStatus === "REJECTED" ? (
+                    <p className="text-muted-foreground text-xs">{t("statusRejected")}</p>
+                  ) : null}
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                  {f.patientPortalReviewStatus === "PENDING" ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        disabled={reviewingId !== null || deletingId !== null || downloadingId === f.id}
+                        onClick={() => void handleApprove(f.id)}
+                      >
+                        {reviewingId === f.id ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Check className="size-4" />
+                        )}
+                        {t("approve")}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={reviewingId !== null || deletingId !== null || downloadingId === f.id}
+                        onClick={() => setRejectTarget({ id: f.id, fileName: f.fileName })}
+                      >
+                        {t("reject")}
+                      </Button>
+                    </>
+                  ) : null}
                   <Tooltip>
                     <TooltipTrigger
                       render={
@@ -201,6 +285,52 @@ export function ClientDetailFilesCard({ clientId }: ClientDetailFilesCardProps) 
           </div>
         ) : null}
       </CardContent>
+
+      <Dialog open={rejectTarget !== null} onOpenChange={handleRejectDialogOpenChange}>
+        <StandardDialogContent
+          size="sm"
+          showCloseButton={reviewingId === null}
+          title={t("rejectDialogTitle")}
+          description={rejectTarget ? t("rejectDialogDescription", { fileName: rejectTarget.fileName }) : undefined}
+          footer={
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={reviewingId !== null}
+                onClick={() => {
+                  setRejectTarget(null);
+                  setRejectReason("");
+                }}
+              >
+                <X className="size-4" />
+                {t("deleteConfirmCancel")}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                className="gap-1.5"
+                disabled={reviewingId !== null}
+                onClick={() => void confirmReject()}
+              >
+                {reviewingId !== null ? <Loader2 className="size-4 animate-spin" /> : null}
+                {t("rejectConfirm")}
+              </Button>
+            </>
+          }
+        >
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder={t("rejectReasonPlaceholder")}
+            rows={3}
+            disabled={reviewingId !== null}
+            className={cn(
+              "border-input bg-transparent placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex w-full resize-none rounded-lg border px-2.5 py-2 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30",
+            )}
+          />
+        </StandardDialogContent>
+      </Dialog>
 
       <Dialog open={pendingDelete !== null} onOpenChange={handleDeleteDialogOpenChange}>
         <StandardDialogContent

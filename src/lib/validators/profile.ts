@@ -12,4 +12,6 @@ export const changePasswordBodySchema = z.object({
 
 export const patchMemberRoleBodySchema = z.object({
   role: z.enum(["tenant_admin", "tenant_user"]),
+  restrictedToAssignedOnly: z.boolean().optional(),
+  linkedOpmeSupplierId: z.union([z.string().cuid(), z.null()]).optional(),
 });

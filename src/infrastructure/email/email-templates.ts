@@ -209,3 +209,35 @@ export function getPatientSelfRegisteredStaffHtml(params: {
   `;
   return baseLayout(content, `Novo paciente em ${escapeHtmlText(params.clinicName)} — Bucomax`);
 }
+
+/** Paciente: acesso ao portal da jornada (magic link). */
+export function getPatientPortalMagicLinkHtml(params: {
+  patientName: string;
+  clinicName: string;
+  enterUrl: string;
+}): string {
+  const patient = escapeHtmlText(params.patientName);
+  const clinic = escapeHtmlText(params.clinicName);
+  const content = `
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND.text}; line-height: 1.3;">
+      Acesse seu acompanhamento
+    </h1>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      Olá, ${patient}!
+    </p>
+    <p style="margin: 0 0 8px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      A clínica <strong>${clinic}</strong> disponibilizou um link seguro para você acompanhar sua jornada no Bucomax.
+    </p>
+    ${ctaButton(params.enterUrl, "Abrir portal do paciente")}
+    <p style="margin: 16px 0 0; font-size: 13px; color: ${BRAND.textMuted}; line-height: 1.5;">
+      Ou copie e cole no navegador:
+    </p>
+    <p style="margin: 4px 0 0; font-size: 12px; color: ${BRAND.textMuted}; word-break: break-all;">
+      <a href="${params.enterUrl}" style="color: ${BRAND.link}; text-decoration: underline;">${params.enterUrl}</a>
+    </p>
+    <p style="margin: 24px 0 0; padding-top: 20px; border-top: 1px solid ${BRAND.border}; font-size: 12px; color: ${BRAND.textMuted};">
+      Este link expira em 72 horas e só pode ser usado uma vez. Se você não solicitou este acesso, ignore este e-mail.
+    </p>
+  `;
+  return baseLayout(content, `Acesso ao portal — ${escapeHtmlText(params.clinicName)}`);
+}

@@ -1,7 +1,9 @@
 import { prisma } from "@/infrastructure/database/prisma";
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { keyBelongsToTenant, publicUrlForKey } from "@/infrastructure/storage/gcs-storage";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
@@ -51,9 +53,8 @@ export async function POST(request: Request) {
   }
 
   if (parsed.data.clientId) {
-    const c = await prisma.client.findFirst({
-      where: { id: parsed.data.clientId, tenantId, deletedAt: null },
-      select: { id: true },
+    const c = await findTenantClientVisibleToSession(auth.session!, tenantId, parsed.data.clientId, {
+      id: true,
     });
     if (!c) {
       return jsonError("NOT_FOUND", apiT("errors.patientNotFoundInTenant"), 404);
@@ -80,6 +81,17 @@ export async function POST(request: Request) {
       createdAt: true,
     },
   });
+
+  if (asset.clientId) {
+    await recordAuditEvent(prisma, {
+      tenantId,
+      clientId: asset.clientId,
+      patientPathwayId: null,
+      actorUserId: userId,
+      type: AuditEventType.FILE_UPLOADED_TO_CLIENT,
+      payload: { fileAssetId: asset.id, mimeType: asset.mimeType },
+    });
+  }
 
   return jsonSuccess(
     {

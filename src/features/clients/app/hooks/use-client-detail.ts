@@ -12,14 +12,13 @@ export function useClientDetail(clientId: string) {
   const [data, setData] = useState<ClientDetailResponseData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [transitionsPage, setTransitionsPage] = useState(1);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const row = await getClientDetail(clientId, {
-        page: transitionsPage,
+        page: 1,
         limit: TRANSITIONS_LIMIT,
       });
       setData(row);
@@ -29,7 +28,7 @@ export function useClientDetail(clientId: string) {
     } finally {
       setLoading(false);
     }
-  }, [clientId, transitionsPage, t]);
+  }, [clientId, t]);
 
   useEffect(() => {
     void load();
@@ -43,8 +42,6 @@ export function useClientDetail(clientId: string) {
     data,
     error,
     loading,
-    transitionsPage,
-    setTransitionsPage,
     reload,
     transitionsLimit: TRANSITIONS_LIMIT,
   };

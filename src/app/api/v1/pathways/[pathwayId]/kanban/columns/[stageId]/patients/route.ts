@@ -3,8 +3,8 @@ import { prisma } from "@/infrastructure/database/prisma";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { buildKanbanClientWhereForSession } from "@/lib/auth/client-visibility";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
-import { buildKanbanClientNestedWhere } from "@/lib/pathway/kanban-client-where";
 import { computeSlaHealthStatus } from "@/lib/pathway/sla-health";
 import { kanbanColumnPatientsQuerySchema } from "@/lib/validators/kanban";
 import type { Prisma } from "@prisma/client";
@@ -25,6 +25,7 @@ const patientInclude = {
       alertCriticalDays: true,
     },
   },
+  currentStageAssignee: { select: { id: true, name: true, email: true } },
 } satisfies Prisma.PatientPathwayInclude;
 
 /** Paginação por página (`page` 1-based). Sem filtro `status` — use o Kanban agregado para filtrar por SLA. */
@@ -68,13 +69,20 @@ export async function GET(request: Request, ctx: RouteCtx) {
 
   const now = new Date();
 
+  const clientWhere = await buildKanbanClientWhereForSession(
+    auth.session!,
+    tenantCtx.tenantId,
+    search,
+    opmeSupplierId,
+  );
+
   const listWhere: Prisma.PatientPathwayWhereInput = {
     tenantId: tenantCtx.tenantId,
     pathwayId,
     pathwayVersionId: version.id,
     currentStageId: stageId,
     completedAt: null,
-    client: buildKanbanClientNestedWhere(search, opmeSupplierId),
+    client: clientWhere,
   };
 
   const [totalItems, raw] = await Promise.all([
@@ -100,6 +108,13 @@ export async function GET(request: Request, ctx: RouteCtx) {
       ),
       client: pp.client,
       currentStage: pp.currentStage,
+      currentStageAssignee: pp.currentStageAssignee
+        ? {
+            id: pp.currentStageAssignee.id,
+            name: pp.currentStageAssignee.name,
+            email: pp.currentStageAssignee.email,
+          }
+        : null,
       updatedAt: pp.updatedAt.toISOString(),
     })),
     pagination: buildPagination(page, limit, totalItems),

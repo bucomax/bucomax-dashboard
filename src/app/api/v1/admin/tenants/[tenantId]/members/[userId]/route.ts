@@ -1,4 +1,4 @@
-import { TenantRole } from "@prisma/client";
+import { Prisma, TenantRole } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -44,6 +44,33 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
 
   const newRole = parsed.data.role === "tenant_admin" ? TenantRole.tenant_admin : TenantRole.tenant_user;
 
+  const updateData: Prisma.TenantMembershipUpdateInput = {
+    role: newRole,
+  };
+
+  if (newRole === TenantRole.tenant_admin) {
+    updateData.restrictedToAssignedOnly = false;
+    updateData.linkedOpmeSupplier = { disconnect: true };
+  } else {
+    if (parsed.data.restrictedToAssignedOnly !== undefined) {
+      updateData.restrictedToAssignedOnly = parsed.data.restrictedToAssignedOnly;
+    }
+    if (parsed.data.linkedOpmeSupplierId !== undefined) {
+      if (parsed.data.linkedOpmeSupplierId === null) {
+        updateData.linkedOpmeSupplier = { disconnect: true };
+      } else {
+        const supplier = await prisma.opmeSupplier.findFirst({
+          where: { id: parsed.data.linkedOpmeSupplierId, tenantId },
+          select: { id: true },
+        });
+        if (!supplier) {
+          return jsonError("VALIDATION_ERROR", apiT("errors.opmeSupplierNotFound"), 422);
+        }
+        updateData.linkedOpmeSupplier = { connect: { id: parsed.data.linkedOpmeSupplierId } };
+      }
+    }
+  }
+
   const membership = await prisma.tenantMembership.findUnique({
     where: { userId_tenantId: { userId, tenantId } },
   });
@@ -68,7 +95,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
 
   const updated = await prisma.tenantMembership.update({
     where: { id: membership.id },
-    data: { role: newRole },
+    data: updateData,
   });
 
   return jsonSuccess({
@@ -76,6 +103,8 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
       userId: updated.userId,
       tenantId: updated.tenantId,
       role: updated.role,
+      restrictedToAssignedOnly: updated.restrictedToAssignedOnly,
+      linkedOpmeSupplierId: updated.linkedOpmeSupplierId,
     },
   });
 }

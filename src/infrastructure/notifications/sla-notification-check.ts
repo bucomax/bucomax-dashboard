@@ -1,5 +1,6 @@
 import type { NotificationType } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
+import { resolvePathwayNotificationTargetUserIds } from "@/lib/notifications/resolve-pathway-notification-targets";
 import { notificationEmitter } from "./notification-emitter";
 import { computeSlaHealthStatus } from "@/lib/pathway/sla-health";
 
@@ -30,6 +31,7 @@ export async function checkAndEmitSlaNotifications(input: SlaCheckInput): Promis
       clientId: true,
       enteredStageAt: true,
       currentStageId: true,
+      currentStageAssigneeUserId: true,
       client: { select: { name: true } },
       currentStage: {
         select: {
@@ -71,12 +73,19 @@ export async function checkAndEmitSlaNotifications(input: SlaCheckInput): Promis
 
     if (existing) continue;
 
+    const targetUserIds = await resolvePathwayNotificationTargetUserIds({
+      tenantId: input.tenantId,
+      type: notifType,
+      currentStageAssigneeUserId: pp.currentStageAssigneeUserId,
+    });
+
     const label = status === "danger" ? "Alerta crítico" : "Atenção";
     notificationEmitter.emit({
       tenantId: input.tenantId,
       type: notifType,
       title: `${label}: ${pp.client.name}`,
       body: `${daysInStage} dias na etapa "${pp.currentStage.name}".`,
+      targetUserIds,
       correlationId: `${pp.id}:${pp.currentStage.id}`,
       metadata: {
         clientId: pp.clientId,

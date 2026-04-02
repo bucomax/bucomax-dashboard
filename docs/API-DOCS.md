@@ -42,9 +42,10 @@ Versão alinhada ao Next.js do projeto (ver compatibilidade na documentação do
 
 ### Autenticação no Scalar
 
-- No OpenAPI, definir **`securitySchemes`**: `BearerAuth` (HTTP bearer, JWT).
-- Nas operações protegidas, listar `security: [BearerAuth: []]`.
-- O usuário cola o `access_token` no Scalar para testar rotas autenticadas.
+- No OpenAPI, definir **`securitySchemes`**: `BearerAuth` (HTTP bearer, JWT) e, se aplicável, **`cookieAuth`** para sessão staff (NextAuth).
+- Nas operações protegidas, listar `security: [BearerAuth: []]` (e/ou cookie conforme a rota).
+- O usuário cola o `access_token` no Scalar para testar rotas **staff** autenticadas por JWT.
+- **Portal do paciente** (`/api/v1/patient/*`): autenticação por **cookie httpOnly** `patient_portal_session` após `POST /api/v1/public/patient-portal/exchange` com o token do magic link. O **Try it** do Scalar **não** envia esse cookie automaticamente; para testar no browser, use a UI em `/patient/enter` na mesma origem ou ferramentas (curl/Insomnia) com `Cookie` copiado da resposta do exchange.
 
 ### CORS
 
@@ -55,7 +56,7 @@ Versão alinhada ao Next.js do projeto (ver compatibilidade na documentação do
 
 ## Manutenção
 
-- **Sempre que** adicionar ou alterar rota em `/api/v1/*`, atualizar **`public/openapi.json`** (path, método, request/response, códigos de erro).
+- **Sempre que** adicionar ou alterar rota em `/api/v1/*`, atualizar **`public/openapi.json`** (path, método, request/response, códigos de erro). *Exemplos recentes:* `GET /api/v1/clients/{clientId}/timeline`, convites de cadastro público, transição com `force` / `overrideReason`, **portal do paciente** (`GET/POST /api/v1/patient/files`, `POST .../files/presign`, `POST .../files/presign-download`, `GET /api/v1/patient/overview`, `GET /api/v1/patient/timeline`, `PATCH /api/v1/clients/{clientId}/files/{fileId}/review`).
 - Opcional no CI: validar o JSON com **Spectral** ou `swagger-cli validate`.
 - Referência cruzada: tipos em **`src/types/api/`** devem refletir os schemas do OpenAPI (nomes e campos alinhados).
 
@@ -74,7 +75,7 @@ Versão alinhada ao Next.js do projeto (ver compatibilidade na documentação do
 
 - [ ] Atualizar `openapi.json` (path, tags, summary, `requestBody`, `responses`, `security`).
 - [ ] Exemplo de body/response realista em `examples` quando ajudar integradores.
-- [ ] Testar **Try it** com Bearer em dev.
+- [ ] Testar **Try it** com Bearer em dev (rotas staff); para **portal do paciente**, validar com cookie de sessão ou fluxo manual na UI `/patient`.
 
 ---
 

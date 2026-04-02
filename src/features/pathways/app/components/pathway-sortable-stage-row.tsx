@@ -6,8 +6,10 @@ import { GripVertical, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 import { PathwayStageChecklistBlock } from "@/features/pathways/app/components/pathway-stage-checklist-block";
+import { PathwayStageDefaultAssigneesField } from "@/features/pathways/app/components/pathway-stage-default-assignees-field";
 import { PathwayStageDocumentsBlock } from "@/features/pathways/app/components/pathway-stage-documents-block";
 import type { PathwaySortableStageRowProps } from "@/features/pathways/types/column-editor";
+import { normalizeStageDefaultAssigneeUserIds } from "@/lib/pathway/graph";
 import { cn } from "@/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import { Field, FieldLabel } from "@/shared/components/ui/field";
@@ -16,10 +18,13 @@ import { LabeledNonNegativeIntegerUnitField } from "@/shared/components/forms";
 
 export function PathwaySortableStageRow({
   node,
+  assigneeOptions,
+  onUpdateDefaultAssignees,
   onUpdateLabel,
   onUpdateSla,
   onAddChecklistItem,
   onUpdateChecklistItem,
+  onUpdateChecklistItemRequired,
   onRemoveChecklistItem,
   onAddStageDocuments,
   onRemoveStageDocument,
@@ -27,6 +32,7 @@ export function PathwaySortableStageRow({
   disableRemove,
 }: PathwaySortableStageRowProps) {
   const t = useTranslations("pathways.columnEditor");
+  const tEditor = useTranslations("pathways.editor");
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: node.id,
   });
@@ -43,18 +49,19 @@ export function PathwaySortableStageRow({
     typeof warnRaw === "number" && Number.isFinite(warnRaw) ? Math.max(0, Math.floor(warnRaw)) : undefined;
   const critDays =
     typeof critRaw === "number" && Number.isFinite(critRaw) ? Math.max(0, Math.floor(critRaw)) : undefined;
+  const assigneeIds = normalizeStageDefaultAssigneeUserIds(data);
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-card flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:flex-wrap sm:items-end",
+        "bg-card flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:flex-wrap sm:items-start",
         isDragging && "opacity-60 ring-2 ring-ring",
       )}
     >
       <button
         type="button"
-        className="text-muted-foreground hover:text-foreground flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-dashed"
+        className="text-muted-foreground hover:text-foreground mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center self-start rounded-md border border-dashed"
         aria-label={t("dragHandleAria")}
         {...attributes}
         {...listeners}
@@ -87,13 +94,20 @@ export function PathwaySortableStageRow({
             onChange={(v) => onUpdateSla(node.id, "alertCriticalDays", v)}
           />
         </div>
+        <PathwayStageDefaultAssigneesField
+          idPrefix={`stage-${node.id}`}
+          selectedUserIds={assigneeIds}
+          memberOptions={assigneeOptions}
+          onChange={(ids) => onUpdateDefaultAssignees(node.id, ids)}
+          label={tEditor("defaultAssigneeLabel")}
+        />
       </div>
 
       <Button
         type="button"
-        variant="outline"
+        variant="destructive"
         size="icon"
-        className="shrink-0"
+        className="mt-0.5 shrink-0 self-start"
         disabled={disableRemove}
         onClick={() => onRemove(node.id)}
         aria-label={t("removeStageAria")}
@@ -101,11 +115,15 @@ export function PathwaySortableStageRow({
         <Trash2 className="size-4" />
       </Button>
 
-      <div className="flex w-full min-w-0 basis-full flex-col gap-0">
+      <div className="border-border/55 mt-2 flex w-full min-w-0 basis-full flex-col gap-0 border-t pt-6">
         <PathwayStageChecklistBlock
+          noSectionBorder
           checklistItems={data?.checklistItems}
           onAdd={() => onAddChecklistItem(node.id)}
           onUpdate={(itemId, label) => onUpdateChecklistItem(node.id, itemId, label)}
+          onUpdateRequired={(itemId, required) =>
+            onUpdateChecklistItemRequired(node.id, itemId, required)
+          }
           onRemove={(itemId) => onRemoveChecklistItem(node.id, itemId)}
         />
         <PathwayStageDocumentsBlock

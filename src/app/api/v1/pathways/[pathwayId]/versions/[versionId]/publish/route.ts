@@ -1,5 +1,6 @@
 import { prisma } from "@/infrastructure/database/prisma";
 import { deriveStagesFromGraph } from "@/lib/pathway/graph";
+import { assertStageDefaultAssigneesInTenant } from "@/lib/pathway/validate-stage-assignees";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
@@ -36,6 +37,15 @@ export async function POST(request: Request, ctx: RouteCtx) {
   const stages = deriveStagesFromGraph(version.graphJson);
   if (stages.length === 0) {
     return jsonError("VALIDATION_ERROR", apiT("errors.graphNeedsAtLeastOneNode"), 422);
+  }
+
+  const assigneeCheck = await assertStageDefaultAssigneesInTenant(
+    prisma,
+    tenantCtx.tenantId,
+    stages.flatMap((s) => s.defaultAssigneeUserIds),
+  );
+  if (!assigneeCheck.ok) {
+    return jsonError("VALIDATION_ERROR", apiT("errors.invalidAssigneeForTenant"), 422);
   }
 
   const newStageKeys = new Set(stages.map((s) => s.stageKey));
@@ -88,6 +98,8 @@ export async function POST(request: Request, ctx: RouteCtx) {
             patientMessage: stage.patientMessage,
             alertWarningDays: stage.alertWarningDays,
             alertCriticalDays: stage.alertCriticalDays,
+            defaultAssigneeUserId: stage.defaultAssigneeUserId,
+            defaultAssigneeUserIds: stage.defaultAssigneeUserIds,
           },
         });
         await tx.pathwayStageChecklistItem.deleteMany({ where: { pathwayStageId: existing.id } });
@@ -101,6 +113,8 @@ export async function POST(request: Request, ctx: RouteCtx) {
             patientMessage: stage.patientMessage,
             alertWarningDays: stage.alertWarningDays,
             alertCriticalDays: stage.alertCriticalDays,
+            defaultAssigneeUserId: stage.defaultAssigneeUserId,
+            defaultAssigneeUserIds: stage.defaultAssigneeUserIds,
           },
         });
       }
@@ -130,6 +144,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
         pathwayStageId,
         label: item.label,
         sortOrder: item.sortOrder,
+        requiredForTransition: item.requiredForTransition,
       }));
     });
     if (checklistRows.length > 0) {
@@ -187,6 +202,8 @@ export async function POST(request: Request, ctx: RouteCtx) {
         patientMessage: s.patientMessage,
         alertWarningDays: s.alertWarningDays,
         alertCriticalDays: s.alertCriticalDays,
+        defaultAssigneeUserId: s.defaultAssigneeUserId,
+        defaultAssigneeUserIds: s.defaultAssigneeUserIds,
       })),
     },
   });

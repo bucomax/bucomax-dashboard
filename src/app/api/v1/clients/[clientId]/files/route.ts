@@ -2,6 +2,7 @@ import { prisma } from "@/infrastructure/database/prisma";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
@@ -36,9 +37,8 @@ export async function GET(request: Request, ctx: RouteCtx) {
 
   const { clientId } = await ctx.params;
 
-  const client = await prisma.client.findFirst({
-    where: { id: clientId, tenantId: tenantCtx.tenantId, deletedAt: null },
-    select: { id: true },
+  const client = await findTenantClientVisibleToSession(auth.session!, tenantCtx.tenantId, clientId, {
+    id: true,
   });
   if (!client) {
     return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
@@ -59,6 +59,7 @@ export async function GET(request: Request, ctx: RouteCtx) {
         mimeType: true,
         sizeBytes: true,
         createdAt: true,
+        patientPortalReviewStatus: true,
         uploadedBy: { select: { id: true, name: true, email: true } },
       },
     }),
@@ -71,11 +72,14 @@ export async function GET(request: Request, ctx: RouteCtx) {
       mimeType: r.mimeType,
       sizeBytes: r.sizeBytes,
       createdAt: r.createdAt.toISOString(),
-      uploadedBy: {
-        id: r.uploadedBy.id,
-        name: r.uploadedBy.name,
-        email: r.uploadedBy.email,
-      },
+      patientPortalReviewStatus: r.patientPortalReviewStatus,
+      uploadedBy: r.uploadedBy
+        ? {
+            id: r.uploadedBy.id,
+            name: r.uploadedBy.name,
+            email: r.uploadedBy.email,
+          }
+        : null,
     })),
     pagination: buildPagination(page, limit, totalItems),
   });

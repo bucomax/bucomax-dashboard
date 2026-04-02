@@ -243,6 +243,12 @@ export function ClientCompletedTreatmentsSection({ client, items }: ClientComple
                           <span className="text-muted-foreground text-xs">
                             {dateFmt.format(new Date(tr.createdAt))} · {tr.actor.name ?? tr.actor.email}
                             {tr.note ? ` · ${tr.note}` : ""}
+                            {tr.ruleOverrideReason
+                              ? ` · ${tHist("overrideSummary", {
+                                  reason: tr.ruleOverrideReason,
+                                  by: tr.forcedBy?.name?.trim() || tr.forcedBy?.email || "—",
+                                })}`
+                              : ""}
                           </span>
                         </li>
                       ))}

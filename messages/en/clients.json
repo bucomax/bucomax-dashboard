@@ -111,6 +111,12 @@
   "selfRegister": {
     "dialogTitle": "Patient self-registration",
     "dialogDescription": "The patient scans the QR code or opens the link to fill in their details. Each link expires in 48 hours and can only be used once.",
+    "dialogTitleForPatient": "Link for this patient",
+    "dialogDescriptionForPatient": "This link and QR update this patient’s record when used (same expiry and single-use rules). Copy, share, or send via WhatsApp.",
+    "shareTitle": "Clinic registration",
+    "shareMessagePlain": "Use this link to complete or update your registration: {url}",
+    "shareNative": "Share…",
+    "shareWhatsApp": "WhatsApp",
     "loading": "Generating link…",
     "loadError": "Could not generate the link. Please try again.",
     "expiryHint": "Expires on {date}",
@@ -121,6 +127,7 @@
     "pageTitle": "Patient registration",
     "validating": "Checking link…",
     "pageDescription": "Fill in your details. The clinic will choose the treatment pathway next.",
+    "scopedFormHint": "This link is only for your record at this clinic. Review and update your details if needed.",
     "invalidTokenTitle": "Invalid or expired link",
     "invalidTokenBody": "Ask the front desk or your provider for a new QR code or link.",
     "submit": "Submit registration",
@@ -135,6 +142,16 @@
     "loadError": "Failed to load patient.",
     "retry": "Try again",
     "backToList": "Back to list",
+    "selfRegisterLinkThisPatient": "Complete registration (link / QR)",
+    "portalLink": {
+      "sendEmail": "Email portal link to patient",
+      "copyOnly": "Open patient portal (link)",
+      "emailRequired": "Add an email on the patient record to send the link automatically.",
+      "emailSent": "Portal link emailed to the patient.",
+      "linkCopied": "Link copied. Send it to the patient through a secure channel.",
+      "copyManually": "Copy the link below and send it to the patient:",
+      "error": "Could not generate the portal link."
+    },
     "whatsapp": "WhatsApp",
     "caseNotes": {
       "title": "Case description",
@@ -178,6 +195,17 @@
       "deleteSuccess": "File removed.",
       "downloadError": "Could not open the file.",
       "uploadedBy": "Uploaded by {name}",
+      "uploadedByPortal": "Uploaded via patient portal",
+      "statusPending": "Awaiting clinic validation",
+      "statusRejected": "Rejected in review",
+      "approve": "Accept",
+      "reject": "Reject",
+      "rejectDialogTitle": "Reject document",
+      "rejectDialogDescription": "The patient will no longer see this file in the portal. «{fileName}»",
+      "rejectReasonPlaceholder": "Reason (optional, internal)",
+      "rejectConfirm": "Confirm rejection",
+      "reviewApproveSuccess": "Document accepted.",
+      "reviewRejectSuccess": "Document rejected.",
       "range": "Showing {from}–{to} of {total}",
       "prev": "Previous",
       "next": "Next"
@@ -217,8 +245,29 @@
       "completedBanner": "Treatment completed on {date}. Stage and transition history remain available.",
       "readOnlyHint": "This pathway is closed: stage moves and checklist edits are disabled."
     },
+    "assigneeOverview": {
+      "title": "Ownership in the pathway",
+      "description": "How the patient reached the current stage, who owns it now, and upcoming stages in published order.",
+      "pastTitle": "Entered from",
+      "startJourney": "Journey start (no prior stage recorded)",
+      "actor": "Recorded by",
+      "presentTitle": "Owner for this stage",
+      "noAssignee": "None set — alerts follow the tenant default rule.",
+      "futureTitle": "Next stages (Kanban order)",
+      "defaultAssigneeLabel": "Default in pathway",
+      "noFollowing": "No later stages in this order.",
+      "linearHint": "Branching flows may not follow this linear list."
+    },
+    "nextActions": {
+      "title": "Next actions",
+      "description": "Operational snapshot of the current stage: SLA, stage message, and required checklist gaps before moving on.",
+      "stageMessage": "Stage message",
+      "pendingRequiredTitle": "Required checklist still open (blocks stage change)",
+      "noBlockingChecklist": "No required checklist items blocking transition."
+    },
     "checklist": {
       "title": "Current stage checklist",
+      "requiredBadge": "required for stage move",
       "description": "Track the operational items for stage {stage}.",
       "descriptionEmpty": "The current stage for this patient does not have a configured checklist yet.",
       "progressLabel": "Progress",
@@ -230,6 +279,11 @@
     "transition": {
       "title": "Change stage",
       "description": "Pick the target stage. The same transition API rules apply.",
+      "blockedByChecklist": "Required checklist items are still open. Enter a justification below to record a forced transition (audited).",
+      "overrideReasonLabel": "Override justification",
+      "overrideReasonPlaceholder": "Explain why the stage advances without completing required items…",
+      "overrideReasonHint": "At least 10 characters. Stored in the transition history.",
+      "overrideReasonMin": "Enter a justification of at least 10 characters to force the transition.",
       "review": "Review and confirm",
       "confirmTitle": "Confirm stage change",
       "confirmDescription": "Check source, target, and note. Channel dispatch (e.g. WhatsApp) follows the transition API.",
@@ -261,6 +315,7 @@
       "opmeCreated": "Supplier created."
     },
     "history": {
+      "overrideSummary": "Override: {reason} (by {by})",
       "title": "Transition history",
       "range": "Showing {from}–{to} of {total}",
       "empty": "No transitions yet.",
@@ -268,6 +323,29 @@
       "start": "Start",
       "prev": "Previous",
       "next": "Next"
+    },
+    "timeline": {
+      "title": "Timeline",
+      "description": "Transitions, files linked to the patient, and self-registration events.",
+      "cappedHint": "Only the most recent events are merged here; totals may be incomplete.",
+      "range": "Showing {from}–{to} of {total}",
+      "empty": "No events yet.",
+      "noRows": "No events on this page.",
+      "loadError": "Failed to load timeline.",
+      "prev": "Previous",
+      "next": "Next",
+      "actorPublic": "Public registration",
+      "forcedNoReason": "Forced transition (no reason on this event)",
+      "audit": {
+        "stageTransition": "Stage change",
+        "fileUpload": "File linked to patient",
+        "portalFileSubmitted": "Document uploaded via portal (pending review)",
+        "portalFileApproved": "Portal document accepted by clinic",
+        "portalFileRejected": "Portal document rejected by clinic",
+        "selfRegister": "Registration completed via link",
+        "selfRegisterUpdate": "Registration updated via link",
+        "fileMeta": "File {id} · {mime}"
+      }
     }
   }
 }

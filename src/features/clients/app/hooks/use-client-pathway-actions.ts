@@ -14,7 +14,7 @@ export function useClientPathwayActions() {
   const transitionClientStage = useCallback(
     async (
       patientPathwayId: string,
-      input: { toStageId: string; note?: string },
+      input: { toStageId: string; note?: string; force?: boolean; overrideReason?: string },
     ) => {
       setTransitioning(true);
       try {

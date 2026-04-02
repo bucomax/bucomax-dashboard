@@ -245,7 +245,9 @@
           }
         ],
         "responses": {
-          "200": { "description": "Lista de membros" },
+          "200": {
+            "description": "Lista de membros (`userId`, `email`, `name`, `image`, `role`, `restrictedToAssignedOnly`, `linkedOpmeSupplierId`)"
+          },
           "401": { "description": "Não autenticado" },
           "403": { "description": "Sem permissão" },
           "404": { "description": "Tenant inexistente" }
@@ -269,7 +271,15 @@
                 "type": "object",
                 "required": ["role"],
                 "properties": {
-                  "role": { "type": "string", "enum": ["tenant_admin", "tenant_user"] }
+                  "role": { "type": "string", "enum": ["tenant_admin", "tenant_user"] },
+                  "restrictedToAssignedOnly": {
+                    "type": "boolean",
+                    "description": "Opcional. Com `tenant_user`, restringe visibilidade a pacientes atribuídos ao usuário. Com `tenant_admin`, a API zera escopo OPME/atribuição."
+                  },
+                  "linkedOpmeSupplierId": {
+                    "type": ["string", "null"],
+                    "description": "Opcional. Fornecedor OPME do mesmo tenant; `null` remove. Com `tenant_admin`, a API zera o vínculo."
+                  }
                 }
               }
             }
@@ -373,7 +383,7 @@
         ],
         "responses": {
           "200": {
-            "description": "`client` enriquecido (e-mail, responsável, OPME, `patientPathwayId`) + `patientPathway` com `completedAt` quando a jornada foi encerrada (histórico e transições preservados; sem mudança de etapa) ou `patientPathway: null` se nunca houve instância"
+            "description": "`client` enriquecido (e-mail, responsável, OPME, `patientPathwayId`) + `patientPathway` com `assigneeOverview` (origem da entrada na etapa atual, ator da transição, próximas etapas na ordem publicada), `completedAt` quando a jornada foi encerrada (histórico e transições preservados; sem mudança de etapa) ou `patientPathway: null` se nunca houve instância"
           },
           "404": { "description": "Não encontrado" },
           "422": { "description": "Query inválida" }
@@ -404,6 +414,63 @@
         }
       }
     },
+    "/api/v1/clients/{clientId}/portal-link": {
+      "post": {
+        "summary": "Gera link mágico do portal do paciente (e-mail opcional via Resend)",
+        "tags": ["Clients"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "clientId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sendEmail": {
+                    "type": "boolean",
+                    "description": "Default: envia e-mail se o paciente tiver e-mail. `false` retorna só `enterUrl`."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "`enterUrl`, `emailSent`, `expiresAt`" },
+          "401": { "description": "Não autenticado" },
+          "404": { "description": "Paciente não encontrado ou fora do escopo" },
+          "422": { "description": "Paciente sem e-mail e envio solicitado" },
+          "503": { "description": "Resend indisponível ou falha de envio" }
+        }
+      }
+    },
+    "/api/v1/clients/{clientId}/timeline": {
+      "get": {
+        "summary": "Linha do tempo do paciente (AuditEvent + transições legadas deduplicadas)",
+        "tags": ["Clients"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          { "name": "clientId", "in": "path", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "`items` (eventos audit + transições sem par em audit), `pagination`, `timelineCapped` quando o merge atingiu teto de busca"
+          },
+          "404": { "description": "Paciente não encontrado" },
+          "422": { "description": "Query inválida" }
+        }
+      }
+    },
     "/api/v1/clients/{clientId}/files": {
       "get": {
         "summary": "Lista arquivos (FileAsset) vinculados ao paciente",
@@ -423,9 +490,41 @@
           }
         ],
         "responses": {
-          "200": { "description": "`data` (metadados) + `pagination`" },
+          "200": { "description": "`data` (metadados, `patientPortalReviewStatus`, `uploadedBy` opcional) + `pagination`" },
           "404": { "description": "Paciente não encontrado" },
           "422": { "description": "Query inválida" }
+        }
+      }
+    },
+    "/api/v1/clients/{clientId}/files/{fileId}/review": {
+      "patch": {
+        "summary": "Aceita ou recusa arquivo enviado pelo portal (fila PENDING)",
+        "tags": ["Clients"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          { "name": "clientId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "fileId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["decision"],
+                "properties": {
+                  "decision": { "type": "string", "enum": ["approve", "reject"] },
+                  "rejectReason": { "type": "string", "maxLength": 500 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "`fileId` e `patientPortalReviewStatus` atualizado" },
+          "404": { "description": "Paciente ou arquivo não encontrado" },
+          "409": { "description": "Arquivo não está PENDING" },
+          "422": { "description": "Validação" }
         }
       }
     },
@@ -1241,6 +1340,176 @@
         "responses": {
           "200": { "description": "`{ updated: number }` — quantidade de notificações marcadas" },
           "401": { "description": "Não autenticado" }
+        }
+      }
+    },
+    "/api/v1/public/patient-portal/exchange": {
+      "post": {
+        "summary": "Troca token do link mágico por cookie de sessão do portal (`patient_portal_session`)",
+        "tags": ["Patient portal"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["token"],
+                "properties": { "token": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Sessão criada (Set-Cookie)" },
+          "401": { "description": "Token inválido, expirado ou já usado" },
+          "503": { "description": "Segredo de assinatura ausente" }
+        }
+      }
+    },
+    "/api/v1/patient/overview": {
+      "get": {
+        "summary": "Resumo para o paciente (cookie do portal; separado do NextAuth staff)",
+        "tags": ["Patient portal"],
+        "responses": {
+          "200": { "description": "Nome, clínica, jornada ativa / etapa atual" },
+          "401": { "description": "Sem sessão do portal" },
+          "404": { "description": "Paciente inexistente ou removido" }
+        }
+      }
+    },
+    "/api/v1/patient/timeline": {
+      "get": {
+        "summary": "Linha do tempo somente leitura (dados sanitizados para o paciente)",
+        "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Eventos da jornada (paginado)" },
+          "401": { "description": "Sem sessão do portal" },
+          "404": { "description": "Paciente inexistente ou removido" }
+        }
+      }
+    },
+    "/api/v1/patient/files": {
+      "get": {
+        "summary": "Lista documentos (clínica + envios do paciente; rejeitados ocultos)",
+        "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": { "description": "`data` + `pagination`" },
+          "401": { "description": "Sem sessão do portal" },
+          "404": { "description": "Paciente inexistente ou removido" }
+        }
+      },
+      "post": {
+        "summary": "Registra upload do paciente (status PENDING até validação na ficha)",
+        "tags": ["Patient portal"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["key", "fileName", "mimeType", "sizeBytes"],
+                "properties": {
+                  "key": { "type": "string" },
+                  "fileName": { "type": "string" },
+                  "mimeType": { "type": "string" },
+                  "sizeBytes": { "type": "integer", "minimum": 1 }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "`file` registrado" },
+          "401": { "description": "Sem sessão do portal" },
+          "403": { "description": "Chave inválida para o tenant" },
+          "404": { "description": "Paciente inexistente ou removido" },
+          "409": { "description": "Arquivo já registrado" },
+          "422": { "description": "Validação" }
+        }
+      }
+    },
+    "/api/v1/patient/files/presign": {
+      "post": {
+        "summary": "URL pré-assinada PUT para upload no storage (portal do paciente)",
+        "tags": ["Patient portal"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fileName", "mimeType"],
+                "properties": {
+                  "fileName": { "type": "string" },
+                  "mimeType": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "`key`, `uploadUrl`, `mimeType`" },
+          "401": { "description": "Sem sessão do portal" },
+          "404": { "description": "Paciente inexistente ou removido" },
+          "503": { "description": "Storage não configurado" }
+        }
+      }
+    },
+    "/api/v1/patient/files/presign-download": {
+      "post": {
+        "summary": "URL temporária GET só para arquivos liberados ao paciente (NOT_APPLICABLE ou APPROVED)",
+        "tags": ["Patient portal"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["fileId"],
+                "properties": { "fileId": { "type": "string" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "`downloadUrl`" },
+          "401": { "description": "Sem sessão do portal" },
+          "403": { "description": "Arquivo ainda em análise ou indisponível" },
+          "404": { "description": "Arquivo não encontrado" },
+          "503": { "description": "Storage não configurado" }
+        }
+      }
+    },
+    "/api/v1/patient/logout": {
+      "post": {
+        "summary": "Encerra sessão do portal (remove cookie)",
+        "tags": ["Patient portal"],
+        "responses": {
+          "200": { "description": "Cookie limpo" }
         }
       }
     }

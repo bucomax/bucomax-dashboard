@@ -2,8 +2,8 @@ import { resolvePublishedPathwayVersion } from "@/infrastructure/database/pathwa
 import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { buildKanbanClientWhereForSession } from "@/lib/auth/client-visibility";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
-import { buildKanbanClientNestedWhere } from "@/lib/pathway/kanban-client-where";
 import { computeSlaHealthStatus } from "@/lib/pathway/sla-health";
 import { dashboardPathwayOpmeQuerySchema } from "@/lib/validators/kanban";
 
@@ -41,6 +41,13 @@ export async function GET(request: Request, ctx: RouteCtx) {
   const { version } = resolved;
   const now = new Date();
 
+  const clientWhere = await buildKanbanClientWhereForSession(
+    auth.session!,
+    tenantCtx.tenantId,
+    "",
+    opmeSupplierId,
+  );
+
   const SCAN_LIMIT = 5_000;
   const rows = await prisma.patientPathway.findMany({
     where: {
@@ -48,7 +55,7 @@ export async function GET(request: Request, ctx: RouteCtx) {
       pathwayId,
       pathwayVersionId: version.id,
       completedAt: null,
-      client: buildKanbanClientNestedWhere("", opmeSupplierId),
+      client: clientWhere,
     },
     select: {
       enteredStageAt: true,

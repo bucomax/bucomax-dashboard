@@ -1,7 +1,7 @@
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
+import { listNotificationsWithClientScope } from "@/lib/notifications/notification-client-scope";
 import { notificationsListQuerySchema } from "@/lib/validators/notification";
 import type { NotificationDto } from "@/types/api/notification-v1";
 
@@ -28,20 +28,14 @@ export async function GET(request: Request) {
   const { limit, cursor, unreadOnly } = parsed.data;
   const userId = auth.session!.user.id;
 
-  const rows = await prisma.notification.findMany({
-    where: {
-      userId,
-      tenantId: tenantCtx.tenantId,
-      ...(unreadOnly ? { readAt: null } : {}),
-      ...(cursor ? { createdAt: { lt: (await prisma.notification.findUnique({ where: { id: cursor }, select: { createdAt: true } }))?.createdAt ?? new Date() } } : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    take: limit + 1,
+  const { rows: page, nextCursor } = await listNotificationsWithClientScope({
+    session: auth.session!,
+    tenantId: tenantCtx.tenantId,
+    userId,
+    limit,
+    cursor,
+    unreadOnly,
   });
-
-  const hasMore = rows.length > limit;
-  const page = hasMore ? rows.slice(0, limit) : rows;
-  const nextCursor = hasMore ? page[page.length - 1]!.id : null;
 
   const data: NotificationDto[] = page.map((n) => ({
     id: n.id,

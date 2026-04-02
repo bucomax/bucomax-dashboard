@@ -1,5 +1,6 @@
 import { prisma } from "@/infrastructure/database/prisma";
 import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
+import { resolvePathwayNotificationTargetUserIds } from "@/lib/notifications/resolve-pathway-notification-targets";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import {
@@ -107,16 +108,23 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
         select: {
           tenantId: true,
           clientId: true,
+          currentStageAssigneeUserId: true,
           client: { select: { name: true } },
           currentStage: { select: { name: true } },
         },
       });
       if (pp) {
+        const checklistTargets = await resolvePathwayNotificationTargetUserIds({
+          tenantId: tenantCtx.tenantId,
+          type: "checklist_complete",
+          currentStageAssigneeUserId: pp.currentStageAssigneeUserId,
+        });
         notificationEmitter.emit({
           tenantId: tenantCtx.tenantId,
           type: "checklist_complete",
           title: `Checklist completo: ${pp.client.name}`,
           body: `Todos os itens da etapa "${pp.currentStage.name}" foram concluídos.`,
+          targetUserIds: checklistTargets,
           correlationId: `${patientPathway.id}:${patientPathway.currentStageId}`,
           metadata: {
             clientId: pp.clientId,

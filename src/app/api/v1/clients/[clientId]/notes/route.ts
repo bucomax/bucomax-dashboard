@@ -2,6 +2,7 @@ import { prisma } from "@/infrastructure/database/prisma";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
@@ -9,16 +10,14 @@ import {
 } from "@/lib/auth/guards";
 import { postClientNoteBodySchema } from "@/lib/validators/client-note";
 import { clientDetailQuerySchema } from "@/lib/validators/client-detail-query";
+import type { Session } from "next-auth";
 
 export const dynamic = "force-dynamic";
 
 type RouteCtx = { params: Promise<{ clientId: string }> };
 
-async function ensureClientInTenant(clientId: string, tenantId: string) {
-  return prisma.client.findFirst({
-    where: { id: clientId, tenantId, deletedAt: null },
-    select: { id: true },
-  });
+async function ensureClientVisible(session: Session, clientId: string, tenantId: string) {
+  return findTenantClientVisibleToSession(session, tenantId, clientId, { id: true });
 }
 
 export async function GET(request: Request, ctx: RouteCtx) {
@@ -45,7 +44,7 @@ export async function GET(request: Request, ctx: RouteCtx) {
   const offset = (page - 1) * limit;
   const { clientId } = await ctx.params;
 
-  const client = await ensureClientInTenant(clientId, tenantCtx.tenantId);
+  const client = await ensureClientVisible(auth.session!, clientId, tenantCtx.tenantId);
   if (!client) {
     return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
   }
@@ -98,7 +97,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
   if (forbidden) return forbidden;
 
   const { clientId } = await ctx.params;
-  const client = await ensureClientInTenant(clientId, tenantCtx.tenantId);
+  const client = await ensureClientVisible(auth.session!, clientId, tenantCtx.tenantId);
   if (!client) {
     return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
   }

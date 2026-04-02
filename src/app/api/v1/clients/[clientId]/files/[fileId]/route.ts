@@ -6,6 +6,7 @@ import {
 } from "@/infrastructure/storage/gcs-storage";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
@@ -29,9 +30,8 @@ export async function DELETE(request: Request, ctx: RouteCtx) {
   const { clientId, fileId } = await ctx.params;
   const { tenantId } = tenantCtx;
 
-  const client = await prisma.client.findFirst({
-    where: { id: clientId, tenantId, deletedAt: null },
-    select: { id: true },
+  const client = await findTenantClientVisibleToSession(auth.session!, tenantId, clientId, {
+    id: true,
   });
   if (!client) {
     return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);

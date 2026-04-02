@@ -6,7 +6,10 @@ import {
   patientSelfRegisterFormSchema,
   type PatientSelfRegisterFormValues,
 } from "@/features/clients/app/utils/schemas";
-import type { PublicPatientSelfRegisterRequestBody } from "@/types/api/clients-v1";
+import type {
+  PublicPatientSelfRegisterFormPrefillDto,
+  PublicPatientSelfRegisterRequestBody,
+} from "@/types/api/clients-v1";
 import {
   fetchPatientSelfRegisterValidation,
   submitPatientSelfRegister,
@@ -40,6 +43,7 @@ function PatientSelfRegisterInner() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [token, setToken] = useState<string | null>(null);
   const [tenantName, setTenantName] = useState<string>("");
+  const [formPrefill, setFormPrefill] = useState<PublicPatientSelfRegisterFormPrefillDto | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const resolver = useMemo(
@@ -64,6 +68,7 @@ function PatientSelfRegisterInner() {
   useEffect(() => {
     const raw = searchParams.get("token")?.trim() ?? "";
     if (!raw) {
+      setFormPrefill(null);
       setPhase("invalid");
       return;
     }
@@ -71,17 +76,30 @@ function PatientSelfRegisterInner() {
     void fetchPatientSelfRegisterValidation(raw).then((r) => {
       if (cancelled) return;
       if (!r.valid) {
+        setFormPrefill(null);
         setPhase("invalid");
         return;
       }
       setToken(raw);
       setTenantName(r.tenantName ?? "");
+      setFormPrefill(r.formPrefill ?? null);
       setPhase("form");
     });
     return () => {
       cancelled = true;
     };
   }, [searchParams]);
+
+  useEffect(() => {
+    if (phase !== "form" || !formPrefill) return;
+    form.reset({
+      name: formPrefill.name,
+      phone: formPrefill.phone,
+      email: formPrefill.email ?? "",
+      documentId: formPrefill.documentId ?? "",
+      caseDescription: formPrefill.caseDescription ?? "",
+    });
+  }, [phase, formPrefill, form]);
 
   async function onSubmit(values: PatientSelfRegisterFormValues) {
     if (!token) return;
@@ -141,8 +159,11 @@ function PatientSelfRegisterInner() {
         <Card className="w-full border shadow-xl shadow-black/5 dark:shadow-black/20">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl">{t("pageTitle")}</CardTitle>
-            <CardDescription>
-              {tenantName ? t("registeringAs", { clinic: tenantName }) : t("pageDescription")}
+            <CardDescription className="space-y-2">
+              <span className="block">
+                {tenantName ? t("registeringAs", { clinic: tenantName }) : t("pageDescription")}
+              </span>
+              {formPrefill ? <span className="text-muted-foreground block text-sm">{t("scopedFormHint")}</span> : null}
             </CardDescription>
           </CardHeader>
           <CardContent>

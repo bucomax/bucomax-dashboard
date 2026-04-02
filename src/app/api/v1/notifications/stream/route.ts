@@ -1,11 +1,15 @@
 import { getApiT } from "@/lib/api/i18n";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
-import { prisma } from "@/infrastructure/database/prisma";
+import {
+  countUnreadNotificationsWithClientScope,
+  isNotificationMetadataVisibleToViewer,
+} from "@/lib/notifications/notification-client-scope";
 import { SSE_NOTIFICATIONS_CHANNEL } from "@/infrastructure/queue/constants";
 import {
   createSubscriberConnection,
   getRedisConnection,
   isRedisEnabled,
+  tripRedisCircuit,
 } from "@/infrastructure/queue/redis-connection";
 import type IORedis from "ioredis";
 
@@ -14,25 +18,36 @@ export const dynamic = "force-dynamic";
 const MAX_SSE_PER_USER = 3;
 const SSE_COUNTER_TTL = 3600;
 
-async function acquireSseSlot(userId: string): Promise<boolean> {
+type SseSlotResult = "ok" | "limit" | "redis_unavailable";
+
+async function acquireSseSlot(userId: string): Promise<SseSlotResult> {
   const redis = getRedisConnection();
-  if (!redis) return false;
+  if (!redis) return "redis_unavailable";
   const key = `sse:conn:${userId}`;
-  const current = await redis.incr(key);
-  if (current === 1) await redis.expire(key, SSE_COUNTER_TTL);
-  if (current > MAX_SSE_PER_USER) {
-    await redis.decr(key);
-    return false;
+  try {
+    const current = await redis.incr(key);
+    if (current === 1) await redis.expire(key, SSE_COUNTER_TTL);
+    if (current > MAX_SSE_PER_USER) {
+      await redis.decr(key);
+      return "limit";
+    }
+    return "ok";
+  } catch {
+    tripRedisCircuit();
+    return "redis_unavailable";
   }
-  return true;
 }
 
 async function releaseSseSlot(userId: string): Promise<void> {
   const redis = getRedisConnection();
   if (!redis) return;
   const key = `sse:conn:${userId}`;
-  const val = await redis.decr(key);
-  if (val <= 0) await redis.del(key);
+  try {
+    const val = await redis.decr(key);
+    if (val <= 0) await redis.del(key);
+  } catch {
+    /* Redis caiu durante o stream; slot expira pelo TTL */
+  }
 }
 
 export async function GET(request: Request) {
@@ -43,7 +58,8 @@ export async function GET(request: Request) {
   const tenantCtx = await getActiveTenantIdOr400(auth.session!, request, apiT);
   if (tenantCtx.response) return tenantCtx.response;
 
-  const userId = auth.session!.user.id;
+  const session = auth.session!;
+  const userId = session.user.id;
   const tenantId = tenantCtx.tenantId;
 
   if (!isRedisEnabled()) {
@@ -53,8 +69,21 @@ export async function GET(request: Request) {
     );
   }
 
-  const allowed = await acquireSseSlot(userId);
-  if (!allowed) {
+  const slot = await acquireSseSlot(userId);
+  if (slot === "redis_unavailable") {
+    return Response.json(
+      {
+        success: false,
+        error: {
+          code: "SSE_UNAVAILABLE",
+          message:
+            "Stream em tempo real indisponível (Redis ausente ou circuito aberto). Notificações continuam via API; suba o Redis ou limpe REDIS_URL para modo sem SSE.",
+        },
+      },
+      { status: 503 },
+    );
+  }
+  if (slot === "limit") {
     return Response.json(
       { success: false, error: { code: "SSE_LIMIT", message: "Too many open connections." } },
       { status: 429 },
@@ -92,9 +121,7 @@ export async function GET(request: Request) {
         }
       }
 
-      const initialCount = await prisma.notification.count({
-        where: { userId, tenantId, readAt: null },
-      });
+      const initialCount = await countUnreadNotificationsWithClientScope(session, tenantId, userId);
       send("unread-count", { count: initialCount });
 
       subscriber = createSubscriberConnection();
@@ -104,21 +131,38 @@ export async function GET(request: Request) {
         return;
       }
 
-      await subscriber.subscribe(SSE_NOTIFICATIONS_CHANNEL);
+      try {
+        await subscriber.subscribe(SSE_NOTIFICATIONS_CHANNEL);
+      } catch {
+        tripRedisCircuit();
+        cleanup();
+        controller.close();
+        return;
+      }
 
       subscriber.on("message", (_channel: string, message: string) => {
-        try {
-          const parsed = JSON.parse(message) as {
-            userId: string;
-            tenantId: string;
-            notification: Record<string, unknown>;
-          };
-          if (parsed.userId === userId && parsed.tenantId === tenantId) {
+        void (async () => {
+          try {
+            const parsed = JSON.parse(message) as {
+              userId: string;
+              tenantId: string;
+              notification: Record<string, unknown>;
+            };
+            if (parsed.userId !== userId || parsed.tenantId !== tenantId) return;
+
+            const visible = await isNotificationMetadataVisibleToViewer({
+              userId,
+              globalRole: session.user.globalRole,
+              tenantId,
+              metadata: parsed.notification.metadata,
+            });
+            if (!visible) return;
+
             send("notification", parsed.notification);
+          } catch {
+            /* malformed */
           }
-        } catch {
-          /* malformed */
-        }
+        })();
       });
 
       heartbeat = setInterval(() => {

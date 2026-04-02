@@ -2,12 +2,15 @@ import { apiClient } from "@/lib/api/http-client";
 import type {
   ClientDetailQueryParams,
   ClientDetailResponseData,
+  ClientTimelineQueryParams,
+  ClientTimelineResponseData,
   ClientDto,
   ClientsListResponseData,
   CreateClientRequestBody,
   CreateClientResponseData,
   CreatePatientPathwayRequestBody,
   CreatePatientPathwayResponseData,
+  CreatePatientSelfRegisterInviteRequestBody,
   CreatePatientSelfRegisterInviteResponseData,
   ListClientsQueryParams,
   PatchClientRequestBody,
@@ -18,12 +21,14 @@ import type {
   PathwayOption,
   UpdateClientResponseData,
 } from "@/types/api/clients-v1";
+import type { PostClientPortalLinkResponse } from "@/types/api/patient-portal-v1";
 import type { ApiEnvelope } from "@/shared/types/api/v1";
 import type {
   ClientFilesListQueryParams,
   ClientFilesListResponseData,
   FileDownloadPresignRequestBody,
   FileDownloadPresignResponseData,
+  PatientPortalFileReviewStatusDto,
 } from "@/types/api/files-v1";
 
 export async function getClientDetail(
@@ -36,6 +41,24 @@ export async function getClientDetail(
   const qs = search.toString();
   const url = qs ? `/api/v1/clients/${clientId}?${qs}` : `/api/v1/clients/${clientId}`;
   const res = await apiClient.get<ApiEnvelope<ClientDetailResponseData>>(url);
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data;
+}
+
+export async function getClientTimeline(
+  clientId: string,
+  params?: ClientTimelineQueryParams,
+): Promise<ClientTimelineResponseData> {
+  const search = new URLSearchParams();
+  if (params?.page != null) search.set("page", String(params.page));
+  if (params?.limit != null) search.set("limit", String(params.limit));
+  const qs = search.toString();
+  const url = qs
+    ? `/api/v1/clients/${clientId}/timeline?${qs}`
+    : `/api/v1/clients/${clientId}/timeline`;
+  const res = await apiClient.get<ApiEnvelope<ClientTimelineResponseData>>(url);
   if (!res.data.success) {
     throw new Error(res.data.error.message);
   }
@@ -86,10 +109,14 @@ export async function createClient(body: CreateClientRequestBody): Promise<Clien
   return res.data.data.client;
 }
 
-export async function createPatientSelfRegisterInvite(): Promise<CreatePatientSelfRegisterInviteResponseData> {
+export async function createPatientSelfRegisterInvite(
+  body?: CreatePatientSelfRegisterInviteRequestBody,
+): Promise<CreatePatientSelfRegisterInviteResponseData> {
+  const payload: CreatePatientSelfRegisterInviteRequestBody =
+    body?.clientId != null && body.clientId !== "" ? { clientId: body.clientId } : {};
   const res = await apiClient.post<ApiEnvelope<CreatePatientSelfRegisterInviteResponseData>>(
     "/api/v1/clients/self-register-invites",
-    {},
+    payload,
     { skipErrorToast: true },
   );
   if (!res.data.success) {
@@ -161,6 +188,20 @@ export async function deleteClientFile(clientId: string, fileId: string): Promis
   }
 }
 
+export async function reviewPatientPortalClientFile(
+  clientId: string,
+  fileId: string,
+  body: { decision: "approve" | "reject"; rejectReason?: string },
+): Promise<{ fileId: string; patientPortalReviewStatus: PatientPortalFileReviewStatusDto }> {
+  const res = await apiClient.patch<
+    ApiEnvelope<{ fileId: string; patientPortalReviewStatus: PatientPortalFileReviewStatusDto }>
+  >(`/api/v1/clients/${clientId}/files/${fileId}/review`, body);
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data;
+}
+
 export async function createPatientPathway(
   input: CreatePatientPathwayRequestBody,
 ): Promise<PatientPathwayCreated> {
@@ -172,4 +213,18 @@ export async function createPatientPathway(
     throw new Error(res.data.error.message);
   }
   return res.data.data.patientPathway;
+}
+
+export async function createPatientPortalLink(
+  clientId: string,
+  body?: { sendEmail?: boolean },
+): Promise<PostClientPortalLinkResponse> {
+  const res = await apiClient.post<ApiEnvelope<PostClientPortalLinkResponse>>(
+    `/api/v1/clients/${clientId}/portal-link`,
+    body ?? {},
+  );
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data;
 }

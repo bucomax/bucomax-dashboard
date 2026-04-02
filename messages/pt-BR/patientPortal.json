@@ -1,0 +1,57 @@
+{
+  "title": "Portal do paciente",
+  "enter": {
+    "validating": "Validando seu link…",
+    "error": "Link inválido ou expirado. Peça um novo link à clínica.",
+    "redirecting": "Entrando…"
+  },
+  "timeline": {
+    "title": "Linha do tempo",
+    "description": "Registros do seu acompanhamento na clínica.",
+    "empty": "Nenhum evento registrado ainda.",
+    "capped": "Lista parcial — pode haver mais eventos no histórico.",
+    "stageTransition": "Mudança de etapa",
+    "fromTo": "{from} → {to}",
+    "fileUpload": "Arquivo recebido pela clínica",
+    "portalFileSubmitted": "Você enviou um documento (em análise pela clínica)",
+    "portalFileApproved": "Documento aceito pela clínica",
+    "portalFileRejected": "Documento não aceito pela clínica",
+    "selfRegister": "Cadastro concluído",
+    "event": "Evento registrado",
+    "by": "Registrado por {name}",
+    "prev": "Anterior",
+    "next": "Próxima",
+    "page": "Página {page} de {totalPages}",
+    "loadError": "Não foi possível carregar a linha do tempo."
+  },
+  "home": {
+    "retry": "Tentar novamente",
+    "loading": "Carregando…",
+    "needLink": "Para acessar, use o link enviado por e-mail ou por mensagem pela sua clínica.",
+    "welcome": "Olá, {name}",
+    "clinic": "Clínica: {clinic}",
+    "noJourney": "Não há jornada ativa no momento. A clínica orientará os próximos passos.",
+    "journeyDescription": "Etapas do seu tratamento e posição na jornada definida pela clínica.",
+    "journeyTitle": "Sua jornada",
+    "currentStage": "Etapa atual",
+    "since": "Nesta etapa desde {date}",
+    "logout": "Sair",
+    "loadError": "Não foi possível carregar seus dados. Tente sair e abrir o link novamente.",
+    "staffLogin": "Acesso equipe (clínica)"
+  },
+  "files": {
+    "title": "Documentos",
+    "description": "Arquivos da clínica e envios seus. Novos envios passam por validação antes de liberar o download.",
+    "empty": "Nenhum documento ainda.",
+    "chooseFile": "Enviar arquivo",
+    "uploading": "Enviando…",
+    "uploadError": "Não foi possível enviar o arquivo.",
+    "loadError": "Não foi possível carregar a lista de documentos.",
+    "downloadError": "Não foi possível abrir o arquivo.",
+    "download": "Baixar ou abrir",
+    "statusPending": "Em análise pela clínica — download após aprovação",
+    "range": "Mostrando {from}–{to} de {total}",
+    "prev": "Anterior",
+    "next": "Próxima"
+  }
+}

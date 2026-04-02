@@ -36,6 +36,7 @@ export type KanbanPatientPathway = {
     alertWarningDays: number | null;
     alertCriticalDays: number | null;
   };
+  currentStageAssignee: { id: string; name: string | null; email: string } | null;
   updatedAt: string;
 };
 

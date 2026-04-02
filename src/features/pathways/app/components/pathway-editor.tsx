@@ -14,10 +14,15 @@ import {
   type Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { PATHWAY_STAGE_NONE_ASSIGNEE } from "@/features/pathways/app/constants/stage-default-assignee";
 import { PathwayStageChecklistBlock } from "@/features/pathways/app/components/pathway-stage-checklist-block";
+import { PathwayStageDefaultAssigneesField } from "@/features/pathways/app/components/pathway-stage-default-assignees-field";
 import { PathwayStageDocumentsBlock } from "@/features/pathways/app/components/pathway-stage-documents-block";
 import { usePathwayDraftVersion } from "@/features/pathways/app/hooks/use-pathway-draft-version";
+import { listTenantMembersForPicker } from "@/features/settings/app/services/tenant-settings.service";
 import { parsePathwayGraph } from "@/features/pathways/app/utils/pathway-graph";
+import { normalizeStageDefaultAssigneeUserIds } from "@/lib/pathway/graph";
+import { setStageNodeDefaultAssignees } from "@/lib/pathway/stage-node-assignees";
 import {
   updatePathwayStageNodeChecklistItems,
   updatePathwayStageNodeStageDocuments,
@@ -27,6 +32,7 @@ import type { StageSlaField } from "@/features/pathways/types/column-editor";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { LabeledNonNegativeIntegerUnitField } from "@/shared/components/forms";
+import type { LabeledSelectOption } from "@/shared/components/forms/labeled-select";
 import { Button } from "@/shared/components/ui/button";
 import {
   Card,
@@ -67,8 +73,33 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [assigneeOptions, setAssigneeOptions] = useState<LabeledSelectOption[]>([]);
 
   const selectedNode = nodes.find((n) => n.id === selectedId) ?? null;
+
+  const noneAssigneeLabel = t("defaultAssigneeNone");
+  useEffect(() => {
+    let cancelled = false;
+    void listTenantMembersForPicker({ skipErrorToast: true })
+      .then((data) => {
+        if (cancelled) return;
+        setAssigneeOptions([
+          { value: PATHWAY_STAGE_NONE_ASSIGNEE, label: noneAssigneeLabel },
+          ...data.members.map((m) => ({
+            value: m.userId,
+            label: m.name?.trim() ? `${m.name} (${m.email})` : m.email,
+          })),
+        ]);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAssigneeOptions([{ value: PATHWAY_STAGE_NONE_ASSIGNEE, label: noneAssigneeLabel }]);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [noneAssigneeLabel]);
 
   useEffect(() => {
     if (graphJson == null) return;
@@ -166,6 +197,18 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
     );
   }
 
+  function updateSelectedDefaultAssignees(userIds: string[]) {
+    if (!selectedId) return;
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.id !== selectedId) return n;
+        const nextData = { ...n.data } as Record<string, unknown>;
+        setStageNodeDefaultAssignees(nextData, userIds);
+        return { ...n, data: nextData };
+      }),
+    );
+  }
+
   function addChecklistItemSelected() {
     if (!selectedId) return;
     setNodes((nds) =>
@@ -193,6 +236,29 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
               ...n,
               data: updatePathwayStageNodeChecklistItems(n.data, (items) =>
                 items.map((item) => (item.id === itemId ? { ...item, label } : item)),
+              ),
+            },
+      ),
+    );
+  }
+
+  function updateChecklistItemRequiredSelected(itemId: string, requiredForTransition: boolean) {
+    if (!selectedId) return;
+    setNodes((nds) =>
+      nds.map((n) =>
+        n.id !== selectedId
+          ? n
+          : {
+              ...n,
+              data: updatePathwayStageNodeChecklistItems(n.data, (items) =>
+                items.map((item) => {
+                  if (item.id !== itemId) return item;
+                  if (!requiredForTransition) {
+                    const { requiredForTransition: _r, ...rest } = item;
+                    return rest;
+                  }
+                  return { ...item, requiredForTransition: true };
+                }),
               ),
             },
       ),
@@ -273,6 +339,10 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
     typeof warnRaw === "number" && Number.isFinite(warnRaw) ? Math.max(0, Math.floor(warnRaw)) : undefined;
   const critDays =
     typeof critRaw === "number" && Number.isFinite(critRaw) ? Math.max(0, Math.floor(critRaw)) : undefined;
+
+  const selectedAssigneeIds = normalizeStageDefaultAssigneeUserIds(
+    selectedData as Parameters<typeof normalizeStageDefaultAssigneeUserIds>[0],
+  );
 
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[1fr_minmax(280px,380px)]">
@@ -386,6 +456,17 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
                     onChange={(v) => updateSelectedSla("alertCriticalDays", v)}
                   />
                 </div>
+                <PathwayStageDefaultAssigneesField
+                  idPrefix="flow-selected"
+                  selectedUserIds={selectedAssigneeIds}
+                  memberOptions={
+                    assigneeOptions.length > 0
+                      ? assigneeOptions
+                      : [{ value: PATHWAY_STAGE_NONE_ASSIGNEE, label: noneAssigneeLabel }]
+                  }
+                  onChange={updateSelectedDefaultAssignees}
+                  label={t("defaultAssigneeLabel")}
+                />
               </div>
               <Field>
                 <FieldLabel htmlFor="stage-msg">{t("patientMessage")}</FieldLabel>
@@ -403,6 +484,7 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
                 checklistItems={selectedNode.data?.checklistItems}
                 onAdd={addChecklistItemSelected}
                 onUpdate={updateChecklistItemSelected}
+                onUpdateRequired={updateChecklistItemRequiredSelected}
                 onRemove={removeChecklistItemSelected}
               />
               <PathwayStageDocumentsBlock

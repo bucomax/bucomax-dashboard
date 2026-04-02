@@ -20,7 +20,8 @@ Painel clínico **multi-tenant** para orquestrar a **jornada do paciente**: flux
 ## Começar
 
 1. Copie variáveis de ambiente: `.env.example` → `.env` (inclua `DATABASE_URL`, segredos NextAuth, GCS se for usar uploads).
-2. Instale e suba o banco:
+2. **Redis (opcional em dev):** com `REDIS_URL` preenchido (ex.: `redis://localhost:6379`), suba `docker compose up -d redis`. **Sem Redis**, deixe `REDIS_URL` vazio: notificações em modo inline e sem SSE (evita `ECONNREFUSED :6379`). Se a URL existir mas o servidor estiver parado, o app abre um **circuit breaker** (~45s) e faz fallback inline.
+3. Instale e suba o banco:
 
 ```bash
 npm install
@@ -29,7 +30,7 @@ npm run db:seed   # opcional — dados de desenvolvimento
 npm run dev
 ```
 
-3. Abra [http://localhost:3000](http://localhost:3000).
+4. Abra [http://localhost:3000](http://localhost:3000).
 
 Comandos úteis: `npm run db:studio`, `npm run build`, `npm run lint`.
 

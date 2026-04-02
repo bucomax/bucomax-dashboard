@@ -156,7 +156,7 @@ Este documento resume a **regra de negócio efetiva** que hoje governa cadastro 
   - checklist da etapa atual
   - arquivos do paciente
   - contato/gestão (e-mail, responsável, OPME)
-  - timeline
+  - linha do tempo (`AuditEvent` + transições sem par em audit; ver `GET /api/v1/clients/:id/timeline`)
   - transição com preview do pacote documental
 - O modal de transição mostra o **pacote completo da etapa de destino**, não só observação textual.
 - A busca da lista de pacientes considera **nome, telefone e e-mail**.

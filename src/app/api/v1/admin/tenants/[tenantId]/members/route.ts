@@ -47,6 +47,8 @@ export async function GET(request: Request, ctx: RouteCtx) {
       name: r.user.name,
       image: r.user.image,
       role: r.role,
+      restrictedToAssignedOnly: r.restrictedToAssignedOnly,
+      linkedOpmeSupplierId: r.linkedOpmeSupplierId,
     }));
 
   return jsonSuccess({ members });

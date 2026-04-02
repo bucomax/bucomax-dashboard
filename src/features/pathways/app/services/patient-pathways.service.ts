@@ -1,6 +1,8 @@
 import { normalizeApiError } from "@/lib/api/axios-error";
 import { apiClient } from "@/lib/api/http-client";
+import type { ApiErrorEnvelope } from "@/lib/api/envelope";
 import type { ApiEnvelope } from "@/shared/types/api/v1";
+import { AxiosError } from "axios";
 import type {
   PatchPatientChecklistItemRequestBody,
   PatchPatientChecklistItemResponseData,
@@ -10,6 +12,16 @@ import type {
   TogglePatientChecklistItemInput,
   TransitionPatientStageInput,
 } from "@/features/pathways/types/patient-pathways";
+
+export class TransitionBlockedByChecklistError extends Error {
+  readonly pendingItems: { id: string; label: string }[];
+
+  constructor(message: string, pendingItems: { id: string; label: string }[]) {
+    super(message);
+    this.name = "TransitionBlockedByChecklistError";
+    this.pendingItems = pendingItems;
+  }
+}
 
 export async function getPatientPathway(patientPathwayId: string): Promise<PatientPathwayDetail> {
   try {
@@ -38,6 +50,23 @@ export async function transitionPatientStage(
       throw new Error(res.data.error.message);
     }
   } catch (e) {
+    if (e instanceof AxiosError) {
+      const data = e.response?.data as Partial<ApiErrorEnvelope> | undefined;
+      const err = data?.error;
+      if (err?.code === "CHECKLIST_REQUIRED_INCOMPLETE" && err.details && typeof err.details === "object") {
+        const raw = err.details as { pendingItems?: unknown };
+        const pending = Array.isArray(raw.pendingItems)
+          ? raw.pendingItems.filter(
+              (x): x is { id: string; label: string } =>
+                x != null &&
+                typeof x === "object" &&
+                typeof (x as { id?: unknown }).id === "string" &&
+                typeof (x as { label?: unknown }).label === "string",
+            )
+          : [];
+        throw new TransitionBlockedByChecklistError(err.message ?? "Checklist incompleto", pending);
+      }
+    }
     throw normalizeApiError(e);
   }
 }

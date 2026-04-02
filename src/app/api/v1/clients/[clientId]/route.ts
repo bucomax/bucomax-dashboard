@@ -2,6 +2,7 @@ import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
@@ -9,10 +10,13 @@ import {
 } from "@/lib/auth/guards";
 import {
   clientDetailPatientPathwaySelect,
+  collectPathwayStageDefaultAssigneeUserIds,
   MAX_COMPLETED_TRANSITIONS,
+  type ClientDetailStageTransitionRow,
   serializeActivePatientPathwayDetail,
   serializeCompletedTreatment,
 } from "@/lib/clients/client-detail-pathway-serialization";
+import { loadStageAssigneeSummariesMap } from "@/lib/clients/load-stage-assignee-summaries";
 import { validateClientOptionalRefs } from "@/lib/clients/validate-client-optional-refs";
 import { TenantRole, type Prisma } from "@prisma/client";
 import { clientDetailQuerySchema } from "@/lib/validators/client-detail-query";
@@ -25,28 +29,10 @@ const stageTransitionDetailInclude = {
   fromStage: { select: { id: true, name: true, stageKey: true } },
   toStage: { select: { id: true, name: true, stageKey: true } },
   actor: { select: { id: true, name: true, email: true } },
+  forcedByUser: { select: { id: true, name: true, email: true } },
 } satisfies Prisma.StageTransitionInclude;
 
 type RouteCtx = { params: Promise<{ clientId: string }> };
-
-async function getClientInTenant(clientId: string, tenantId: string) {
-  return prisma.client.findFirst({
-    where: { id: clientId, tenantId, deletedAt: null },
-    select: {
-      id: true,
-      tenantId: true,
-      name: true,
-      phone: true,
-      email: true,
-      caseDescription: true,
-      documentId: true,
-      assignedToUserId: true,
-      opmeSupplierId: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
-}
 
 export async function GET(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);
@@ -72,22 +58,19 @@ export async function GET(request: Request, ctx: RouteCtx) {
 
   const { clientId } = await ctx.params;
 
-  const row = await prisma.client.findFirst({
-    where: { id: clientId, tenantId: tenantCtx.tenantId, deletedAt: null },
-    select: {
-      id: true,
-      name: true,
-      phone: true,
-      email: true,
-      caseDescription: true,
-      documentId: true,
-      assignedToUserId: true,
-      opmeSupplierId: true,
-      createdAt: true,
-      updatedAt: true,
-      assignedTo: { select: { id: true, name: true, email: true } },
-      opmeSupplier: { select: { id: true, name: true } },
-    },
+  const row = await findTenantClientVisibleToSession(auth.session!, tenantCtx.tenantId, clientId, {
+    id: true,
+    name: true,
+    phone: true,
+    email: true,
+    caseDescription: true,
+    documentId: true,
+    assignedToUserId: true,
+    opmeSupplierId: true,
+    createdAt: true,
+    updatedAt: true,
+    assignedTo: { select: { id: true, name: true, email: true } },
+    opmeSupplier: { select: { id: true, name: true } },
   });
 
   if (!row) {
@@ -106,6 +89,11 @@ export async function GET(request: Request, ctx: RouteCtx) {
       select: clientDetailPatientPathwaySelect,
     }),
   ]);
+
+  const pathwaysForAssigneeLabels = [activePp, ...completedPps].filter((p) => p != null);
+  const assigneeByUserId = await loadStageAssigneeSummariesMap(
+    pathwaysForAssigneeLabels.flatMap(collectPathwayStageDefaultAssigneeUserIds),
+  );
 
   const client = {
     id: row.id,
@@ -141,6 +129,7 @@ export async function GET(request: Request, ctx: RouteCtx) {
     const truncated = raw.length > MAX_COMPLETED_TRANSITIONS;
     return serializeCompletedTreatment(pp, raw.slice(0, MAX_COMPLETED_TRANSITIONS), {
       transitionsTruncated: truncated,
+      assigneeByUserId,
     });
   });
 
@@ -152,7 +141,7 @@ export async function GET(request: Request, ctx: RouteCtx) {
     });
   }
 
-  const [totalTransitions, transitionRows] = await Promise.all([
+  const [totalTransitions, transitionRows, entryToCurrentRaw] = await Promise.all([
     prisma.stageTransition.count({ where: { patientPathwayId: activePp.id } }),
     prisma.stageTransition.findMany({
       where: { patientPathwayId: activePp.id },
@@ -161,14 +150,45 @@ export async function GET(request: Request, ctx: RouteCtx) {
       take: limit,
       include: stageTransitionDetailInclude,
     }),
+    prisma.stageTransition.findFirst({
+      where: { patientPathwayId: activePp.id, toStageId: activePp.currentStage.id },
+      orderBy: { createdAt: "desc" },
+      include: stageTransitionDetailInclude,
+    }),
   ]);
+
+  const entryToCurrentStageTransition: ClientDetailStageTransitionRow | null = entryToCurrentRaw
+    ? {
+        id: entryToCurrentRaw.id,
+        note: entryToCurrentRaw.note,
+        ruleOverrideReason: entryToCurrentRaw.ruleOverrideReason,
+        createdAt: entryToCurrentRaw.createdAt,
+        fromStage: entryToCurrentRaw.fromStage,
+        toStage: entryToCurrentRaw.toStage,
+        actor: entryToCurrentRaw.actor,
+        forcedByUser: entryToCurrentRaw.forcedByUser,
+      }
+    : null;
+
+  const transitionRowsMapped: ClientDetailStageTransitionRow[] = transitionRows.map((tr) => ({
+    id: tr.id,
+    note: tr.note,
+    ruleOverrideReason: tr.ruleOverrideReason,
+    createdAt: tr.createdAt,
+    fromStage: tr.fromStage,
+    toStage: tr.toStage,
+    actor: tr.actor,
+    forcedByUser: tr.forcedByUser,
+  }));
 
   const patientPathway = serializeActivePatientPathwayDetail(activePp, {
     now,
-    transitionRows,
+    transitionRows: transitionRowsMapped,
     totalTransitions,
     page,
     limit,
+    entryToCurrentStageTransition,
+    assigneeByUserId,
   });
 
   return jsonSuccess({
@@ -189,7 +209,10 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
   if (forbidden) return forbidden;
 
   const { clientId } = await ctx.params;
-  const existing = await getClientInTenant(clientId, tenantCtx.tenantId);
+  const existing = await findTenantClientVisibleToSession(auth.session!, tenantCtx.tenantId, clientId, {
+    id: true,
+    tenantId: true,
+  });
   if (!existing) {
     return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
   }
@@ -307,7 +330,9 @@ export async function DELETE(request: Request, ctx: RouteCtx) {
   }
 
   const { clientId } = await ctx.params;
-  const existing = await getClientInTenant(clientId, tenantCtx.tenantId);
+  const existing = await findTenantClientVisibleToSession(auth.session!, tenantCtx.tenantId, clientId, {
+    id: true,
+  });
   if (!existing) {
     return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
   }

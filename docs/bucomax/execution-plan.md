@@ -18,7 +18,7 @@ Não há desenvolvimento ativo de **IA**, **WhatsApp (dispatch real)**, **webhoo
 | **1** | Editor de fases (DnD) + publicação em Configurações | ✅ |
 | **2** | Dashboard: Kanban, métricas, alertas, filtros+URL, export CSV, DnD, modais | ✅ |
 | **3.1** | Lista de pacientes paginada + filtros | ✅ |
-| **3.2** | Detalhe do paciente: ficha, timeline, transição, P1, notas, arquivos, checklist | ✅ *(integração real de envio de pacote = fora do escopo)* |
+| **3.2** | Detalhe do paciente: ficha, **linha do tempo** (`AuditEvent` + legado), transição, P1, notas, arquivos, checklist | ✅ *(integração real de envio de pacote = fora do escopo)* |
 | **4.1.1** | OPME em settings (lista paginada + criação admin) | ✅ |
 | **4.1.2** | Dados da clínica (`GET\|PATCH /tenant`) | ✅ |
 | **4.1.3** | Preferências de notificação do tenant (flags) | ✅ |

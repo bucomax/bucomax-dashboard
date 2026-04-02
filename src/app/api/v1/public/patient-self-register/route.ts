@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "@/infrastructure/database/prisma";
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { notifyStaffPatientSelfRegistered } from "@/infrastructure/email/notify-patient-self-registered";
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
@@ -18,24 +19,52 @@ export async function GET(request: Request) {
 
   const row = await prisma.patientSelfRegisterInvite.findUnique({
     where: { token },
-    include: { tenant: { select: { name: true, isActive: true } } },
+    include: {
+      tenant: { select: { name: true, isActive: true } },
+      client: {
+        select: {
+          name: true,
+          phone: true,
+          email: true,
+          documentId: true,
+          caseDescription: true,
+          deletedAt: true,
+        },
+      },
+    },
   });
 
   const now = new Date();
+  const clientOk =
+    !row?.clientId ||
+    (row.client != null && row.client.deletedAt == null);
   const ok =
     row &&
     row.usedAt == null &&
     row.expiresAt > now &&
-    row.tenant.isActive;
+    row.tenant.isActive &&
+    clientOk;
 
   if (!ok) {
     return jsonSuccess({ valid: false } satisfies { valid: boolean });
   }
 
+  const formPrefill =
+    row.clientId && row.client && row.client.deletedAt == null
+      ? {
+          name: row.client.name,
+          phone: row.client.phone,
+          email: row.client.email,
+          documentId: row.client.documentId,
+          caseDescription: row.client.caseDescription,
+        }
+      : undefined;
+
   return jsonSuccess({
     valid: true,
     tenantName: row.tenant.name,
     expiresAt: row.expiresAt.toISOString(),
+    ...(formPrefill ? { formPrefill } : {}),
   });
 }
 
@@ -87,6 +116,42 @@ export async function POST(request: Request) {
           return null;
         }
 
+        if (inv.clientId) {
+          const existing = await tx.client.findFirst({
+            where: { id: inv.clientId, tenantId: inv.tenantId, deletedAt: null },
+            select: { id: true },
+          });
+          if (!existing) {
+            return null;
+          }
+
+          const updated = await tx.client.update({
+            where: { id: existing.id },
+            data: {
+              name: clientFields.name.trim(),
+              phone: clientFields.phone.trim(),
+              email: clientFields.email ?? null,
+              caseDescription: clientFields.caseDescription?.trim() || null,
+              documentId: clientFields.documentId,
+            },
+            select: { id: true, name: true },
+          });
+
+          await tx.patientSelfRegisterInvite.update({
+            where: { id: inv.id },
+            data: { usedAt: now },
+          });
+
+          return {
+            clientId: updated.id,
+            patientName: updated.name,
+            clinicName: inv.tenant.name,
+            tenantId: inv.tenantId,
+            inviteId: inv.id,
+            mode: "update" as const,
+          };
+        }
+
         const client = await tx.client.create({
           data: {
             tenantId: inv.tenantId,
@@ -109,6 +174,8 @@ export async function POST(request: Request) {
           patientName: client.name,
           clinicName: inv.tenant.name,
           tenantId: inv.tenantId,
+          inviteId: inv.id,
+          mode: "create" as const,
         };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -126,6 +193,15 @@ export async function POST(request: Request) {
     patientName = result.patientName;
     clinicName = result.clinicName;
     tenantId = result.tenantId;
+
+    await recordAuditEvent(prisma, {
+      tenantId: result.tenantId,
+      clientId: result.clientId,
+      patientPathwayId: null,
+      actorUserId: null,
+      type: AuditEventType.SELF_REGISTER_COMPLETED,
+      payload: { inviteId: result.inviteId, mode: result.mode },
+    });
   } catch (err) {
     if (err instanceof PrismaClientKnownRequestError && err.code === "P2034") {
       return jsonError(

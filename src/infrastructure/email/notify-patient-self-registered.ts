@@ -1,5 +1,6 @@
 import { prisma } from "@/infrastructure/database/prisma";
 import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
+import { filterUserIdsWhoCanViewClient } from "@/lib/auth/client-visibility";
 import { getPatientSelfRegisteredStaffHtml } from "@/infrastructure/email/email-templates";
 import { isEmailConfigured, sendEmail } from "@/infrastructure/email/resend.client";
 import { getPublicAppUrl } from "@/lib/config/urls";
@@ -43,11 +44,15 @@ export async function notifyStaffPatientSelfRegistered(params: NotifyParams): Pr
   const memberships = await prisma.tenantMembership.findMany({
     where: { tenantId },
     include: {
-      user: { select: { email: true, name: true, deletedAt: true } },
+      user: { select: { id: true, email: true, name: true, deletedAt: true } },
     },
   });
 
+  const memberUserIds = memberships.map((m) => m.userId);
+  const allowedIds = new Set(await filterUserIdsWhoCanViewClient(tenantId, clientId, memberUserIds));
+
   const recipients = memberships
+    .filter((m) => allowedIds.has(m.userId))
     .map((m) => m.user)
     .filter((u) => u.deletedAt == null && u.email.trim().length > 0);
 

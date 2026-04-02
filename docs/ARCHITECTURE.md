@@ -95,9 +95,9 @@ Convenções:
 
 - **Tenant:** organização (clínica, unidade de negócio). Campos típicos: nome, **slug** (usado em URL/subdomínio), `subdomain` ou hostname, status, plano.
 - **User:** identidade global (e-mail único), com **papel global** opcional (ver seção 5.4).
-- **TenantMembership:** vínculo `user` ↔ `tenant` com **papel no tenant** (`tenant_admin`, `tenant_user`, etc.).
+- **TenantMembership:** vínculo `user` ↔ `tenant` com **papel no tenant** (`tenant_admin`, `tenant_user`, etc.). Para `tenant_user`, flags opcionais de **visibilidade de pacientes**: `restrictedToAssignedOnly` (só `Client` com `assignedToUserId` = o usuário) e `linkedOpmeSupplierId` (só `Client` com aquele fornecedor OPME). `tenant_admin` e `super_admin` no contexto do tenant ignoram esses filtros. A política é aplicada nas rotas via `src/lib/auth/client-visibility.ts` (lista, ficha, Kanban, dashboards, arquivos, notificações).
 
-Todo registro de negócio relevante inclui `tenantId` (Client, `CarePathway` / `PathwayStage`, `PatientPathway`, `StageTransition`, `File`, `AiJob`, …). Modelo relacional em **§8**.
+Todo registro de negócio relevante inclui `tenantId` (Client, `CarePathway` / `PathwayStage`, `PatientPathway`, `StageTransition`, `AuditEvent`, `FileAsset`, `AiJob`, …). Modelo relacional em **§8**.
 
 ### 4.2 Resolução do tenant
 
@@ -492,9 +492,10 @@ Esta secção fixa **como** o produto se materializa em **PostgreSQL/Prisma** e 
 - **`PatientPathway`**: estado do paciente na jornada (`pathwayId`, `pathwayVersionId`, `currentStageId`, `enteredStageAt`).
 - **`PatientPathwayChecklistItem`**: progresso do checklist por paciente na etapa/versionamento atual.
 - **`PatientNote`**: nota clínica/operacional dedicada do paciente, com autor e histórico.
-- **`StageTransition`**: histórico da mudança de etapa + `dispatchStub` com snapshot do bundle.
+- **`StageTransition`**: histórico da mudança de etapa + `dispatchStub` com snapshot do bundle; campos de override de checklist (`ruleOverrideReason`, `forcedByUserId`) quando a transição força conclusão incompleta.
+- **`AuditEvent`**: eventos de linha do tempo por paciente (`tenantId`, `clientId`, `patientPathwayId?`, `actorUserId?`, `type`, `payload` Json, `createdAt`). Tipos atuais: transição de etapa, arquivo vinculado ao paciente (staff), cadastro público concluído, envio/aprovação/recusa de arquivo pelo **portal do paciente** (`PATIENT_PORTAL_FILE_*`). **LGPD:** `payload` com IDs e metadados mínimos — sem duplicar texto clínico.
 
-O **núcleo já implementado** é: **jornada + versão + etapas + checklist/documentos por etapa + paciente na jornada + notas dedicadas + transição + notificações in-app**. `ChannelDispatch`, `AiJob` e dispatch HTTP real continuam como evolução.
+O **núcleo já implementado** é: **jornada + versão + etapas + checklist/documentos por etapa + paciente na jornada + notas dedicadas + transição + auditoria de timeline + notificações in-app**. `ChannelDispatch`, `AiJob` e dispatch HTTP real continuam como evolução.
 - **`Notification`**: notificação in-app persistida por usuário (`tenantId`, `userId`, `type`, `title`, `body?`, `metadata` Json, `readAt?`). Tipos: `sla_critical`, `sla_warning`, `stage_transition`, `new_patient`, `checklist_complete`. Ver §7.4.
 
 ### 8.2 Tabelas e relacionamentos (núcleo)
@@ -502,9 +503,6 @@ O **núcleo já implementado** é: **jornada + versão + etapas + checklist/docu
 | Modelo | Campos-chave | Observação |
 |--------|--------------|------------|
 | `Tenant` | `id`, `name`, `slug`, `taxId?`, `phone?`, `addressLine?`, `city?`, `postalCode?`, `affiliatedHospitals?`, flags `notify*` | Tenant/clínica: contexto principal de isolamento, dados institucionais leves e preferências operacionais simples. |
- 
-| Modelo | Campos-chave | Observação |
-|--------|--------------|------------|
 | `CarePathway` | `id`, `tenantId`, `name`, `description?`, `createdAt` | **Múltiplos** por tenant. |
 | `PathwayVersion` | `id`, `pathwayId`, `version`, `published`, `graphJson`, `createdAt` | Canvas **@xyflow/react** persistido; ao publicar, **sincronizar** `PathwayStage` com os nodes de etapa. |
 | `PathwayStage` | `id`, `pathwayVersionId`, `stageKey`, `name`, `sortOrder`, `patientMessage?`, flags SLA | Materialização para queries, FKs, `StageDocument` e checklist. |
@@ -524,22 +522,23 @@ O **núcleo já implementado** é: **jornada + versão + etapas + checklist/docu
 
 | Modelo | Campos-chave | Observação |
 |--------|--------------|------------|
-| `StageTransition` | `patientPathwayId`, `fromStageId?`, `toStageId`, `actorUserId`, `note?`, `dispatchStub`, `createdAt` | Histórico; `dispatchStub.correlationId` amarra o snapshot do bundle. |
+| `StageTransition` | `patientPathwayId`, `fromStageId?`, `toStageId`, `actorUserId`, `note?`, `ruleOverrideReason?`, `forcedByUserId?`, `dispatchStub`, `createdAt` | Histórico; `dispatchStub.correlationId` amarra o snapshot do bundle. |
+| `AuditEvent` | `tenantId`, `clientId`, `patientPathwayId?`, `actorUserId?`, `type` (enum), `payload` Json, `createdAt` | Linha do tempo unificada; índice `(tenantId, clientId, createdAt)`. Escrita via `recordAuditEvent` (infra) a partir de transição, registro de arquivo com `clientId`, cadastro público, ciclo de arquivo do portal (submissão e revisão na ficha). |
 | `ChannelDispatch` | Futuro | Evolução para persistência dedicada de dispatch/status/erro. |
 
 | Modelo | Observação |
 |--------|------------|
-| `FileAsset` | `tenantId`, `r2Key`, `mimeType`, `sizeBytes`, `clientId?`; upload na biblioteca **não** dispara WhatsApp sozinho. |
+| `FileAsset` | `tenantId`, `r2Key`, `mimeType`, `sizeBytes`, `clientId?`, `uploadedById?` (null se envio pelo portal), `patientPortalReviewStatus` (`NOT_APPLICABLE` / `PENDING` / `APPROVED` / `REJECTED`); upload na biblioteca **não** dispara WhatsApp sozinho. |
 | `OpmeSupplier` | Catálogo por tenant para relacionamento opcional em `Client`. |
 | `AiJob` | Futuro | Evolução para integração assíncrona com IA. |
 
-Auth/plataforma (`User.globalRole`, `TenantMembership`, `RefreshToken`, `AuditLog`) permanece como já descrito nas secções anteriores.
+Auth/plataforma (`User.globalRole`, `TenantMembership`, `UserAuthToken`, …) permanece como já descrito nas secções anteriores. **Auditoria de ficha:** `AuditEvent` (não confundir com um “audit log” genérico de plataforma).
 
 ### 8.3 Consultas que o modelo precisa suportar
 
 1. **Payload WhatsApp ao mover etapa:** `StageDocument` ⋈ `FileAsset` filtrando `pathwayStageId = toStageId`, `ORDER BY sortOrder`; hoje o snapshot fica em `dispatchStub`, e URLs assinadas são geradas sob demanda.  
 2. **Pacientes “na etapa X”:** `PatientPathway` com `currentStageId` nas etapas de ordem desejada.  
-3. **Ficha / timeline:** `StageTransition` + `dispatchStub` por `clientId`; `ChannelDispatch` / `AiJob` entram depois.
+3. **Ficha / linha do tempo:** `GET /api/v1/clients/:id/timeline` agrega `AuditEvent` (ordenado) com `StageTransition` legado **deduplicado** quando o audit já referencia o mesmo `transitionId` no `payload`. Há teto de janela no merge; resposta inclui `timelineCapped` quando aplicável. `ChannelDispatch` / `AiJob` entram depois como fontes adicionais.
 4. **Checklist da etapa atual:** `PathwayStageChecklistItem` + `PatientPathwayChecklistItem` filtrando a etapa atual do paciente.
 
 ### 8.4 Impacto no código (camadas)
@@ -548,7 +547,7 @@ Auth/plataforma (`User.globalRole`, `TenantMembership`, `RefreshToken`, `AuditLo
 |--------|-------------|
 | **`src/domain` / `src/application`** | Direção desejada: regras de pathway, bundle documental, transição e dispatch desacopladas de rotas. |
 | **`src/infrastructure`** | Prisma, GCS/presign e futuros clientes externos de WhatsApp/IA. |
-| **`app/api/v1`** | Hoje concentra parte da orquestração: `clients`, `pathways`, `patient-pathways`, `stage-documents`, `files`. |
+| **`app/api/v1`** | Hoje concentra parte da orquestração: `clients` (incl. `clients/:id/timeline`), `pathways`, `patient-pathways`, `stage-documents`, `files`. |
 | **Frontend** | Editor **@xyflow/react**, dashboard, lista/ficha do paciente e modal de transição com preview do pacote. |
 
 Eventos de domínio (opcional): após `TransitionPatientStage`, worker assíncrono só para IA — desacopla HTTP.
@@ -564,12 +563,13 @@ Eventos de domínio (opcional): após `TransitionPatientStage`, worker assíncro
 2. Introduzir `ChannelDispatch` e cliente HTTP real do canal.  
 3. Introduzir `AiJob` + webhooks.  
 4. Evoluir notas e regras de topologia do fluxo.  
+5. Ampliar `AuditEvent` (ex. assinaturas, dispatch real). **RBAC fino** na leitura (lista/ficha/Kanban/notificações) está em `src/lib/auth/client-visibility.ts` — ver Fase 7 em `docs/bucomax/meeting-presentation-action-plan.md`.  
 
 ### 8.7 Resumo
 
 | Camada | Mudança principal |
 |--------|-------------------|
-| **BD** | Núcleo atual: **pathway / version / stage / stage_checklist_item / stage_document** + **patient_pathway / patient_pathway_checklist_item / patient_note** + **stage_transition** + **file_asset** + extensões de cliente (`email`, responsável, OPME). |
+| **BD** | Núcleo atual: **pathway / version / stage / stage_checklist_item / stage_document** + **patient_pathway / patient_pathway_checklist_item / patient_note** + **stage_transition** + **audit_event** + **file_asset** + extensões de cliente (`email`, responsável, OPME). |
 | **Código** | Orquestração centrada em **transição de etapa** e **bundle de documentos**, ainda parcialmente nas rotas. |
 | **Front** | Editor **XYFlow**, dashboard, lista e ficha do paciente; integração de canal/IA ainda evolutiva. |
 
@@ -598,7 +598,7 @@ Prefixo: `/api/v1`.
 | Me | `GET`, `PATCH`, `DELETE` | Perfil do usuário autenticado (`/api/v1/me`, `/api/v1/me/password`). |
 | Admin / tenants | `GET`, `POST` | Gestão global em `/api/v1/admin/tenants`; membros por tenant em `/api/v1/admin/tenants/:tenantId/members`. |
 | Tenants | `GET` | `/api/v1/tenants` lista tenants acessíveis ao usuário. |
-| Clients | `GET`, `POST`, `PATCH`, `DELETE` | `/api/v1/clients`, `/api/v1/clients/:id`; detalhe rico em `/api/v1/clients/:id`; arquivos em `/api/v1/clients/:id/files`. |
+| Clients | `GET`, `POST`, `PATCH`, `DELETE` | `/api/v1/clients`, `/api/v1/clients/:id` (detalhe rico); **linha do tempo** `GET /api/v1/clients/:id/timeline` (audit + transições legado); notas `…/notes`; arquivos `…/files`. |
 | Patient pathways | `GET`, `POST` | `/api/v1/patient-pathways` lista/inicia jornada; detalhe em `/api/v1/patient-pathways/:id`; transição em `POST /api/v1/patient-pathways/:id/transition`. |
 | Pathways | `GET`, `POST`, `PATCH` | `/api/v1/pathways`, `/api/v1/pathways/:id`, `/versions`, `PATCH /versions/:versionId`, `POST /publish`, `GET /published-stages`, `GET /kanban`, `GET /dashboard-summary`, `GET /dashboard-alerts`. |
 | Stage documents | `POST` | `/api/v1/stage-documents` vincula `FileAsset` a etapa publicada. |
@@ -606,10 +606,12 @@ Prefixo: `/api/v1`.
 | OPME suppliers | `GET`, `POST` | `/api/v1/opme-suppliers` lista/cria fornecedores do tenant. |
 | Files / storage | `POST` | `/api/v1/files/presign`, `/api/v1/files`, `/api/v1/files/presign-download`. |
 | Notifications | `GET`, `PATCH`, `POST` | `/api/v1/notifications` (lista cursor), `/api/v1/notifications/unread-count`, `/api/v1/notifications/stream` (SSE), `PATCH .../notifications/:id/read`, `POST .../notifications/read-all`. |
+| Patient portal | `GET`, `POST`, `PATCH` | Público: `POST /api/v1/public/patient-portal/exchange` (magic link → cookie `patient_portal_session`). Paciente: `GET/POST /api/v1/patient/files`, `POST .../files/presign`, `POST .../files/presign-download`, `GET /api/v1/patient/overview`, `GET /api/v1/patient/timeline` (LGPD: payload sanitizado), `POST /api/v1/patient/logout`. Staff: `POST /api/v1/clients/:clientId/portal-link`; `PATCH /api/v1/clients/:clientId/files/:fileId/review` (fila `PENDING` → `APPROVED`/`REJECTED`). UI `/patient`, `/patient/enter`. |
 | Health | `GET` | `/api/v1/health`. |
 
 ### 10.0 Evoluções previstas
 
+- RBAC fino (assignee + OPME em `TenantMembership`) aplicado nas rotas principais; UI dedicada para flags do membro e **CareTeam** podem evoluir (plano Fase 7).
 - `ChannelDispatch` dedicado e endpoints/contratos de dispatch reais.
 - `AiJob` e webhooks de IA.
 - Webhooks do chatbot / WhatsApp.
@@ -670,4 +672,4 @@ A base de organização (pastas, Prisma em pacote, JWT, armazenamento de objetos
 
 ---
 
-*Última atualização: §8 incorpora modelo de dados e impacto no código (jornada do paciente).*
+*Última atualização: §8 inclui `AuditEvent`, linha do tempo na API e override de checklist em `StageTransition`.*

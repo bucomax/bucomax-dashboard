@@ -2,7 +2,11 @@ import type { NotificationType, Prisma } from "@prisma/client";
 import type { EmitNotificationInput, INotificationEmitter } from "@/application/ports/notification-emitter.port";
 import type { NotificationJobPayload } from "@/infrastructure/queue/notification-job-types";
 import { prisma } from "@/infrastructure/database/prisma";
-import { isRedisEnabled } from "@/infrastructure/queue/redis-connection";
+import { isRedisEnabled, tripRedisCircuit } from "@/infrastructure/queue/redis-connection";
+import {
+  filterUserIdsWhoCanViewClient,
+  getClientIdFromPlainMetadata,
+} from "@/lib/auth/client-visibility";
 
 const TYPE_TO_TENANT_FLAG: Record<NotificationType, keyof Pick<
   Prisma.TenantSelect,
@@ -85,11 +89,23 @@ export const notificationEmitter: INotificationEmitter = {
       if (!enabled) return;
     }
 
-    const userIds = await resolveUserIds(input);
+    let userIds = await resolveUserIds(input);
+    if (userIds.length === 0) return;
+
+    const scopedClientId = getClientIdFromPlainMetadata(input.metadata);
+    if (scopedClientId) {
+      userIds = await filterUserIdsWhoCanViewClient(input.tenantId, scopedClientId, userIds);
+    }
     if (userIds.length === 0) return;
 
     if (isRedisEnabled()) {
-      await emitViaQueue(input, userIds);
+      try {
+        await emitViaQueue(input, userIds);
+      } catch (e) {
+        console.warn("[notifications] Fila Redis indisponível; gravando notificações inline.", e);
+        tripRedisCircuit();
+        await emitInline(input, userIds);
+      }
     } else {
       await emitInline(input, userIds);
     }

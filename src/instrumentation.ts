@@ -1,7 +1,7 @@
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
-  if (!process.env.REDIS_URL) {
+  if (!process.env.REDIS_URL?.trim()) {
     console.log(
       "[instrumentation] REDIS_URL not set – running in inline mode (no BullMQ worker)"
     );

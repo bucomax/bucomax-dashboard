@@ -1,8 +1,12 @@
 "use client";
 
 import { usePipelineChangeStageDialog } from "@/features/dashboard/app/hooks/use-pipeline-change-stage-dialog";
-import { completePatientPathway } from "@/features/pathways/app/services/patient-pathways.service";
+import {
+  completePatientPathway,
+  TransitionBlockedByChecklistError,
+} from "@/features/pathways/app/services/patient-pathways.service";
 import { toast } from "@/lib/toast";
+import { cn } from "@/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
 import { Field, FieldLabel } from "@/shared/components/ui/field";
@@ -17,7 +21,7 @@ import {
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { CheckCircle2, Loader2, MoveRight, X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 type PipelineChangeStageDialogProps = {
   patientPathwayId: string | null;
@@ -35,6 +39,7 @@ export function PipelineChangeStageDialog({
   const t = useTranslations("dashboard.pipeline");
   const [toStageId, setToStageId] = useState("");
   const [note, setNote] = useState("");
+  const [overrideReason, setOverrideReason] = useState("");
   const [confirmingComplete, setConfirmingComplete] = useState(false);
   const [completing, setCompleting] = useState(false);
   const {
@@ -47,9 +52,15 @@ export function PipelineChangeStageDialog({
     submitChange,
   } = usePipelineChangeStageDialog(patientPathwayId, open);
 
+  const incompleteRequired = useMemo(() => {
+    const list = detail?.currentStageChecklist ?? [];
+    return list.filter((i) => i.requiredForTransition && !i.completed);
+  }, [detail?.currentStageChecklist]);
+
   function resetLocal() {
     setToStageId("");
     setNote("");
+    setOverrideReason("");
     setConfirmingComplete(false);
     setCompleting(false);
     reset();
@@ -64,16 +75,27 @@ export function PipelineChangeStageDialog({
       toast.error(t("modals.changeStage.sameStage"));
       return;
     }
+    const needsForce = incompleteRequired.length > 0;
+    const trimmedOverride = overrideReason.trim();
+    if (needsForce && trimmedOverride.length < 10) {
+      toast.error(t("modals.changeStage.overrideReasonMin"));
+      return;
+    }
     try {
       await submitChange({
         toStageId,
         note: note.trim() || undefined,
+        ...(needsForce ? { force: true, overrideReason: trimmedOverride } : {}),
       });
       toast.success(t("modals.changeStage.success"));
       resetLocal();
       onOpenChange(false);
       await onSuccess();
-    } catch {
+    } catch (e) {
+      if (e instanceof TransitionBlockedByChecklistError) {
+        toast.error(e.message);
+        return;
+      }
       /* erro: toast global no apiClient */
     }
   }
@@ -234,6 +256,32 @@ export function PipelineChangeStageDialog({
                 placeholder="—"
               />
             </Field>
+            {incompleteRequired.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-destructive text-sm font-medium">{t("modals.changeStage.blockedByChecklist")}</p>
+                <ul className="text-muted-foreground list-inside list-disc text-xs">
+                  {incompleteRequired.map((i) => (
+                    <li key={i.id}>{i.label}</li>
+                  ))}
+                </ul>
+                <Field>
+                  <FieldLabel htmlFor="dash-change-stage-override">{t("modals.changeStage.overrideReasonLabel")}</FieldLabel>
+                  <textarea
+                    id="dash-change-stage-override"
+                    rows={3}
+                    maxLength={2000}
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                    disabled={busy}
+                    placeholder={t("modals.changeStage.overrideReasonPlaceholder")}
+                    className={cn(
+                      "border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-[4rem] w-full rounded-lg border px-2.5 py-2 text-sm outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50",
+                    )}
+                  />
+                </Field>
+                <p className="text-muted-foreground text-xs">{t("modals.changeStage.overrideReasonHint")}</p>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </StandardDialogContent>

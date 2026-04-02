@@ -122,7 +122,7 @@ export function ClientDetailProfileCard({ clientId, client, onSaved }: ClientDet
   }
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
         <ClientDetailCardTitle icon={UserRound}>{t("title")}</ClientDetailCardTitle>
         <CardDescription>{t("description")}</CardDescription>

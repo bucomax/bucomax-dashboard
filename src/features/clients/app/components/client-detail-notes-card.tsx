@@ -52,7 +52,7 @@ export function ClientDetailNotesCard({ clientId }: ClientDetailNotesCardProps) 
   }
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
         <ClientDetailCardTitle icon={StickyNote}>{t("title")}</ClientDetailCardTitle>
         <CardDescription>{t("description")}</CardDescription>

@@ -58,6 +58,11 @@ export const publicPatientSelfRegisterBodySchema = postClientBodySchema
     token: z.string().min(1).max(128),
   });
 
+/** Corpo opcional de `POST /api/v1/clients/self-register-invites` (convite genérico ou ligado a um paciente). */
+export const postPatientSelfRegisterInviteBodySchema = z.object({
+  clientId: z.string().cuid().optional(),
+});
+
 const patchClientBodyBaseSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   phone: patchPhone,

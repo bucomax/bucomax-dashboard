@@ -15,6 +15,8 @@ function serializeStage(s: {
   patientMessage: string | null;
   alertWarningDays: number | null;
   alertCriticalDays: number | null;
+  defaultAssigneeUserId: string | null;
+  defaultAssigneeUserIds: string[];
 }) {
   return {
     id: s.id,
@@ -24,6 +26,8 @@ function serializeStage(s: {
     patientMessage: s.patientMessage,
     alertWarningDays: s.alertWarningDays,
     alertCriticalDays: s.alertCriticalDays,
+    defaultAssigneeUserId: s.defaultAssigneeUserId,
+    defaultAssigneeUserIds: s.defaultAssigneeUserIds,
   };
 }
 

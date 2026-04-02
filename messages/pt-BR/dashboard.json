@@ -122,7 +122,12 @@
         "completeConfirmCancel": "Cancelar",
         "completeConfirmSubmit": "Concluir",
         "completeSuccess": "Tratamento concluído.",
-        "completeError": "Não foi possível concluir o tratamento."
+        "completeError": "Não foi possível concluir o tratamento.",
+        "blockedByChecklist": "Itens obrigatórios do checklist em aberto. Preencha a justificativa para forçar a transição.",
+        "overrideReasonLabel": "Justificativa do override",
+        "overrideReasonPlaceholder": "Motivo do avanço sem concluir os itens obrigatórios…",
+        "overrideReasonHint": "Mínimo de 10 caracteres.",
+        "overrideReasonMin": "Informe uma justificativa de pelo menos 10 caracteres."
       }
     }
   },

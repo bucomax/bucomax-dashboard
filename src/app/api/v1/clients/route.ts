@@ -8,6 +8,10 @@ import {
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
+import {
+  loadTenantMembershipClientScope,
+  mergeClientWhereWithVisibility,
+} from "@/lib/auth/client-visibility";
 import { validateClientOptionalRefs } from "@/lib/clients/validate-client-optional-refs";
 import { computeSlaHealthStatus } from "@/lib/pathway/sla-health";
 import { postClientBodySchema } from "@/lib/validators/client";
@@ -142,6 +146,12 @@ export async function GET(request: Request) {
   const forbidden = await assertActiveTenantMembership(auth.session!, tenantId, request, apiT);
   if (forbidden) return forbidden;
 
+  const clientScope = await loadTenantMembershipClientScope(
+    auth.session!.user.id,
+    tenantId,
+    auth.session!.user.globalRole,
+  );
+
   const url = new URL(request.url);
   const parsed = clientsListQuerySchema.safeParse({
     limit: url.searchParams.get("limit") ?? undefined,
@@ -165,12 +175,13 @@ export async function GET(request: Request) {
 
   const hasPpFilter = Boolean(pathwayId || stageId);
 
-  const where: Prisma.ClientWhereInput = {
+  const baseWhere: Prisma.ClientWhereInput = {
     tenantId,
     deletedAt: null,
     ...(q ? clientSearchWhere(q) : {}),
     ...(hasPpFilter ? { patientPathways: { some: ppFilter } } : {}),
   };
+  const where = mergeClientWhereWithVisibility(baseWhere, clientScope, auth.session!.user.id);
 
   if (statusFilter) {
     const pageRows: ReturnType<typeof serializeClientListItem>[] = [];

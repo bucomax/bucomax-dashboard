@@ -58,6 +58,12 @@ Conforme seções anteriores do repositório: perfil, clientes, jornada e transi
 - **BullMQ:** fila `notifications`, worker via `src/instrumentation.ts`; emissão pelo port `INotificationEmitter` (adapter enfileira; worker persiste `Notification` e publica pub/sub).
 - **SSE:** `GET /api/v1/notifications/stream` para push ao browser; lista/contagem/read seguem rotas REST em `/api/v1/notifications/*`.
 
+### Linha do tempo do paciente (`AuditEvent`)
+
+- Tabela `AuditEvent` + enum de tipo; helper `recordAuditEvent` (`src/infrastructure/audit/record-audit-event.ts`).
+- `GET /api/v1/clients/:id/timeline` (merge com `StageTransition` legado, dedup por `transitionId` no payload do audit).
+- UI na ficha: `ClientDetailTimelineSection`; doc em `docs/ARCHITECTURE.md` §8.
+
 ---
 
 ## Detalhe frontend (referência)
@@ -93,6 +99,7 @@ Perfil em settings (conta legada `/dashboard/account` redireciona), wizard pacie
 | Área | Estado |
 |------|--------|
 | Backend B0–B12 | ✅ |
+| Linha do tempo / `AuditEvent` + `GET /clients/:id/timeline` | ✅ ver `docs/ARCHITECTURE.md` §8 |
 | Frontend F1–F9 | ✅ |
 | Integrações I1–I2 | ⬜ adiadas |
 | I3 (filas além de notificações) | 🟨 quando necessário |

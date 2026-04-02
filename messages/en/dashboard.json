@@ -122,7 +122,12 @@
         "completeConfirmCancel": "Cancel",
         "completeConfirmSubmit": "Complete",
         "completeSuccess": "Treatment completed.",
-        "completeError": "Could not complete the treatment."
+        "completeError": "Could not complete the treatment.",
+        "blockedByChecklist": "Required checklist items are still open. Enter a justification to force the transition.",
+        "overrideReasonLabel": "Override justification",
+        "overrideReasonPlaceholder": "Why advance without completing required items…",
+        "overrideReasonHint": "At least 10 characters.",
+        "overrideReasonMin": "Enter a justification of at least 10 characters."
       }
     }
   },

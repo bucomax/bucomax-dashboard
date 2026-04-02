@@ -111,6 +111,12 @@
   "selfRegister": {
     "dialogTitle": "Cadastro pelo paciente",
     "dialogDescription": "O paciente escaneia o QR ou abre o link para preencher os dados. Cada link expira em 48 horas e só pode ser usado uma vez.",
+    "dialogTitleForPatient": "Link para este paciente",
+    "dialogDescriptionForPatient": "O link e o QR atualizam o cadastro deste paciente ao serem usados (mesmas regras de validade e uso único). Use copiar, compartilhar ou WhatsApp para enviar.",
+    "shareTitle": "Cadastro na clínica",
+    "shareMessagePlain": "Use este link para concluir ou atualizar seu cadastro: {url}",
+    "shareNative": "Compartilhar…",
+    "shareWhatsApp": "WhatsApp",
     "loading": "Gerando link…",
     "loadError": "Não foi possível gerar o link. Tente de novo.",
     "expiryHint": "Expira em {date}",
@@ -121,6 +127,7 @@
     "pageTitle": "Cadastro de paciente",
     "validating": "Verificando link…",
     "pageDescription": "Preencha seus dados. A clínica escolherá o tipo de tratamento em seguida.",
+    "scopedFormHint": "Este link é só para o seu cadastro nesta clínica. Confira e atualize os dados se precisar.",
     "invalidTokenTitle": "Link inválido ou expirado",
     "invalidTokenBody": "Peça um novo QR code ou link na recepção ou consultório.",
     "submit": "Enviar cadastro",
@@ -135,6 +142,16 @@
     "loadError": "Erro ao carregar o paciente.",
     "retry": "Tentar novamente",
     "backToList": "Voltar à lista",
+    "selfRegisterLinkThisPatient": "Completar cadastro (link / QR)",
+    "portalLink": {
+      "sendEmail": "Enviar link do portal por e-mail",
+      "copyOnly": "Acessar portal do paciente",
+      "emailRequired": "Cadastre um e-mail no paciente para enviar o link automaticamente.",
+      "emailSent": "E-mail com o link do portal enviado ao paciente.",
+      "linkCopied": "Link copiado. Envie ao paciente por um canal seguro.",
+      "copyManually": "Copie o link abaixo e envie ao paciente:",
+      "error": "Não foi possível gerar o link do portal."
+    },
     "whatsapp": "WhatsApp",
     "caseNotes": {
       "title": "Descrição do caso",
@@ -178,6 +195,17 @@
       "deleteSuccess": "Arquivo removido.",
       "downloadError": "Não foi possível abrir o arquivo.",
       "uploadedBy": "Enviado por {name}",
+      "uploadedByPortal": "Enviado pelo portal do paciente",
+      "statusPending": "Aguardando validação da clínica",
+      "statusRejected": "Recusado na validação",
+      "approve": "Aceitar",
+      "reject": "Recusar",
+      "rejectDialogTitle": "Recusar documento",
+      "rejectDialogDescription": "O paciente deixará de ver este arquivo no portal. «{fileName}»",
+      "rejectReasonPlaceholder": "Motivo (opcional, uso interno)",
+      "rejectConfirm": "Confirmar recusa",
+      "reviewApproveSuccess": "Documento aceito.",
+      "reviewRejectSuccess": "Documento recusado.",
       "range": "Mostrando {from}–{to} de {total}",
       "prev": "Anterior",
       "next": "Próxima"
@@ -217,8 +245,29 @@
       "completedBanner": "Tratamento concluído em {date}. O histórico de etapas e transições permanece disponível.",
       "readOnlyHint": "Esta jornada está encerrada: não é possível mudar de etapa nem alterar o checklist."
     },
+    "assigneeOverview": {
+      "title": "Responsabilidade na jornada",
+      "description": "Origem da entrada na etapa atual, responsável operacional e próximas etapas na ordem publicada do fluxo.",
+      "pastTitle": "Vindo de",
+      "startJourney": "Início da jornada (sem etapa anterior registrada)",
+      "actor": "Registrado por",
+      "presentTitle": "Responsável nesta etapa",
+      "noAssignee": "Ninguém definido — alertas seguem a regra geral do tenant.",
+      "futureTitle": "Próximas etapas (ordem do Kanban)",
+      "defaultAssigneeLabel": "Padrão no fluxo",
+      "noFollowing": "Não há etapas posteriores nesta ordem.",
+      "linearHint": "Em fluxos com ramificações, a ordem real pode não seguir esta lista linear."
+    },
+    "nextActions": {
+      "title": "Próximas ações",
+      "description": "Resumo operacional da etapa atual: SLA, mensagem da etapa e pendências obrigatórias antes de avançar.",
+      "stageMessage": "Mensagem da etapa",
+      "pendingRequiredTitle": "Checklist obrigatório em aberto (bloqueia a mudança de etapa)",
+      "noBlockingChecklist": "Nenhum item de checklist obrigatório pendente para transição."
+    },
     "checklist": {
       "title": "Checklist da etapa atual",
+      "requiredBadge": "obrigatório p/ etapa",
       "description": "Acompanhe os itens operacionais da etapa {stage}.",
       "descriptionEmpty": "A etapa atual deste paciente ainda não possui checklist configurado.",
       "progressLabel": "Progresso",
@@ -230,6 +279,11 @@
     "transition": {
       "title": "Mudar de etapa",
       "description": "Selecione a etapa de destino. A mesma regra da API de transição se aplica.",
+      "blockedByChecklist": "Existem itens obrigatórios do checklist ainda em aberto. Preencha a justificativa abaixo para registrar uma transição forçada (auditoria).",
+      "overrideReasonLabel": "Justificativa do override",
+      "overrideReasonPlaceholder": "Descreva por que a etapa avança sem concluir os itens obrigatórios…",
+      "overrideReasonHint": "Mínimo de 10 caracteres. Fica registrada no histórico de transições.",
+      "overrideReasonMin": "Informe uma justificativa de pelo menos 10 caracteres para forçar a transição.",
       "review": "Revisar e confirmar",
       "confirmTitle": "Confirmar mudança de etapa",
       "confirmDescription": "Confira origem, destino e observação. Disparos ao canal (ex.: WhatsApp) seguem a API de transição.",
@@ -261,6 +315,7 @@
       "opmeCreated": "Fornecedor cadastrado."
     },
     "history": {
+      "overrideSummary": "Override: {reason} (por {by})",
       "title": "Histórico de transições",
       "range": "Mostrando {from}–{to} de {total}",
       "empty": "Nenhuma transição registrada.",
@@ -268,6 +323,29 @@
       "start": "Início",
       "prev": "Anterior",
       "next": "Próxima"
+    },
+    "timeline": {
+      "title": "Linha do tempo",
+      "description": "Transições, arquivos vinculados e cadastro pelo link do paciente.",
+      "cappedHint": "Só os eventos mais recentes entram nesta visão; o total pode estar incompleto.",
+      "range": "Mostrando {from}–{to} de {total}",
+      "empty": "Nenhum evento registrado ainda.",
+      "noRows": "Nenhum evento nesta página.",
+      "loadError": "Erro ao carregar a linha do tempo.",
+      "prev": "Anterior",
+      "next": "Próxima",
+      "actorPublic": "Cadastro público",
+      "forcedNoReason": "Transição com override (sem justificativa no evento)",
+      "audit": {
+        "stageTransition": "Mudança de etapa",
+        "fileUpload": "Arquivo vinculado ao paciente",
+        "portalFileSubmitted": "Documento enviado pelo portal (aguardando validação)",
+        "portalFileApproved": "Documento do portal aceito pela clínica",
+        "portalFileRejected": "Documento do portal recusado pela clínica",
+        "selfRegister": "Cadastro concluído pelo link",
+        "selfRegisterUpdate": "Cadastro atualizado pelo link",
+        "fileMeta": "Arquivo {id} · {mime}"
+      }
     }
   }
 }

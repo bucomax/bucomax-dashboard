@@ -32,6 +32,24 @@ enum NotificationType {
   checklist_complete
 }
 
+/** Eventos de auditoria agregados na linha do tempo do paciente (LGPD: payload sem conteúdo clínico). */
+enum AuditEventType {
+  STAGE_TRANSITION
+  FILE_UPLOADED_TO_CLIENT
+  SELF_REGISTER_COMPLETED
+  PATIENT_PORTAL_FILE_SUBMITTED
+  PATIENT_PORTAL_FILE_APPROVED
+  PATIENT_PORTAL_FILE_REJECTED
+}
+
+/** Validação na ficha quando o paciente envia arquivo pelo portal. */
+enum PatientPortalFileReviewStatus {
+  NOT_APPLICABLE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id                                String                        @id @default(cuid())
   name                              String?
@@ -47,13 +65,19 @@ model User {
   memberships                       TenantMembership[]
   authTokens                        UserAuthToken[]
   fileAssets                        FileAsset[]
-  stageTransitions                  StageTransition[]
+  stageTransitions                  StageTransition[]             @relation("StageTransitionActor")
+  forcedStageTransitions            StageTransition[]             @relation("StageTransitionForcedBy")
   checklistCompletions              PatientPathwayChecklistItem[] @relation("ChecklistCompletedBy")
   patientNotesAuthored              PatientNote[]                 @relation("PatientNoteAuthor")
   assignedClients                   Client[]                      @relation("ClientAssignedTo")
   notifications                     Notification[]
   patientSelfRegisterInvitesCreated PatientSelfRegisterInvite[]   @relation("PatientSelfRegisterInviteCreator")
   clientsSoftDeleted                Client[]                      @relation("ClientDeletedBy")
+  auditEvents                       AuditEvent[]                  @relation("AuditEventActor")
+  /** Responsável padrão da etapa (template), sincronizado do editor ao publicar. */
+  defaultAssigneePathwayStages      PathwayStage[]                @relation("PathwayStageDefaultAssignee")
+  /** Responsável pela etapa atual na instância do paciente na jornada. */
+  currentStageAssigneePatientPathways PatientPathway[]            @relation("PatientPathwayCurrentStageAssignee")
   deletedAt                         DateTime?
   createdAt                         DateTime                      @default(now())
   updatedAt                         DateTime                      @updatedAt
@@ -141,6 +165,7 @@ model Tenant {
   patientNotes               PatientNote[]
   notifications              Notification[]
   patientSelfRegisterInvites PatientSelfRegisterInvite[]
+  auditEvents                AuditEvent[]
 }
 
 /**
@@ -168,8 +193,11 @@ model Client {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
   files            FileAsset[]
-  patientPathways  PatientPathway[]
-  patientNotes     PatientNote[]
+  patientPathways            PatientPathway[]
+  patientNotes               PatientNote[]
+  patientSelfRegisterInvites PatientSelfRegisterInvite[]
+  patientPortalLinkTokens    PatientPortalLinkToken[]
+  auditEvents                AuditEvent[]
 
   @@index([tenantId])
   @@index([tenantId, deletedAt])
@@ -177,8 +205,25 @@ model Client {
 }
 
 /**
+ * Magic link único para o paciente acessar o portal (Fase 8).
+ * Após `POST /api/v1/public/patient-portal/exchange`, emite cookie de sessão e marca `usedAt`.
+ */
+model PatientPortalLinkToken {
+  id        String    @id @default(cuid())
+  clientId  String
+  client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([clientId])
+}
+
+/**
  * Link temporário (QR) para o paciente preencher o próprio cadastro na clínica.
  * Um token por convite; após uso (`usedAt`) não pode ser reutilizado.
+ * `clientId` opcional: convite amarra ao paciente já existente (atualiza cadastro em vez de criar novo).
  */
 model PatientSelfRegisterInvite {
   id              String    @id @default(cuid())
@@ -189,9 +234,12 @@ model PatientSelfRegisterInvite {
   usedAt          DateTime?
   createdByUserId String
   createdBy       User      @relation("PatientSelfRegisterInviteCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  clientId        String?
+  client          Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
   createdAt       DateTime  @default(now())
 
   @@index([tenantId])
+  @@index([tenantId, clientId])
 }
 
 /**
@@ -224,7 +272,8 @@ model OpmeSupplier {
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  clients   Client[]
+  clients              Client[]
+  tenantMemberships    TenantMembership[]
 
   @@index([tenantId])
 }
@@ -283,6 +332,16 @@ model PathwayStage {
    * Dias na etapa acima do qual UI pode marcar “crítico”.
    */
   alertCriticalDays Int?
+  /**
+   * Usuário padrão responsável por esta etapa (membro do tenant). Pode ser sobrescrito na instância.
+   * Mantido alinhado ao primeiro elemento de `defaultAssigneeUserIds` para relação Prisma e índices.
+   */
+  defaultAssigneeUserId String?
+  defaultAssigneeUser   User?          @relation("PathwayStageDefaultAssignee", fields: [defaultAssigneeUserId], references: [id], onDelete: SetNull)
+  /**
+   * Membros da equipe considerados responsáveis padrão desta etapa (ordem preservada). O primeiro válido no tenant tende a virar `currentStageAssignee` ao iniciar/transicionar.
+   */
+  defaultAssigneeUserIds String[] @default([])
 
   currentPatients PatientPathway[]            @relation("PatientCurrentStage")
   transitionsFrom StageTransition[]           @relation("TransitionFrom")
@@ -292,6 +351,7 @@ model PathwayStage {
 
   @@unique([pathwayVersionId, stageKey])
   @@index([pathwayVersionId, sortOrder])
+  @@index([defaultAssigneeUserId])
 }
 
 /**
@@ -318,6 +378,10 @@ model PathwayStageChecklistItem {
   pathwayStage    PathwayStage                  @relation(fields: [pathwayStageId], references: [id], onDelete: Cascade)
   label           String
   sortOrder       Int                           @default(0)
+  /**
+   * Se true, a transição para outra etapa exige este item concluído (salvo override auditado na API).
+   */
+  requiredForTransition Boolean               @default(false)
   createdAt       DateTime                      @default(now())
   updatedAt       DateTime                      @updatedAt
   progressEntries PatientPathwayChecklistItem[]
@@ -341,6 +405,11 @@ model PatientPathway {
   currentStageId   String
   currentStage     PathwayStage                  @relation("PatientCurrentStage", fields: [currentStageId], references: [id], onDelete: Restrict)
   /**
+   * Responsável pela etapa atual (notificações escopadas na Fase 2). Herda do estágio ou do cliente.
+   */
+  currentStageAssigneeUserId String?
+  currentStageAssignee       User?                     @relation("PatientPathwayCurrentStageAssignee", fields: [currentStageAssigneeUserId], references: [id], onDelete: SetNull)
+  /**
    * Momento em que o paciente entrou na etapa atual (para “dias na fase” e alertas).
    */
   enteredStageAt   DateTime                      @default(now())
@@ -352,11 +421,13 @@ model PatientPathway {
   updatedAt        DateTime                      @updatedAt
   transitions      StageTransition[]
   checklistItems   PatientPathwayChecklistItem[]
+  auditEvents      AuditEvent[]
 
   @@index([tenantId])
   @@index([clientId])
   @@index([pathwayId])
   @@index([pathwayVersionId, currentStageId])
+  @@index([currentStageAssigneeUserId])
 }
 
 /**
@@ -391,35 +462,64 @@ model StageTransition {
   toStageId        String
   toStage          PathwayStage   @relation("TransitionTo", fields: [toStageId], references: [id], onDelete: Restrict)
   actorUserId      String
-  actor            User           @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
+  actor            User           @relation("StageTransitionActor", fields: [actorUserId], references: [id], onDelete: Cascade)
   note             String?        @db.Text
+  /** Justificativa quando a transição ignora checklist obrigatório incompleto (`force` na API). */
+  ruleOverrideReason String?      @db.Text
+  forcedByUserId   String?
+  forcedByUser     User?          @relation("StageTransitionForcedBy", fields: [forcedByUserId], references: [id], onDelete: SetNull)
   dispatchStub     Json?
 
   createdAt DateTime @default(now())
 
   @@index([patientPathwayId])
+  @@index([forcedByUserId])
+}
+
+/**
+ * Linha do tempo unificada (transição, upload, cadastro público, etc.).
+ * `payload` deve referenciar IDs e metadados mínimos — evitar duplicar texto clínico.
+ */
+model AuditEvent {
+  id               String           @id @default(cuid())
+  tenantId         String
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId         String
+  client           Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  patientPathwayId String?
+  patientPathway   PatientPathway?    @relation(fields: [patientPathwayId], references: [id], onDelete: SetNull)
+  actorUserId      String?
+  actor            User?            @relation("AuditEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  type             AuditEventType
+  payload          Json
+  createdAt        DateTime         @default(now())
+
+  @@index([tenantId, clientId, createdAt])
 }
 
 /**
  * Metadados de arquivo no R2 (upload via URL pré-assinada).
  */
 model FileAsset {
-  id             String          @id @default(cuid())
-  tenantId       String
-  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  r2Key          String          @unique
-  fileName       String
-  mimeType       String
-  sizeBytes      Int
-  uploadedById   String
-  uploadedBy     User            @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
-  clientId       String?
-  client         Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  createdAt      DateTime        @default(now())
-  stageDocuments StageDocument[]
+  id                          String                       @id @default(cuid())
+  tenantId                    String
+  tenant                      Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  r2Key                       String                       @unique
+  fileName                    String
+  mimeType                    String
+  sizeBytes                   Int
+  /** Null quando o envio partiu do portal do paciente (sem usuário staff). */
+  uploadedById                String?
+  uploadedBy                  User?                        @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  clientId                    String?
+  client                      Client?                      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  patientPortalReviewStatus   PatientPortalFileReviewStatus @default(NOT_APPLICABLE)
+  createdAt                   DateTime                     @default(now())
+  stageDocuments              StageDocument[]
 
   @@index([tenantId])
   @@index([clientId])
+  @@index([tenantId, clientId, patientPortalReviewStatus])
 }
 
 model TenantMembership {
@@ -427,9 +527,22 @@ model TenantMembership {
   userId   String
   tenantId String
   role     TenantRole @default(tenant_user)
+  /**
+   * Quando true (e papel `tenant_user`): só enxerga pacientes com `Client.assignedToUserId` = si mesmo.
+   * `tenant_admin` e `super_admin` ignoram este flag na política.
+   */
+  restrictedToAssignedOnly Boolean @default(false)
+  /**
+   * Se preenchido (e papel `tenant_user`): só enxerga pacientes com esse fornecedor OPME.
+   * Deve referenciar `OpmeSupplier` do mesmo tenant (validado na API ao atualizar membership).
+   */
+  linkedOpmeSupplierId String?
+  linkedOpmeSupplier   OpmeSupplier? @relation(fields: [linkedOpmeSupplierId], references: [id], onDelete: SetNull)
   user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId])
+  @@index([linkedOpmeSupplierId])
   @@unique([userId, tenantId])
 }
 

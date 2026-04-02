@@ -2,6 +2,7 @@ import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
+import { assertNotificationVisibleToClientScope } from "@/lib/notifications/notification-client-scope";
 import type { NotificationDto } from "@/types/api/notification-v1";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,16 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     where: { id: notificationId, userId, tenantId: tenantCtx.tenantId },
   });
   if (!notification) {
+    return jsonError("NOT_FOUND", apiT("errors.notificationNotFound"), 404);
+  }
+
+  const visible = await assertNotificationVisibleToClientScope(
+    auth.session!,
+    tenantCtx.tenantId,
+    userId,
+    notification,
+  );
+  if (!visible) {
     return jsonError("NOT_FOUND", apiT("errors.notificationNotFound"), 404);
   }
 
