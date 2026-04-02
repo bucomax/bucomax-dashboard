@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { Loader2, RefreshCw, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { AccountProfileImageField } from "@/features/settings/app/components/account-profile-image-field";
 import { useAccountProfile } from "@/features/settings/app/hooks/use-account-profile";
 import {
   profileFormSchema,
@@ -101,14 +102,7 @@ export function AccountProfileCard() {
               <Input id="account-email" readOnly value={profile?.email ?? ""} className="bg-muted/50" />
             </Field>
             <FormInput name="name" label={t("name")} autoComplete="name" />
-            <FormInput
-              name="image"
-              label={t("image")}
-              description={t("imageHint")}
-              type="url"
-              autoComplete="off"
-              placeholder="https://"
-            />
+            <AccountProfileImageField />
           </CardContent>
           <CardFooter className="mt-6 justify-end border-t pt-4">
             <Button type="submit" disabled={form.formState.isSubmitting}>

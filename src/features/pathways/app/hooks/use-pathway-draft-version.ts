@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   getPathway,
@@ -11,6 +11,8 @@ import {
   publishPathwayVersion,
 } from "@/features/pathways/app/services/pathways.service";
 import { createDefaultPathwayGraph } from "@/features/pathways/app/utils/default-graph";
+import { savedDraftGraphDiffersFromPublished } from "@/features/pathways/app/utils/pathway-graph";
+import type { PathwayVersionDetail } from "@/features/pathways/types/pathways";
 import { useTranslations } from "next-intl";
 
 export function usePathwayDraftVersion(pathwayId: string) {
@@ -20,16 +22,30 @@ export function usePathwayDraftVersion(pathwayId: string) {
   const [versionNumber, setVersionNumber] = useState<number | null>(null);
   const [graphJson, setGraphJson] = useState<unknown>(null);
   const [pathwayName, setPathwayName] = useState("");
+  /** Nome da jornada conforme último carregamento ou salvamento bem-sucedido do rascunho. */
+  const [syncedPathwayName, setSyncedPathwayName] = useState("");
   const pathwayNameBaselineRef = useRef("");
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Grafo da versão publicada mais recente (para comparar com o rascunho salvo). */
+  const [publishedGraphSnapshot, setPublishedGraphSnapshot] = useState<unknown | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const pathway = await getPathway(pathwayId);
+      const publishedSorted = pathway.versions
+        .filter((version) => version.published)
+        .sort((a, b) => b.version - a.version);
+
+      let publishedDetail: PathwayVersionDetail | null = null;
+      if (publishedSorted[0]) {
+        publishedDetail = await getPathwayVersion(pathwayId, publishedSorted[0].id);
+      }
+      setPublishedGraphSnapshot(publishedDetail?.graphJson ?? null);
+
       const drafts = pathway.versions.filter((version) => !version.published).sort((a, b) => b.version - a.version);
 
       let nextVersionId: string;
@@ -41,24 +57,17 @@ export function usePathwayDraftVersion(pathwayId: string) {
         const detail = await getPathwayVersion(pathwayId, nextVersionId);
         nextVersionNumber = detail.version;
         nextGraphJson = detail.graphJson;
+      } else if (publishedDetail) {
+        const createdVersion = await postPathwayVersion(pathwayId, publishedDetail.graphJson);
+        nextVersionId = createdVersion.id;
+        nextVersionNumber = createdVersion.version;
+        nextGraphJson = publishedDetail.graphJson;
       } else {
-        const publishedVersions = pathway.versions
-          .filter((version) => version.published)
-          .sort((a, b) => b.version - a.version);
-
-        if (publishedVersions[0]) {
-          const publishedDetail = await getPathwayVersion(pathwayId, publishedVersions[0].id);
-          const createdVersion = await postPathwayVersion(pathwayId, publishedDetail.graphJson);
-          nextVersionId = createdVersion.id;
-          nextVersionNumber = createdVersion.version;
-          nextGraphJson = publishedDetail.graphJson;
-        } else {
-          const emptyGraph = createDefaultPathwayGraph();
-          const createdVersion = await postPathwayVersion(pathwayId, emptyGraph);
-          nextVersionId = createdVersion.id;
-          nextVersionNumber = createdVersion.version;
-          nextGraphJson = emptyGraph;
-        }
+        const emptyGraph = createDefaultPathwayGraph();
+        const createdVersion = await postPathwayVersion(pathwayId, emptyGraph);
+        nextVersionId = createdVersion.id;
+        nextVersionNumber = createdVersion.version;
+        nextGraphJson = emptyGraph;
       }
 
       setVersionId(nextVersionId);
@@ -66,6 +75,7 @@ export function usePathwayDraftVersion(pathwayId: string) {
       setGraphJson(nextGraphJson);
       setPathwayName(pathway.name);
       pathwayNameBaselineRef.current = pathway.name;
+      setSyncedPathwayName(pathway.name);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("loadError"));
       setVersionId(null);
@@ -73,10 +83,17 @@ export function usePathwayDraftVersion(pathwayId: string) {
       setGraphJson(null);
       setPathwayName("");
       pathwayNameBaselineRef.current = "";
+      setSyncedPathwayName("");
+      setPublishedGraphSnapshot(null);
     } finally {
       setLoading(false);
     }
   }, [pathwayId, t]);
+
+  const hasPublishableGraphChanges = useMemo(
+    () => savedDraftGraphDiffersFromPublished(graphJson, publishedGraphSnapshot),
+    [graphJson, publishedGraphSnapshot],
+  );
 
   useEffect(() => {
     void reload();
@@ -100,17 +117,17 @@ export function usePathwayDraftVersion(pathwayId: string) {
       await persistPathwayNameIfChanged();
       await patchPathwayVersionDraft(pathwayId, versionId, nextGraphJson);
       setGraphJson(nextGraphJson);
+      setSyncedPathwayName(pathwayNameBaselineRef.current);
     } finally {
       setSaving(false);
     }
   }
 
-  async function publishDraft(nextGraphJson: unknown) {
-    if (!versionId) return;
+  /** Publica o rascunho já salvo no servidor. Use após `saveDraft` (ou quando não houver alterações locais). */
+  async function publishSavedDraft() {
+    if (!versionId || !savedDraftGraphDiffersFromPublished(graphJson, publishedGraphSnapshot)) return;
     setPublishing(true);
     try {
-      await persistPathwayNameIfChanged();
-      await patchPathwayVersionDraft(pathwayId, versionId, nextGraphJson);
       await publishPathwayVersion(pathwayId, versionId);
       await reload();
     } finally {
@@ -126,10 +143,12 @@ export function usePathwayDraftVersion(pathwayId: string) {
     graphJson,
     pathwayName,
     setPathwayName,
+    syncedPathwayName,
     saving,
     publishing,
     saveDraft,
-    publishDraft,
+    publishSavedDraft,
+    hasPublishableGraphChanges,
     reload,
   };
 }

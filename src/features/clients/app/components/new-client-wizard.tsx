@@ -23,7 +23,7 @@ import { newClientFormSchema, type NewClientFormValues } from "@/features/client
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
 import { postClientBodySchema } from "@/lib/validators/client";
 import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -329,22 +329,35 @@ export function NewClientWizard({
       </CardContent>
       <CardFooter className="flex flex-wrap gap-2 border-t">
         {step > 1 ? (
-          <Button type="button" variant="outline" onClick={goBack} disabled={submitting}>
+          <Button type="button" variant="outline" size="sm" onClick={goBack} disabled={submitting}>
+            <ArrowLeft className="size-4 shrink-0" aria-hidden />
             {t("back")}
           </Button>
         ) : null}
         {step === 1 ? (
-          <Button type="button" onClick={goNextFromStep1}>
+          <Button type="button" size="sm" onClick={goNextFromStep1}>
             {t("next")}
+            <ArrowRight className="size-4 shrink-0" aria-hidden />
           </Button>
         ) : null}
         {step === 2 ? (
-          <Button type="button" onClick={goNextFromStep2} disabled={eligiblePathways.length === 0}>
+          <Button
+            type="button"
+            size="sm"
+            onClick={goNextFromStep2}
+            disabled={eligiblePathways.length === 0}
+          >
             {t("next")}
+            <ArrowRight className="size-4 shrink-0" aria-hidden />
           </Button>
         ) : null}
         {step === 3 ? (
-          <Button type="button" onClick={() => void handleSubmitAll()} disabled={submitting}>
+          <Button type="button" size="sm" onClick={() => void handleSubmitAll()} disabled={submitting}>
+            {submitting ? (
+              <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+            ) : (
+              <Check className="size-4 shrink-0" aria-hidden />
+            )}
             {submitting ? t("submitting") : t("submit")}
           </Button>
         ) : null}

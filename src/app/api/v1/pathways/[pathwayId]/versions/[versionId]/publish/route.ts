@@ -1,9 +1,12 @@
 import { prisma } from "@/infrastructure/database/prisma";
 import { deriveStagesFromGraph } from "@/lib/pathway/graph";
-import { assertStageDefaultAssigneesInTenant } from "@/lib/pathway/validate-stage-assignees";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
+import {
+  firstPreflightHttpError,
+  runPathwayPublishPreflight,
+} from "@/lib/pathway/pathway-publish-preflight";
 
 export const dynamic = "force-dynamic";
 
@@ -34,20 +37,19 @@ export async function POST(request: Request, ctx: RouteCtx) {
     return jsonError("NOT_FOUND", apiT("errors.pathwayVersionNotFound"), 404);
   }
 
+  const preflight = await runPathwayPublishPreflight(prisma, {
+    tenantId: tenantCtx.tenantId,
+    pathwayId,
+    versionId,
+    graphJson: version.graphJson,
+    apiT: apiT as (key: string, params?: Record<string, string>) => string,
+  });
+  const httpErr = firstPreflightHttpError(preflight.issues);
+  if (httpErr) {
+    return jsonError(httpErr.errorCode, httpErr.message, httpErr.status, httpErr.details);
+  }
+
   const stages = deriveStagesFromGraph(version.graphJson);
-  if (stages.length === 0) {
-    return jsonError("VALIDATION_ERROR", apiT("errors.graphNeedsAtLeastOneNode"), 422);
-  }
-
-  const assigneeCheck = await assertStageDefaultAssigneesInTenant(
-    prisma,
-    tenantCtx.tenantId,
-    stages.flatMap((s) => s.defaultAssigneeUserIds),
-  );
-  if (!assigneeCheck.ok) {
-    return jsonError("VALIDATION_ERROR", apiT("errors.invalidAssigneeForTenant"), 422);
-  }
-
   const newStageKeys = new Set(stages.map((s) => s.stageKey));
 
   const oldPublished = await prisma.pathwayVersion.findFirst({
@@ -64,15 +66,6 @@ export async function POST(request: Request, ctx: RouteCtx) {
   const oldStagesByKey = new Map(
     oldPublished?.stages.map((s) => [s.stageKey, s]) ?? [],
   );
-
-  const removedWithPatients = oldPublished?.stages.filter(
-    (s) => !newStageKeys.has(s.stageKey) && s._count.currentPatients > 0,
-  ) ?? [];
-
-  if (removedWithPatients.length > 0) {
-    const names = removedWithPatients.map((s) => s.name).join(", ");
-    return jsonError("CONFLICT", apiT("errors.stagesHavePatients", { stages: names }), 409);
-  }
 
   await prisma.$transaction(async (tx) => {
     await tx.pathwayStage.deleteMany({ where: { pathwayVersionId: versionId } });

@@ -142,6 +142,7 @@
     "loadError": "Failed to load patient.",
     "retry": "Try again",
     "backToList": "Back to list",
+    "headerActionsLabel": "Links & shortcuts",
     "selfRegisterLinkThisPatient": "Complete registration (link / QR)",
     "portalLink": {
       "sendEmail": "Email portal link to patient",
@@ -165,9 +166,9 @@
     "notes": {
       "title": "Clinical notes",
       "description": "Dedicated patient note history with author and timestamp.",
-      "label": "New note",
+      "label": "Note text",
       "placeholder": "Write a clinical or operational note",
-      "save": "Add note",
+      "save": "New note",
       "saving": "Saving…",
       "saved": "Note saved.",
       "saveError": "Could not save the note.",
@@ -260,6 +261,7 @@
     },
     "nextActions": {
       "title": "Next actions",
+      "helpAria": "Learn what this summary includes",
       "description": "Operational snapshot of the current stage: SLA, stage message, and required checklist gaps before moving on.",
       "stageMessage": "Stage message",
       "pendingRequiredTitle": "Required checklist still open (blocks stage change)",

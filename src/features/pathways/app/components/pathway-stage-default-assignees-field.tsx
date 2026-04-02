@@ -4,10 +4,12 @@ import { PATHWAY_STAGE_NONE_ASSIGNEE } from "@/features/pathways/app/constants/s
 import type { LabeledSelectOption } from "@/shared/components/forms/labeled-select";
 import { normalizeSearchText } from "@/lib/utils/string-search";
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
-import { Field, FieldDescription, FieldLabel } from "@/shared/components/ui/field";
+import { Field, FieldLabel } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
-import { Search, X } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
+import { Info, Search, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
@@ -20,6 +22,8 @@ export type PathwayStageDefaultAssigneesFieldProps = {
   onChange: (userIds: string[]) => void;
   /** Traduções: `pathways.editor` ou `pathways.columnEditor` via reuse de keys em `pathways.editor`. */
   label: string;
+  /** Linha compacta (ex.: lista de fases): sem dica curta abaixo do rótulo; estado vazio mais enxuto. */
+  compact?: boolean;
 };
 
 export function PathwayStageDefaultAssigneesField({
@@ -28,6 +32,7 @@ export function PathwayStageDefaultAssigneesField({
   memberOptions,
   onChange,
   label,
+  compact = false,
 }: PathwayStageDefaultAssigneesFieldProps) {
   const t = useTranslations("pathways.editor");
   const pickable = memberOptions.filter(
@@ -72,15 +77,38 @@ export function PathwayStageDefaultAssigneesField({
 
   return (
     <Field className="min-w-0">
-      <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
-      <FieldDescription>{t("defaultAssigneesDescription")}</FieldDescription>
+      <div className="flex items-center gap-1">
+        <FieldLabel htmlFor={inputId} className="mb-0 flex-1">
+          {label}
+        </FieldLabel>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type="button"
+                className="text-muted-foreground hover:bg-muted/60 hover:text-foreground -mr-0.5 shrink-0 rounded-md p-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={t("defaultAssigneesInfoAria")}
+              >
+                <Info className="size-4" aria-hidden />
+              </button>
+            }
+          />
+          <TooltipContent side="bottom" align="start" className="max-w-sm text-left text-sm">
+            {t("defaultAssigneesDescription")}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      {!compact ? (
+        <p className="text-muted-foreground mt-1 text-xs leading-snug">{t("defaultAssigneesHintShort")}</p>
+      ) : null}
       {selectedUserIds.length > 0 ? (
-        <ul className="mt-2 flex flex-wrap gap-2">
+        <ul className={cn("mt-2 flex flex-wrap gap-2", compact && "mt-1.5")}>
           {selectedUserIds.map((id) => (
             <li
               key={id}
               className={cn(
                 "bg-muted/50 border-border inline-flex max-w-full items-center gap-1 rounded-full border px-2.5 py-1 text-sm",
+                compact && "py-0.5 text-xs",
               )}
             >
               <span className="min-w-0 truncate">{labelById.get(id) ?? id}</span>
@@ -98,10 +126,13 @@ export function PathwayStageDefaultAssigneesField({
           ))}
         </ul>
       ) : (
-        <p className="text-muted-foreground mt-2 text-xs">{t("defaultAssigneesEmpty")}</p>
+        <Alert variant="info" className={cn("mt-2 text-sm", compact && "mt-1.5 py-1.5")}>
+          <Info className={cn(compact && "size-3.5")} aria-hidden />
+          <AlertDescription className="text-current">{t("defaultAssigneesEmpty")}</AlertDescription>
+        </Alert>
       )}
       {pickable.length > 0 ? (
-        <div ref={wrapRef} className={cn("relative mt-2 w-full min-w-0 sm:max-w-md")}>
+        <div ref={wrapRef} className={cn("relative mt-2 w-full min-w-0 sm:max-w-md", compact && "mt-1.5")}>
           <Search
             className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2"
             aria-hidden
@@ -141,6 +172,7 @@ export function PathwayStageDefaultAssigneesField({
                       <button
                         type="button"
                         role="option"
+                        aria-selected={false}
                         className={cn(
                           "hover:bg-muted focus:bg-muted w-full rounded-md px-2.5 py-1.5 text-left text-sm outline-none",
                         )}

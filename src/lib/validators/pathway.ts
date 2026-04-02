@@ -20,6 +20,11 @@ export const patchPathwayVersionBodySchema = z.object({
   graphJson: z.any(),
 });
 
+/** Corpo vazio `{}` válido: usa o `graphJson` da versão no servidor. */
+export const postPathwayPublishPreviewBodySchema = z.object({
+  graphJson: z.any().optional(),
+});
+
 export const postPatientPathwayBodySchema = z.object({
   clientId: z.string().cuid(),
   pathwayId: z.string().cuid(),

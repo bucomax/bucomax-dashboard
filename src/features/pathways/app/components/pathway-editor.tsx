@@ -19,8 +19,9 @@ import { PathwayStageChecklistBlock } from "@/features/pathways/app/components/p
 import { PathwayStageDefaultAssigneesField } from "@/features/pathways/app/components/pathway-stage-default-assignees-field";
 import { PathwayStageDocumentsBlock } from "@/features/pathways/app/components/pathway-stage-documents-block";
 import { usePathwayDraftVersion } from "@/features/pathways/app/hooks/use-pathway-draft-version";
+import { usePathwayPublishPreview } from "@/features/pathways/app/hooks/use-pathway-publish-preview";
 import { listTenantMembersForPicker } from "@/features/settings/app/services/tenant-settings.service";
-import { parsePathwayGraph } from "@/features/pathways/app/utils/pathway-graph";
+import { isPathwayDraftDirty, parsePathwayGraph } from "@/features/pathways/app/utils/pathway-graph";
 import { normalizeStageDefaultAssigneeUserIds } from "@/lib/pathway/graph";
 import { setStageNodeDefaultAssignees } from "@/lib/pathway/stage-node-assignees";
 import {
@@ -44,13 +45,15 @@ import {
   CardTitle,
 } from "@/shared/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
-import { Field, FieldLabel } from "@/shared/components/ui/field";
+import { Field, FieldDescription, FieldLabel } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
+import { Alert, AlertDescription } from "@/shared/components/ui/alert";
+import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { Loader2, Plus, RefreshCw, Rocket, Save, Trash2 } from "lucide-react";
+import { Info, Loader2, Plus, RefreshCw, Rocket, Save, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTheme } from "next-themes";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 
 function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
   const t = useTranslations("pathways.editor");
@@ -64,16 +67,23 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
     graphJson,
     pathwayName,
     setPathwayName,
+    syncedPathwayName,
     saving,
     publishing,
     saveDraft,
-    publishDraft,
+    publishSavedDraft,
+    hasPublishableGraphChanges,
     reload,
   } = usePathwayDraftVersion(pathwayId);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [assigneeOptions, setAssigneeOptions] = useState<LabeledSelectOption[]>([]);
+  const [removeStageDialog, setRemoveStageDialog] = useState<{
+    stageKey: string;
+    name: string;
+    patientCount: number;
+  } | null>(null);
 
   const selectedNode = nodes.find((n) => n.id === selectedId) ?? null;
 
@@ -101,13 +111,45 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
     };
   }, [noneAssigneeLabel]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (graphJson == null) return;
     const parsed = parsePathwayGraph(graphJson);
     setNodes(parsed.nodes);
     setEdges(parsed.edges);
     setSelectedId(null);
   }, [graphJson, setEdges, setNodes]);
+
+  const isDraftDirty = useMemo(
+    () =>
+      isPathwayDraftDirty({
+        graphJson,
+        nodes,
+        edges,
+        pathwayName,
+        syncedPathwayName,
+      }),
+    [graphJson, nodes, edges, pathwayName, syncedPathwayName],
+  );
+
+  const localGraphJson = useMemo(() => ({ nodes, edges }), [nodes, edges]);
+  const {
+    publishPreview,
+    publishPreviewLoading,
+    publishPreviewError,
+    refreshPublishPreview,
+  } = usePathwayPublishPreview(pathwayId, versionId, localGraphJson);
+
+  const publishBlockedByPreview =
+    publishPreviewLoading ||
+    publishPreviewError != null ||
+    (publishPreview != null && !publishPreview.canPublish);
+
+  const publishDisabled =
+    publishing ||
+    saving ||
+    isDraftDirty ||
+    !hasPublishableGraphChanges ||
+    publishBlockedByPreview;
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -128,9 +170,9 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
   }
 
   async function handlePublish() {
-    if (!versionId) return;
+    if (!versionId || isDraftDirty || !hasPublishableGraphChanges || publishBlockedByPreview) return;
     try {
-      await publishDraft({ nodes, edges });
+      await publishSavedDraft();
       toast.success(t("publishSuccess"));
     } catch (e) {
       const msg = e instanceof Error ? e.message : t("publishError");
@@ -152,15 +194,31 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
     setSelectedId(id);
   }
 
-  function removeSelectedStage() {
+  function applyRemoveSelectedStage() {
+    if (!selectedId) return;
+    setNodes((nds) => nds.filter((n) => n.id !== selectedId));
+    setEdges((eds) => eds.filter((e) => e.source !== selectedId && e.target !== selectedId));
+    setSelectedId(null);
+  }
+
+  function requestRemoveSelectedStage() {
     if (!selectedId) return;
     if (nodes.length <= 1) {
       toast.error(t("cannotRemoveLastStage"));
       return;
     }
-    setNodes((nds) => nds.filter((n) => n.id !== selectedId));
-    setEdges((eds) => eds.filter((e) => e.source !== selectedId && e.target !== selectedId));
-    setSelectedId(null);
+    const count =
+      publishPreview?.publishedStagePatientCounts.find((r) => r.stageKey === selectedId)?.patientCount ?? 0;
+    if (count > 0) {
+      const n = nodes.find((x) => x.id === selectedId);
+      setRemoveStageDialog({
+        stageKey: selectedId,
+        name: String(n?.data?.label ?? selectedId),
+        patientCount: count,
+      });
+      return;
+    }
+    applyRemoveSelectedStage();
   }
 
   function updateSelectedData(partial: SelectedPathwayNodeUpdate) {
@@ -347,7 +405,54 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[1fr_minmax(280px,380px)]">
       <Card className="overflow-hidden p-0">
-        <CardHeader className="border-b py-4">
+        <CardHeader className="space-y-3 border-b py-4">
+          <Alert variant="info">
+            <Info className="size-4 shrink-0" aria-hidden />
+            <AlertDescription>{t("draftHint")}</AlertDescription>
+          </Alert>
+          {publishPreviewLoading ? (
+            <p className="text-muted-foreground flex items-center gap-2 text-xs">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              {t("publishPreviewValidating")}
+            </p>
+          ) : null}
+          {publishPreviewError ? (
+            <Alert variant="destructive">
+              <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span>{t("publishPreviewFailed")}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 border-destructive/50"
+                  onClick={() => void refreshPublishPreview(localGraphJson)}
+                >
+                  {t("publishPreviewRetry")}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {publishPreview && !publishPreview.canPublish ? (
+            <Alert variant="destructive">
+              <AlertDescription className="space-y-2">
+                <p className="font-medium text-destructive">{t("publishPreviewBlockedTitle")}</p>
+                <ul className="list-inside list-disc text-sm">
+                  {publishPreview.issues.map((issue) => (
+                    <li key={issue.code}>{issue.message}</li>
+                  ))}
+                </ul>
+                {publishPreview.publishedStagePatientCounts.some((r) => r.patientCount > 0) ? (
+                  <ul className="border-border/60 text-muted-foreground mt-2 space-y-0.5 border-t pt-2 text-xs">
+                    {publishPreview.publishedStagePatientCounts
+                      .filter((r) => r.patientCount > 0)
+                      .map((r) => (
+                        <li key={r.stageKey}>{t("publishPreviewPatientsRow", { name: r.name, count: r.patientCount })}</li>
+                      ))}
+                  </ul>
+                ) : null}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <Field className="min-w-0">
             <FieldLabel htmlFor="pathway-name">{t("pathwayName")}</FieldLabel>
             <Input
@@ -379,7 +484,7 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
             <MiniMap />
           </ReactFlow>
         </div>
-        <CardFooter className="flex flex-wrap gap-2 border-t">
+        <CardFooter className="flex flex-wrap items-center gap-2 border-t">
           <Button type="button" variant="outline" size="sm" onClick={addStage}>
             <Plus className="size-4" />
             {t("addStage")}
@@ -388,12 +493,111 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
             {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             {t("save")}
           </Button>
-          <Button type="button" size="sm" variant="secondary" onClick={() => void handlePublish()} disabled={publishing}>
-            {publishing ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}
-            {t("publish")}
-          </Button>
+          {(() => {
+            const publishBtn = (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => void handlePublish()}
+                disabled={publishDisabled}
+              >
+                {publishing ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}
+                {t("publish")}
+              </Button>
+            );
+            if (isDraftDirty && !publishing && !saving) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex">{publishBtn}</span>} />
+                  <TooltipContent side="top" className="max-w-xs">
+                    {t("publishDisabledUnsavedTooltip")}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            if (!hasPublishableGraphChanges && !publishing && !saving) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex">{publishBtn}</span>} />
+                  <TooltipContent side="top" className="max-w-xs">
+                    {t("publishDisabledNoChangesTooltip")}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            if (publishPreviewLoading && !publishing && !saving) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex">{publishBtn}</span>} />
+                  <TooltipContent side="top" className="max-w-xs">
+                    {t("publishDisabledValidatingTooltip")}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            if (publishPreviewError && !publishing && !saving) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex">{publishBtn}</span>} />
+                  <TooltipContent side="top" className="max-w-xs">
+                    {t("publishPreviewFailed")}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            if (publishPreview && !publishPreview.canPublish && !publishing && !saving) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex">{publishBtn}</span>} />
+                  <TooltipContent side="top" className="max-w-xs">
+                    {t("publishDisabledPreviewTooltip")}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            return publishBtn;
+          })()}
         </CardFooter>
       </Card>
+
+      <Dialog
+        open={removeStageDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoveStageDialog(null);
+        }}
+      >
+        {removeStageDialog ? (
+          <StandardDialogContent
+            title={t("removeStageWithPatientsTitle")}
+            description={t("removeStageWithPatientsDescription", {
+              name: removeStageDialog.name,
+              patientCount: removeStageDialog.patientCount,
+            })}
+            size="sm"
+            footer={
+              <>
+                <Button type="button" variant="outline" size="sm" onClick={() => setRemoveStageDialog(null)}>
+                  {t("removeStageWithPatientsCancel")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    setRemoveStageDialog(null);
+                    applyRemoveSelectedStage();
+                  }}
+                >
+                  {t("removeStageWithPatientsConfirm")}
+                </Button>
+              </>
+            }
+          >
+            <span className="sr-only">{t("removeStageWithPatientsTitle")}</span>
+          </StandardDialogContent>
+        ) : null}
+      </Dialog>
 
       <Card>
         <CardHeader>
@@ -411,7 +615,7 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
                         size="icon-sm"
                         className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                         disabled={nodes.length <= 1}
-                        onClick={removeSelectedStage}
+                        onClick={requestRemoveSelectedStage}
                         aria-label={t("removeStageAria")}
                       >
                         <Trash2 className="size-4" />
@@ -426,12 +630,12 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
             </CardAction>
           ) : null}
         </CardHeader>
-        <CardContent className="space-y-3 pb-6">
+        <CardContent className="space-y-5 pb-6">
           {!selectedNode ? (
             <p className="text-muted-foreground text-sm">{t("selectNode")}</p>
           ) : (
             <>
-              <div className="grid gap-3">
+              <div className="border-border/60 bg-muted/10 space-y-3 rounded-xl border p-4">
                 <Field className="min-w-0">
                   <FieldLabel htmlFor="stage-label">{tCol("stageName")}</FieldLabel>
                   <Input
@@ -468,18 +672,21 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
                   label={t("defaultAssigneeLabel")}
                 />
               </div>
-              <Field>
-                <FieldLabel htmlFor="stage-msg">{t("patientMessage")}</FieldLabel>
-                <textarea
-                  id="stage-msg"
-                  rows={4}
-                  value={String(selectedNode.data?.patientMessage ?? "")}
-                  onChange={(e) => updateSelectedData({ patientMessage: e.target.value })}
-                  className={cn(
-                    "border-input bg-transparent placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-[4.5rem] w-full rounded-lg border px-2.5 py-2 text-base transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
-                  )}
-                />
-              </Field>
+              <div className="border-border/60 bg-muted/10 space-y-2 rounded-xl border p-4">
+                <Field>
+                  <FieldLabel htmlFor="stage-msg">{t("patientMessage")}</FieldLabel>
+                  <FieldDescription className="text-xs">{t("patientMessageHint")}</FieldDescription>
+                  <textarea
+                    id="stage-msg"
+                    rows={4}
+                    value={String(selectedNode.data?.patientMessage ?? "")}
+                    onChange={(e) => updateSelectedData({ patientMessage: e.target.value })}
+                    className={cn(
+                      "border-input bg-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 mt-2 flex min-h-[4.5rem] w-full rounded-lg border px-2.5 py-2 text-base transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
+                    )}
+                  />
+                </Field>
+              </div>
               <PathwayStageChecklistBlock
                 checklistItems={selectedNode.data?.checklistItems}
                 onAdd={addChecklistItemSelected}

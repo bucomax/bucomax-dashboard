@@ -15,9 +15,14 @@ export async function ClientsListPage() {
       description={t("description")}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <PatientSelfRegisterQrDialog />
-          <Button nativeButton={false} size="sm" render={<Link href="/dashboard/clients/new" />}>
-            <UserPlus className="size-4" />
+          <PatientSelfRegisterQrDialog triggerClassName="shrink-0" />
+          <Button
+            nativeButton={false}
+            size="sm"
+            className="shrink-0"
+            render={<Link href="/dashboard/clients/new" />}
+          >
+            <UserPlus className="size-4 shrink-0" aria-hidden />
             {t("newPatient")}
           </Button>
         </div>

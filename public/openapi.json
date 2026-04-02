@@ -584,6 +584,19 @@
         }
       }
     },
+    "/api/v1/files/storage-status": {
+      "get": {
+        "summary": "Indica se o envio de arquivos com URL pública está disponível (GCS + base pública)",
+        "tags": ["Files"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Envelope `data.available` — `true` quando armazenamento e `GCS_PUBLIC_BASE_URL` estão configurados"
+          },
+          "401": { "description": "Não autenticado" }
+        }
+      }
+    },
     "/api/v1/files/presign": {
       "post": {
         "summary": "URL pré-assinada (PUT) para upload no GCS",
@@ -1102,7 +1115,41 @@
           "200": { "description": "Publicado com `stages`" },
           "401": { "description": "Não autenticado" },
           "404": { "description": "Jornada ou versão não encontrada" },
-          "422": { "description": "Grafo sem nodes" }
+          "409": { "description": "Ex.: etapa removida com pacientes na versão publicada" },
+          "422": { "description": "Grafo sem nodes ou responsáveis inválidos" }
+        }
+      }
+    },
+    "/api/v1/pathways/{pathwayId}/versions/{versionId}/publish-preview": {
+      "post": {
+        "summary": "Pré-visualização de publicação (mesmas validações do publish, sem efeitos). Opcional `graphJson` no body para validar rascunho ainda não salvo.",
+        "tags": ["Pathways"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          { "name": "pathwayId", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "versionId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "graphJson": {
+                    "description": "Se omitido, usa o grafo persistido desta versão rascunho.",
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "`data.preview`: canPublish, issues, publishedStagePatientCounts, proposedStageKeys, removedStageKeys, …" },
+          "401": { "description": "Não autenticado" },
+          "404": { "description": "Jornada ou versão não encontrada" },
+          "422": { "description": "JSON inválido ou body inválido" }
         }
       }
     },

@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
+import { ArrowRightLeft, GitBranch, Siren, Users, type LucideIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 
+import { cn } from "@/lib/utils";
 import { ReportsBreakdownCard } from "@/features/dashboard/app/components/reports-breakdown-card";
 import { ReportsCriticalPatientsCard } from "@/features/dashboard/app/components/reports-critical-patients-card";
 import { ReportsFiltersBar } from "@/features/dashboard/app/components/reports-filters-bar";
@@ -16,7 +18,7 @@ function ReportsLoadingState() {
       <Skeleton className="h-28 w-full rounded-xl" />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
-          <Skeleton key={index} className="h-28 w-full rounded-xl" />
+          <Skeleton key={index} className="h-[5.25rem] w-full rounded-xl sm:h-[5.5rem]" />
         ))}
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
@@ -100,30 +102,56 @@ export function DashboardReportsSection() {
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-xs">{t("cards.patientsInScope")}</p>
-            <p className="mt-2 text-2xl font-semibold">{data?.kpis.patientsInScope ?? 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-xs">{t("cards.criticalPatients")}</p>
-            <p className="mt-2 text-2xl font-semibold">{data?.kpis.criticalPatients ?? 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-xs">{t("cards.transitionsInPeriod")}</p>
-            <p className="mt-2 text-2xl font-semibold">{data?.kpis.transitionsInPeriod ?? 0}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-5">
-            <p className="text-muted-foreground text-xs">{t("cards.pathwaysInScope")}</p>
-            <p className="mt-2 text-2xl font-semibold">{data?.kpis.pathwaysInScope ?? 0}</p>
-          </CardContent>
-        </Card>
+        {(
+          [
+            [
+              "cards.patientsInScope",
+              data?.kpis.patientsInScope ?? 0,
+              Users,
+              "bg-primary/10 text-primary",
+            ],
+            [
+              "cards.criticalPatients",
+              data?.kpis.criticalPatients ?? 0,
+              Siren,
+              "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+            ],
+            [
+              "cards.transitionsInPeriod",
+              data?.kpis.transitionsInPeriod ?? 0,
+              ArrowRightLeft,
+              "bg-sky-500/15 text-sky-600 dark:text-sky-400",
+            ],
+            [
+              "cards.pathwaysInScope",
+              data?.kpis.pathwaysInScope ?? 0,
+              GitBranch,
+              "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+            ],
+          ] as const satisfies ReadonlyArray<
+            readonly [Parameters<typeof t>[0], number, LucideIcon, string]
+          >
+        ).map(([labelKey, value, Icon, iconTint]) => (
+          <Card key={labelKey} className="py-0 gap-0">
+            <CardContent className="bg-muted/15 py-3.5 sm:py-4">
+              <div className="flex items-start gap-3">
+                <div
+                  className={cn(
+                    "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                    iconTint,
+                  )}
+                  aria-hidden
+                >
+                  <Icon className="size-4" strokeWidth={2} />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <p className="text-muted-foreground text-xs font-medium leading-snug">{t(labelKey)}</p>
+                  <p className="text-2xl font-semibold tabular-nums leading-none tracking-tight">{value}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">

@@ -142,6 +142,7 @@
     "loadError": "Erro ao carregar o paciente.",
     "retry": "Tentar novamente",
     "backToList": "Voltar à lista",
+    "headerActionsLabel": "Links e atalhos",
     "selfRegisterLinkThisPatient": "Completar cadastro (link / QR)",
     "portalLink": {
       "sendEmail": "Enviar link do portal por e-mail",
@@ -165,9 +166,9 @@
     "notes": {
       "title": "Anotações clínicas",
       "description": "Histórico dedicado de notas do paciente com autor e data.",
-      "label": "Nova anotação",
+      "label": "Texto da anotação",
       "placeholder": "Escreva uma anotação clínica ou operacional",
-      "save": "Adicionar anotação",
+      "save": "Nova anotação",
       "saving": "Salvando…",
       "saved": "Anotação registrada.",
       "saveError": "Não foi possível salvar a anotação.",
@@ -260,6 +261,7 @@
     },
     "nextActions": {
       "title": "Próximas ações",
+      "helpAria": "Saiba o que este bloco mostra",
       "description": "Resumo operacional da etapa atual: SLA, mensagem da etapa e pendências obrigatórias antes de avançar.",
       "stageMessage": "Mensagem da etapa",
       "pendingRequiredTitle": "Checklist obrigatório em aberto (bloqueia a mudança de etapa)",

@@ -26,6 +26,7 @@ import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
 import { Field, FieldLabel } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -38,6 +39,7 @@ import {
   ArrowLeft,
   ArrowRightLeft,
   Check,
+  CheckCircle2,
   ClipboardCheck,
   ClipboardList,
   Copy,
@@ -49,6 +51,7 @@ import {
   Loader2,
   Mail,
   MapPinned,
+  Phone,
   RefreshCw,
   Save,
   X,
@@ -255,65 +258,107 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold tracking-tight">{client.name}</h2>
-          <p className="text-muted-foreground text-sm">{client.phone}</p>
-          {client.documentId ? (
-            <p className="text-muted-foreground text-sm">
-              <span className="text-muted-foreground/80">{t("cpf")}</span>{" "}
-              <span className="tabular-nums">{formatCpfDisplay(client.documentId)}</span>
-            </p>
-          ) : null}
+      <header className="flex flex-col gap-5 border-b border-border/60 pb-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
+          <div className="min-w-0 flex-1 space-y-3">
+            <h2 className="text-2xl font-semibold tracking-tight md:text-[1.65rem]">{client.name}</h2>
+            <ul className="text-muted-foreground grid list-none gap-x-6 gap-y-2 text-sm sm:grid-cols-2 sm:gap-y-2.5">
+              {client.phone?.trim() ? (
+                <li className="flex min-w-0 items-center gap-2.5">
+                  <span className="bg-muted/60 text-muted-foreground/90 inline-flex size-8 shrink-0 items-center justify-center rounded-lg">
+                    <Phone className="size-3.5" aria-hidden />
+                  </span>
+                  <span className="min-w-0 tabular-nums">{client.phone}</span>
+                </li>
+              ) : null}
+              {client.documentId ? (
+                <li className="flex min-w-0 items-center gap-2.5">
+                  <span className="bg-muted/60 text-muted-foreground/90 inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-semibold tracking-wide">
+                    CPF
+                  </span>
+                  <span className="min-w-0 tabular-nums">{formatCpfDisplay(client.documentId)}</span>
+                </li>
+              ) : null}
+              {client.email?.trim() ? (
+                <li className="flex min-w-0 items-center gap-2.5 sm:col-span-2">
+                  <span className="bg-muted/60 text-muted-foreground/90 inline-flex size-8 shrink-0 items-center justify-center rounded-lg">
+                    <Mail className="size-3.5" aria-hidden />
+                  </span>
+                  <span className="min-w-0 truncate" title={client.email}>
+                    {client.email}
+                  </span>
+                </li>
+              ) : null}
+            </ul>
+          </div>
+
+          <div className="flex w-full min-w-0 flex-col gap-3 lg:max-w-xl lg:shrink-0">
+            <div className="bg-muted/15 border-border/70 rounded-xl border p-2.5">
+              <p className="text-muted-foreground mb-2 px-1 text-xs font-medium">{t("headerActionsLabel")}</p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="bg-background/80"
+                  disabled={portalLinkBusy !== null || !client.email?.trim()}
+                  title={!client.email?.trim() ? t("portalLink.emailRequired") : undefined}
+                  onClick={() => void handlePatientPortalLink("email")}
+                >
+                  {portalLinkBusy === "email" ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Mail className="size-4" />
+                  )}
+                  {t("portalLink.sendEmail")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="bg-background/80"
+                  disabled={portalLinkBusy !== null}
+                  onClick={() => void handlePatientPortalLink("copy")}
+                >
+                  {portalLinkBusy === "copy" ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Copy className="size-4" />
+                  )}
+                  {t("portalLink.copyOnly")}
+                </Button>
+                <PatientSelfRegisterQrDialog
+                  clientId={client.id}
+                  triggerLabel={t("selfRegisterLinkThisPatient")}
+                  triggerClassName="bg-background/80"
+                />
+                {digits ? (
+                  <Button
+                    nativeButton={false}
+                    variant="outline"
+                    size="sm"
+                    className="bg-background/80"
+                    render={<a href={`https://wa.me/${digits}`} target="_blank" rel="noreferrer" />}
+                  >
+                    <ExternalLink className="size-4" />
+                    {t("whatsapp")}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+            <div className="flex justify-start lg:justify-end">
+              <Button nativeButton={false} variant="ghost" size="sm" className="-mx-1 text-muted-foreground" render={<Link href="/dashboard/clients" />}>
+                <ArrowLeft className="size-4" />
+                {t("backToList")}
+              </Button>
+            </div>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={portalLinkBusy !== null || !client.email?.trim()}
-            title={!client.email?.trim() ? t("portalLink.emailRequired") : undefined}
-            onClick={() => void handlePatientPortalLink("email")}
-          >
-            {portalLinkBusy === "email" ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Mail className="size-4" />
-            )}
-            {t("portalLink.sendEmail")}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={portalLinkBusy !== null}
-            onClick={() => void handlePatientPortalLink("copy")}
-          >
-            {portalLinkBusy === "copy" ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Copy className="size-4" />
-            )}
-            {t("portalLink.copyOnly")}
-          </Button>
-          <PatientSelfRegisterQrDialog
-            clientId={client.id}
-            triggerLabel={t("selfRegisterLinkThisPatient")}
-          />
-          {digits ? (
-            <Button nativeButton={false} variant="outline" size="sm" render={<a href={`https://wa.me/${digits}`} target="_blank" rel="noreferrer" />}>
-              <ExternalLink className="size-4" />
-              {t("whatsapp")}
-            </Button>
-          ) : null}
-          <Button nativeButton={false} variant="ghost" size="sm" render={<Link href="/dashboard/clients" />}>
-            <ArrowLeft className="size-4" />
-            {t("backToList")}
-          </Button>
-        </div>
-      </div>
+      </header>
 
       <div className="columns-1 gap-6 [column-fill:balance] lg:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
+      <ClientDetailProfileCard clientId={clientId} client={client} onSaved={reload} />
+
       <Card className="min-w-0">
         <CardHeader>
           <ClientDetailCardTitle icon={FileText}>{t("caseNotes.title")}</ClientDetailCardTitle>
@@ -340,7 +385,11 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
             disabled={!notesDirty || savingNotes}
             onClick={() => void saveCaseDescription()}
           >
-            {savingNotes ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            {savingNotes ? (
+              <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+            ) : (
+              <Save className="size-4 shrink-0" aria-hidden />
+            )}
             {savingNotes ? t("caseNotes.saving") : t("caseNotes.save")}
           </Button>
         </CardContent>
@@ -352,8 +401,6 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
         clientId={clientId}
         onFilesMutated={() => setTimelineRefresh((n) => n + 1)}
       />
-
-      <ClientDetailProfileCard clientId={clientId} client={client} onSaved={reload} />
 
       {!pp ? (
         <Card className="min-w-0">
@@ -414,30 +461,61 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
 
           {pp.completedAt ? null : (
             <Card className="min-w-0">
-              <CardHeader>
-                <ClientDetailCardTitle icon={ClipboardList}>{t("nextActions.title")}</ClientDetailCardTitle>
-                <CardDescription>{t("nextActions.description")}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-muted-foreground">{t("journey.currentStage")}</span>
-                  <span className="font-medium">{pp.currentStage?.name ?? "—"}</span>
-                  <SlaPill status={pp.slaStatus} label={slaLabel(pp.slaStatus)} />
-                  <span className="text-muted-foreground">
-                    {t("journey.daysInStage", { days: pp.daysInStage })}
-                  </span>
+              <CardHeader className="pb-3">
+                <p id="next-actions-summary-desc" className="sr-only">
+                  {t("nextActions.description")}
+                </p>
+                <div className="flex items-start justify-between gap-3">
+                  <ClientDetailCardTitle icon={ClipboardList} className="min-w-0 flex-1">
+                    {t("nextActions.title")}
+                  </ClientDetailCardTitle>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:bg-muted/60 hover:text-foreground mt-0.5 shrink-0 rounded-md p-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                          aria-label={t("nextActions.helpAria")}
+                          aria-describedby="next-actions-summary-desc"
+                        >
+                          <Info className="size-4" aria-hidden />
+                        </button>
+                      }
+                    />
+                    <TooltipContent side="bottom" align="end" className="max-w-sm text-left text-sm">
+                      {t("nextActions.description")}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
-                {pp.currentStage?.patientMessage?.trim() ? (
-                  <div>
-                    <p className="text-muted-foreground text-xs font-medium uppercase tracking-wide">
-                      {t("nextActions.stageMessage")}
+              </CardHeader>
+              <CardContent className="space-y-4 pt-0">
+                <div className="bg-muted/20 border-border/60 flex flex-col gap-3 rounded-lg border px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="text-muted-foreground text-xs font-medium">{t("journey.currentStage")}</p>
+                    <p className="text-foreground truncate text-base leading-tight font-semibold">
+                      {pp.currentStage?.name ?? "—"}
                     </p>
-                    <p className="mt-1 whitespace-pre-wrap">{pp.currentStage.patientMessage}</p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:shrink-0 sm:justify-end">
+                    <SlaPill status={pp.slaStatus} label={slaLabel(pp.slaStatus)} />
+                    <span className="text-muted-foreground text-sm tabular-nums">
+                      {t("journey.daysInStage", { days: pp.daysInStage })}
+                    </span>
+                  </div>
+                </div>
+
+                {pp.currentStage?.patientMessage?.trim() ? (
+                  <div className="border-border/70 bg-muted/10 rounded-lg border px-3 py-3">
+                    <p className="text-muted-foreground mb-2 text-xs font-medium">{t("nextActions.stageMessage")}</p>
+                    <p className="text-foreground/95 text-sm leading-relaxed whitespace-pre-wrap">
+                      {pp.currentStage.patientMessage}
+                    </p>
                   </div>
                 ) : null}
+
                 {incompleteRequiredChecklist.length > 0 ? (
-                  <Alert variant="destructive">
-                    <Info className="size-4" aria-hidden />
+                  <Alert variant="destructive" className="border-destructive/40">
+                    <Info className="size-4 shrink-0" aria-hidden />
                     <AlertDescription>
                       <p className="font-medium">{t("nextActions.pendingRequiredTitle")}</p>
                       <ul className="mt-2 list-inside list-disc space-y-0.5">
@@ -448,7 +526,15 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
                     </AlertDescription>
                   </Alert>
                 ) : (
-                  <p className="text-muted-foreground text-xs">{t("nextActions.noBlockingChecklist")}</p>
+                  <div className="border-emerald-500/25 bg-emerald-500/[0.06] flex items-start gap-2.5 rounded-lg border px-3 py-2.5 dark:border-emerald-500/20 dark:bg-emerald-500/10">
+                    <CheckCircle2
+                      className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
+                      aria-hidden
+                    />
+                    <p className="text-muted-foreground text-sm leading-snug">
+                      {t("nextActions.noBlockingChecklist")}
+                    </p>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -566,10 +652,11 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
                   </Field>
                   <Button
                     type="button"
+                    size="sm"
                     onClick={() => openTransitionConfirm()}
                     disabled={submitting || nextOptions.length === 0 || !toStageId}
                   >
-                    <ClipboardCheck className="size-4" />
+                    <ClipboardCheck className="size-4 shrink-0" aria-hidden />
                     {t("transition.review")}
                   </Button>
                 </CardContent>
@@ -595,17 +682,23 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
                   <Button
                     type="button"
                     variant="outline"
+                    size="sm"
                     onClick={() => setConfirmOpen(false)}
                     disabled={submitting}
                   >
-                    <X className="size-4" />
+                    <X className="size-4 shrink-0" aria-hidden />
                     {t("transition.cancelConfirm")}
                   </Button>
-                  <Button type="button" onClick={() => void executeTransition()} disabled={submitting}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void executeTransition()}
+                    disabled={submitting}
+                  >
                     {submitting ? (
-                      <Loader2 className="size-4 animate-spin" />
+                      <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
                     ) : (
-                      <Check className="size-4" />
+                      <Check className="size-4 shrink-0" aria-hidden />
                     )}
                     {t("transition.confirmSubmit")}
                   </Button>

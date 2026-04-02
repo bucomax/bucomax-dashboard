@@ -10,6 +10,8 @@ import { toast } from "@/lib/toast";
 import { Copy, MessageCircle, QrCode, Share2 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useState } from "react";
+
+import { cn } from "@/lib/utils";
 import QRCode from "react-qr-code";
 
 export type PatientSelfRegisterQrDialogProps = {
@@ -18,12 +20,14 @@ export type PatientSelfRegisterQrDialogProps = {
   /** Rótulo do botão que abre o diálogo. */
   triggerLabel?: string;
   buttonVariant?: "outline" | "secondary" | "ghost";
+  triggerClassName?: string;
 };
 
 export function PatientSelfRegisterQrDialog({
   clientId,
   triggerLabel,
   buttonVariant = "outline",
+  triggerClassName,
 }: PatientSelfRegisterQrDialogProps) {
   const t = useTranslations("clients.selfRegister");
   const tList = useTranslations("clients.list");
@@ -116,8 +120,14 @@ export function PatientSelfRegisterQrDialog({
 
   return (
     <>
-      <Button type="button" variant={buttonVariant} size="sm" onClick={handleOpen}>
-        <QrCode className="size-4" />
+      <Button
+        type="button"
+        variant={buttonVariant}
+        size="sm"
+        className={cn(triggerClassName)}
+        onClick={handleOpen}
+      >
+        <QrCode className="size-4 shrink-0" aria-hidden />
         {label}
       </Button>
       <Dialog open={open} onOpenChange={onOpenChange}>

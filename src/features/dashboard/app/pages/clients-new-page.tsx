@@ -2,6 +2,7 @@ import { NewClientWizard } from "@/features/clients/app/components/new-client-wi
 import { Link } from "@/i18n/navigation";
 import { DashboardPage } from "@/shared/components/layout/dashboard-page";
 import { Button } from "@/shared/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 
 export async function ClientsNewPage() {
@@ -18,6 +19,7 @@ export async function ClientsNewPage() {
           size="sm"
           render={<Link href="/dashboard/clients" />}
         >
+          <ArrowLeft className="size-4 shrink-0" aria-hidden />
           {t("backToList")}
         </Button>
       }

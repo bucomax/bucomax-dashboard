@@ -11,14 +11,16 @@ import {
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import type { Node } from "@xyflow/react";
-import { ExternalLink, Loader2, Plus, RefreshCw, Rocket, Save } from "lucide-react";
+import { ExternalLink, Info, Loader2, Plus, RefreshCw, Rocket, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { PATHWAY_STAGE_NONE_ASSIGNEE } from "@/features/pathways/app/constants/stage-default-assignee";
 import { setStageNodeDefaultAssignees } from "@/lib/pathway/stage-node-assignees";
 import { PathwaySortableStageRow } from "@/features/pathways/app/components/pathway-sortable-stage-row";
 import { usePathwayDraftVersion } from "@/features/pathways/app/hooks/use-pathway-draft-version";
+import { usePathwayPublishPreview } from "@/features/pathways/app/hooks/use-pathway-publish-preview";
 import { listTenantMembersForPicker } from "@/features/settings/app/services/tenant-settings.service";
+import { isPathwayDraftDirty } from "@/features/pathways/app/utils/pathway-graph";
 import { buildLinearEdges } from "@/features/pathways/app/utils/linear-graph-edges";
 import {
   normalizePathwayStageNodesPositions,
@@ -30,8 +32,11 @@ import type { PathwayStagesColumnEditorProps, StageSlaField } from "@/features/p
 import type { LabeledSelectOption } from "@/shared/components/forms/labeled-select";
 import { Link } from "@/i18n/navigation";
 import { toast } from "@/lib/toast";
+import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/shared/components/ui/card";
+import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 
 export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEditorProps) {
@@ -42,14 +47,22 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
     error,
     versionId,
     graphJson,
+    pathwayName,
+    syncedPathwayName,
     saving,
     publishing,
     saveDraft,
-    publishDraft,
+    publishSavedDraft,
+    hasPublishableGraphChanges,
     reload,
   } = usePathwayDraftVersion(pathwayId);
   const [nodes, setNodes] = useState<Node[]>([]);
   const [assigneeOptions, setAssigneeOptions] = useState<LabeledSelectOption[]>([]);
+  const [removeStageDialog, setRemoveStageDialog] = useState<{
+    stageKey: string;
+    name: string;
+    patientCount: number;
+  } | null>(null);
 
   const edges = useMemo(() => buildLinearEdges(nodes), [nodes]);
 
@@ -82,10 +95,38 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (graphJson == null) return;
     setNodes(normalizePathwayStageNodesPositions(parsePathwayStageNodes(graphJson)));
   }, [graphJson]);
+
+  const isDraftDirty = useMemo(
+    () =>
+      isPathwayDraftDirty({
+        graphJson,
+        nodes,
+        edges,
+        pathwayName,
+        syncedPathwayName,
+      }),
+    [graphJson, nodes, edges, pathwayName, syncedPathwayName],
+  );
+
+  const localGraphJson = useMemo(() => ({ nodes, edges }), [nodes, edges]);
+  const {
+    publishPreview,
+    publishPreviewLoading,
+    publishPreviewError,
+    refreshPublishPreview,
+  } = usePathwayPublishPreview(pathwayId, versionId, localGraphJson);
+
+  const publishBlockedByPreview =
+    publishPreviewLoading ||
+    publishPreviewError != null ||
+    (publishPreview != null && !publishPreview.canPublish);
+
+  const publishDisabled =
+    publishing || saving || isDraftDirty || !hasPublishableGraphChanges || publishBlockedByPreview;
 
   function graphPayload() {
     return { nodes, edges };
@@ -102,9 +143,9 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
   }
 
   async function handlePublish() {
-    if (!versionId) return;
+    if (!versionId || isDraftDirty || !hasPublishableGraphChanges || publishBlockedByPreview) return;
     try {
-      await publishDraft(graphPayload());
+      await publishSavedDraft();
       toast.success(tEditor("publishSuccess"));
     } catch {
       /* erro: toast global no apiClient */
@@ -274,12 +315,27 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
     );
   }
 
-  function removeStage(id: string) {
+  function applyRemoveStage(id: string) {
+    setNodes((nds) => normalizePathwayStageNodesPositions(nds.filter((n) => n.id !== id)));
+  }
+
+  function requestRemoveStage(id: string) {
     if (nodes.length <= 1) {
       toast.error(t("cannotRemoveLast"));
       return;
     }
-    setNodes((nds) => normalizePathwayStageNodesPositions(nds.filter((n) => n.id !== id)));
+    const count =
+      publishPreview?.publishedStagePatientCounts.find((r) => r.stageKey === id)?.patientCount ?? 0;
+    if (count > 0) {
+      const node = nodes.find((n) => n.id === id);
+      setRemoveStageDialog({
+        stageKey: id,
+        name: String(node?.data?.label ?? id),
+        patientCount: count,
+      });
+      return;
+    }
+    applyRemoveStage(id);
   }
 
   if (error && !loading && !versionId) {
@@ -306,8 +362,96 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
 
   return (
     <div className="space-y-4">
-      <Card className="has-data-[slot=card-footer]:pb-4">
-        <CardContent className="space-y-2 pb-6 pt-6">
+      <Dialog
+        open={removeStageDialog !== null}
+        onOpenChange={(open) => {
+          if (!open) setRemoveStageDialog(null);
+        }}
+      >
+        {removeStageDialog ? (
+          <StandardDialogContent
+            title={t("removeStageWithPatientsTitle")}
+            description={t("removeStageWithPatientsDescription", {
+              name: removeStageDialog.name,
+              patientCount: removeStageDialog.patientCount,
+            })}
+            size="sm"
+            footer={
+              <>
+                <Button type="button" variant="outline" size="sm" onClick={() => setRemoveStageDialog(null)}>
+                  {t("removeStageWithPatientsCancel")}
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => {
+                    const id = removeStageDialog.stageKey;
+                    setRemoveStageDialog(null);
+                    applyRemoveStage(id);
+                  }}
+                >
+                  {t("removeStageWithPatientsConfirm")}
+                </Button>
+              </>
+            }
+          >
+            <span className="sr-only">{t("removeStageWithPatientsTitle")}</span>
+          </StandardDialogContent>
+        ) : null}
+      </Dialog>
+
+      <Card className="py-0">
+        <CardContent className="space-y-2 py-0">
+          <Alert variant="info">
+            <Info className="size-4 shrink-0" aria-hidden />
+            <AlertDescription>{tEditor("draftHint")}</AlertDescription>
+          </Alert>
+          {publishPreviewLoading ? (
+            <p className="text-muted-foreground flex items-center gap-2 text-xs">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              {tEditor("publishPreviewValidating")}
+            </p>
+          ) : null}
+          {publishPreviewError ? (
+            <Alert variant="destructive">
+              <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <span>{tEditor("publishPreviewFailed")}</span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="shrink-0 border-destructive/50"
+                  onClick={() => void refreshPublishPreview(localGraphJson)}
+                >
+                  {tEditor("publishPreviewRetry")}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {publishPreview && !publishPreview.canPublish ? (
+            <Alert variant="destructive">
+              <AlertDescription className="space-y-2">
+                <p className="font-medium text-destructive">{tEditor("publishPreviewBlockedTitle")}</p>
+                <ul className="list-inside list-disc text-sm">
+                  {publishPreview.issues.map((issue) => (
+                    <li key={issue.code}>{issue.message}</li>
+                  ))}
+                </ul>
+                {publishPreview.publishedStagePatientCounts.some((r) => r.patientCount > 0) ? (
+                  <ul className="border-border/60 text-muted-foreground mt-2 space-y-0.5 border-t pt-2 text-xs">
+                    {publishPreview.publishedStagePatientCounts
+                      .filter((r) => r.patientCount > 0)
+                      .map((r) => (
+                        <li key={r.stageKey}>
+                          {tEditor("publishPreviewPatientsRow", { name: r.name, count: r.patientCount })}
+                        </li>
+                      ))}
+                  </ul>
+                ) : null}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <p className="text-muted-foreground text-sm">{t("listHint")}</p>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={nodes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
@@ -330,7 +474,7 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
                       onRemoveChecklistItem={removeChecklistItem}
                       onAddStageDocuments={addStageDocuments}
                       onRemoveStageDocument={removeStageDocument}
-                      onRemove={removeStage}
+                      onRemove={requestRemoveStage}
                       disableRemove={nodes.length <= 1}
                     />
                   </li>
@@ -339,7 +483,7 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
             </SortableContext>
           </DndContext>
         </CardContent>
-        <CardFooter className="flex flex-wrap gap-2 border-t">
+        <CardFooter className="flex flex-wrap items-center gap-2 border-t">
           <Button type="button" variant="outline" size="sm" onClick={addStage}>
             <Plus className="size-4" />
             {tEditor("addStage")}
@@ -348,10 +492,71 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
             {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             {tEditor("save")}
           </Button>
-          <Button type="button" size="sm" variant="secondary" onClick={() => void handlePublish()} disabled={publishing}>
-            {publishing ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}
-            {tEditor("publish")}
-          </Button>
+          {(() => {
+            const publishBtn = (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={() => void handlePublish()}
+                disabled={publishDisabled}
+              >
+                {publishing ? <Loader2 className="size-4 animate-spin" /> : <Rocket className="size-4" />}
+                {tEditor("publish")}
+              </Button>
+            );
+            if (isDraftDirty && !publishing && !saving) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex">{publishBtn}</span>} />
+                  <TooltipContent side="top" className="max-w-xs">
+                    {tEditor("publishDisabledUnsavedTooltip")}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            if (!hasPublishableGraphChanges && !publishing && !saving) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex">{publishBtn}</span>} />
+                  <TooltipContent side="top" className="max-w-xs">
+                    {tEditor("publishDisabledNoChangesTooltip")}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            if (publishPreviewLoading && !publishing && !saving) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex">{publishBtn}</span>} />
+                  <TooltipContent side="top" className="max-w-xs">
+                    {tEditor("publishDisabledValidatingTooltip")}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            if (publishPreviewError && !publishing && !saving) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex">{publishBtn}</span>} />
+                  <TooltipContent side="top" className="max-w-xs">
+                    {tEditor("publishPreviewFailed")}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            if (publishPreview && !publishPreview.canPublish && !publishing && !saving) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger render={<span className="inline-flex">{publishBtn}</span>} />
+                  <TooltipContent side="top" className="max-w-xs">
+                    {tEditor("publishDisabledPreviewTooltip")}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            return publishBtn;
+          })()}
           <Button nativeButton={false} variant="ghost" size="sm" render={<Link href={`/dashboard/pathways/${pathwayId}`} />}>
             <ExternalLink className="size-4" />
             {t("openFlowEditor")}

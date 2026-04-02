@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/shared/components/ui/card";
 import { Field, FieldLabel } from "@/shared/components/ui/field";
-import { ChevronLeft, ChevronRight, Loader2, RefreshCw, StickyNote } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, RefreshCw, Save, StickyNote } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
@@ -74,7 +74,11 @@ export function ClientDetailNotesCard({ clientId }: ClientDetailNotesCardProps) 
           />
         </Field>
         <Button type="button" size="sm" disabled={saveDisabled} onClick={() => void handleCreateNote()}>
-          {saving ? <Loader2 className="mr-1 size-4 animate-spin" /> : null}
+          {saving ? (
+            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+          ) : (
+            <Save className="size-4 shrink-0" aria-hidden />
+          )}
           {saving ? t("saving") : t("save")}
         </Button>
 

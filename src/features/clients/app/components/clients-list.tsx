@@ -23,7 +23,7 @@ import { Field, FieldLabel } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
-import { Pencil, Siren, Trash2 } from "lucide-react";
+import { GitBranch, Pencil, RefreshCw, Siren, Trash2, UserRound } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -164,6 +164,7 @@ export function ClientsList() {
       <div className="flex flex-col gap-2">
         <p className="text-destructive text-sm">{listError}</p>
         <Button type="button" variant="outline" size="sm" onClick={() => void retry()}>
+          <RefreshCw className="size-4 shrink-0" aria-hidden />
           {t("retry")}
         </Button>
       </div>
@@ -270,10 +271,11 @@ export function ClientsList() {
                       nativeButton={false}
                       size="sm"
                       variant="link"
-                      className="h-auto px-0 font-medium"
+                      className="h-auto min-w-0 max-w-full gap-1 px-0 font-medium"
                       render={<Link href={`/dashboard/clients/${c.id}`} />}
                     >
-                      {c.name}
+                      <UserRound className="size-3.5 shrink-0" aria-hidden />
+                      <span className="min-w-0 truncate">{c.name}</span>
                     </Button>
                   </span>
                   <span className="text-muted-foreground min-w-0 truncate tabular-nums">
@@ -285,10 +287,11 @@ export function ClientsList() {
                         nativeButton={false}
                         size="sm"
                         variant="link"
-                        className="h-auto max-w-full truncate px-0"
+                        className="h-auto min-w-0 max-w-full gap-1 px-0"
                         render={<Link href={`/dashboard/patient-pathways/${c.patientPathwayId}`} />}
                       >
-                        {c.pathwayName}
+                        <GitBranch className="size-3.5 shrink-0" aria-hidden />
+                        <span className="min-w-0 truncate">{c.pathwayName}</span>
                       </Button>
                     ) : (
                       <span className="text-muted-foreground">—</span>

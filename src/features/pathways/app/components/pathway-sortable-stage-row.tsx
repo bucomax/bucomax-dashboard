@@ -100,6 +100,7 @@ export function PathwaySortableStageRow({
           memberOptions={assigneeOptions}
           onChange={(ids) => onUpdateDefaultAssignees(node.id, ids)}
           label={tEditor("defaultAssigneeLabel")}
+          compact
         />
       </div>
 

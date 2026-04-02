@@ -3,7 +3,7 @@
 import type { DashboardReportFilterOption } from "@/features/dashboard/types";
 import { LabeledSelect } from "@/shared/components/forms/labeled-select";
 import { Button } from "@/shared/components/ui/button";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Download, Loader2, RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 type ReportsFiltersBarProps = {
@@ -68,7 +68,7 @@ export function ReportsFiltersBar({
           {t("refresh")}
         </Button>
         <Button type="button" size="sm" variant="outline" onClick={onExportCsv} disabled={exporting}>
-          {exporting ? <Loader2 className="size-4 animate-spin" /> : null}
+          {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
           {t("exportCsv")}
         </Button>
       </div>

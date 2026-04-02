@@ -11,6 +11,7 @@ import type {
   PathwayVersionDetail,
   UpdatePathwayDraftInput,
 } from "@/features/pathways/types/pathways";
+import type { PathwayPublishPreviewDto } from "@/types/api/pathways-v1";
 
 export async function listPathways(): Promise<PathwayListItem[]> {
   try {
@@ -118,6 +119,25 @@ export async function publishPathwayVersion(pathwayId: string, versionId: string
     if (!res.data.success) {
       throw new Error(res.data.error.message);
     }
+  } catch (e) {
+    throw normalizeApiError(e);
+  }
+}
+
+export async function postPathwayPublishPreview(
+  pathwayId: string,
+  versionId: string,
+  body: { graphJson?: unknown } = {},
+): Promise<PathwayPublishPreviewDto> {
+  try {
+    const res = await apiClient.post<ApiEnvelope<{ preview: PathwayPublishPreviewDto }>>(
+      `/api/v1/pathways/${pathwayId}/versions/${versionId}/publish-preview`,
+      body,
+    );
+    if (!res.data.success) {
+      throw new Error(res.data.error.message);
+    }
+    return res.data.data.preview;
   } catch (e) {
     throw normalizeApiError(e);
   }

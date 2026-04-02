@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import type { ReportsSummaryResponseData } from "@/features/dashboard/types/api";
 import { Button } from "@/shared/components/ui/button";
+import { ChevronLeft, ChevronRight, UserRound } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 
 type ReportsCriticalPatientsCardProps = {
@@ -49,6 +50,7 @@ export function ReportsCriticalPatientsCard({
                   </p>
                 </div>
                 <Button nativeButton={false} size="sm" variant="outline" render={<Link href={`/dashboard/clients/${row.clientId}`} />}>
+                  <UserRound className="size-4" />
                   {t("viewPatient")}
                 </Button>
               </div>
@@ -81,6 +83,7 @@ export function ReportsCriticalPatientsCard({
               disabled={!criticalPatients.pagination.hasPreviousPage || loading}
               onClick={() => onPageChange(Math.max(criticalPatients.pagination.page - 1, 1))}
             >
+              <ChevronLeft className="size-4" />
               {t("prev")}
             </Button>
             <Button
@@ -91,6 +94,7 @@ export function ReportsCriticalPatientsCard({
               onClick={() => onPageChange(criticalPatients.pagination.page + 1)}
             >
               {t("next")}
+              <ChevronRight className="size-4" />
             </Button>
           </div>
         </div>

@@ -74,6 +74,7 @@ export function ClientListDeleteDialog({
             <Button
               type="button"
               variant="outline"
+              size="sm"
               className="gap-1.5"
               disabled={deleting}
               onClick={() => onOpenChange(false)}
@@ -84,6 +85,7 @@ export function ClientListDeleteDialog({
             <Button
               type="button"
               variant="destructive"
+              size="sm"
               className="gap-2"
               disabled={!matches || deleting}
               onClick={() => void handleConfirm()}

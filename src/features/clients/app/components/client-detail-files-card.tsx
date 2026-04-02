@@ -12,7 +12,18 @@ import { Card, CardContent, CardDescription, CardHeader } from "@/shared/compone
 import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
-import { Check, ChevronLeft, ChevronRight, ExternalLink, FolderOpen, Loader2, RefreshCw, Trash2, X } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  FolderOpen,
+  Loader2,
+  RefreshCw,
+  Trash2,
+  X,
+  XCircle,
+} from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -196,9 +207,11 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
                         type="button"
                         variant="outline"
                         size="sm"
+                        className="gap-1"
                         disabled={reviewingId !== null || deletingId !== null || downloadingId === f.id}
                         onClick={() => setRejectTarget({ id: f.id, fileName: f.fileName })}
                       >
+                        <XCircle className="size-4 shrink-0" aria-hidden />
                         {t("reject")}
                       </Button>
                     </>
@@ -297,23 +310,29 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 disabled={reviewingId !== null}
                 onClick={() => {
                   setRejectTarget(null);
                   setRejectReason("");
                 }}
               >
-                <X className="size-4" />
+                <X className="size-4 shrink-0" aria-hidden />
                 {t("deleteConfirmCancel")}
               </Button>
               <Button
                 type="button"
                 variant="destructive"
+                size="sm"
                 className="gap-1.5"
                 disabled={reviewingId !== null}
                 onClick={() => void confirmReject()}
               >
-                {reviewingId !== null ? <Loader2 className="size-4 animate-spin" /> : null}
+                {reviewingId !== null ? (
+                  <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <XCircle className="size-4 shrink-0" aria-hidden />
+                )}
                 {t("rejectConfirm")}
               </Button>
             </>
@@ -346,20 +365,26 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
               <Button
                 type="button"
                 variant="outline"
+                size="sm"
                 disabled={deletingId !== null}
                 onClick={() => setPendingDelete(null)}
               >
-                <X className="size-4" />
+                <X className="size-4 shrink-0" aria-hidden />
                 {t("deleteConfirmCancel")}
               </Button>
               <Button
                 type="button"
                 variant="destructive"
+                size="sm"
                 className="gap-1.5"
                 disabled={deletingId !== null}
                 onClick={() => void confirmDelete()}
               >
-                {deletingId !== null ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+                {deletingId !== null ? (
+                  <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <Trash2 className="size-4 shrink-0" aria-hidden />
+                )}
                 {t("deleteConfirmSubmit")}
               </Button>
             </>
