@@ -1,3 +1,4 @@
+import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-tenant-lists";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
@@ -73,6 +74,8 @@ export async function PATCH(request: Request) {
       updatedAt: true,
     },
   });
+
+  revalidateTenantClientsList(portal.tenantId);
 
   return jsonSuccess({
     client: {

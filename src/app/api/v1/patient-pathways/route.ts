@@ -1,12 +1,10 @@
+import { getCachedPatientPathwaysList } from "@/infrastructure/cache/cached-patient-pathways-list";
+import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-tenant-lists";
 import { prisma } from "@/infrastructure/database/prisma";
 import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import {
-  findTenantClientVisibleToSession,
-  loadTenantMembershipClientScope,
-  mergeClientWhereWithVisibility,
-} from "@/lib/auth/client-visibility";
+import { findTenantClientVisibleToSession, loadTenantMembershipClientScope } from "@/lib/auth/client-visibility";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
@@ -35,46 +33,15 @@ export async function GET(request: Request) {
     tenantId,
     auth.session!.user.globalRole,
   );
-  const clientVisibilityWhere = mergeClientWhereWithVisibility(
-    { deletedAt: null },
+
+  const data = await getCachedPatientPathwaysList({
+    tenantId,
+    viewerUserId: auth.session!.user.id,
+    globalRole: auth.session!.user.globalRole,
     scope,
-    auth.session!.user.id,
-  );
-
-  const rows = await prisma.patientPathway.findMany({
-    where: {
-      tenantId,
-      completedAt: null,
-      client: { is: clientVisibilityWhere },
-    },
-    orderBy: { updatedAt: "desc" },
-    include: {
-      client: { select: { id: true, name: true, phone: true } },
-      pathway: { select: { id: true, name: true } },
-      currentStage: { select: { id: true, name: true, stageKey: true } },
-      currentStageAssignee: { select: { id: true, name: true, email: true } },
-    },
-    take: 200,
   });
 
-  return jsonSuccess({
-    patientPathways: rows.map((r) => ({
-      id: r.id,
-      client: r.client,
-      pathway: r.pathway,
-      currentStage: r.currentStage,
-      currentStageAssignee: r.currentStageAssignee
-        ? {
-            id: r.currentStageAssignee.id,
-            name: r.currentStageAssignee.name,
-            email: r.currentStageAssignee.email,
-          }
-        : null,
-      enteredStageAt: r.enteredStageAt.toISOString(),
-      createdAt: r.createdAt.toISOString(),
-      updatedAt: r.updatedAt.toISOString(),
-    })),
-  });
+  return jsonSuccess(data);
 }
 
 export async function POST(request: Request) {
@@ -209,6 +176,8 @@ export async function POST(request: Request) {
       stageName: result.currentStage.name,
     },
   }).catch((err) => console.error("[notification] new_patient emit failed:", err));
+
+  revalidateTenantClientsList(tenantId);
 
   return jsonSuccess(
     {

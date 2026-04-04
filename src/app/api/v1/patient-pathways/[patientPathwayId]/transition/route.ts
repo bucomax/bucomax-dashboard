@@ -1,3 +1,4 @@
+import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-tenant-lists";
 import { prisma } from "@/infrastructure/database/prisma";
 import { recordAuditEvent, AuditEventType } from "@/infrastructure/audit/record-audit-event";
 import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
@@ -213,6 +214,8 @@ export async function POST(request: Request, ctx: RouteCtx) {
       stageName: toStage.name,
     },
   }).catch((err) => console.error("[notification] stage_transition emit failed:", err));
+
+  revalidateTenantClientsList(tenantCtx.tenantId);
 
   return jsonSuccess({
     patientPathway: {

@@ -10,13 +10,14 @@ import { usePipelineUrlFilters } from "@/features/dashboard/app/hooks/use-pipeli
 import { listOpmeSuppliers } from "@/features/settings/app/services/tenant-settings.service";
 import { transitionPatientStage } from "@/features/pathways/app/services/patient-pathways.service";
 import { toast } from "@/lib/toast";
-import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
+import { computeSlaHealthStatus, type SlaHealthStatus } from "@/lib/pathway/sla-health";
 import type {
   DashboardAlertRow,
   DashboardPathwayOption,
   DashboardPipelineOpmeOption,
   DashboardSummaryTotals,
   KanbanColumn,
+  KanbanPatientPathway,
   PipelineStatusFilter,
 } from "@/features/dashboard/types";
 import { DEBOUNCE_MS, useDebouncedState } from "@/shared/hooks/use-debounce";
@@ -226,9 +227,68 @@ export function useDashboardPipeline(pathways: DashboardPathwayOption[]): UseDas
         return;
       }
       const sourceCol = columns.find((c) => c.data.some((p) => p.id === patientPathwayId));
-      if (!sourceCol || sourceCol.stage.id === toStageId) {
+      const targetCol = columns.find((c) => c.stage.id === toStageId);
+      if (!sourceCol || !targetCol || sourceCol.stage.id === toStageId) {
         return;
       }
+
+      const patient = sourceCol.data.find((p) => p.id === patientPathwayId);
+      if (!patient) return;
+
+      const columnsSnapshot: KanbanColumn[] = columns.map((c) => ({
+        ...c,
+        data: [...c.data],
+        pagination: { ...c.pagination },
+      }));
+
+      const now = new Date();
+      const enteredStageAt = now.toISOString();
+      const enteredDate = new Date(enteredStageAt);
+      const updatedPatient: KanbanPatientPathway = {
+        ...patient,
+        enteredStageAt,
+        updatedAt: enteredStageAt,
+        currentStage: {
+          id: targetCol.stage.id,
+          stageKey: targetCol.stage.stageKey,
+          name: targetCol.stage.name,
+          sortOrder: targetCol.stage.sortOrder,
+          alertWarningDays: targetCol.stage.alertWarningDays,
+          alertCriticalDays: targetCol.stage.alertCriticalDays,
+        },
+        slaStatus: computeSlaHealthStatus(
+          enteredDate,
+          now,
+          targetCol.stage.alertWarningDays,
+          targetCol.stage.alertCriticalDays,
+        ),
+      };
+
+      setColumns((prev) =>
+        prev.map((c) => {
+          if (c.stage.id === sourceCol.stage.id) {
+            return {
+              ...c,
+              data: c.data.filter((p) => p.id !== patientPathwayId),
+              pagination: {
+                ...c.pagination,
+                totalItems: Math.max(0, c.pagination.totalItems - 1),
+              },
+            };
+          }
+          if (c.stage.id === toStageId) {
+            return {
+              ...c,
+              data: [updatedPatient, ...c.data.filter((p) => p.id !== patientPathwayId)],
+              pagination: {
+                ...c.pagination,
+                totalItems: c.pagination.totalItems + 1,
+              },
+            };
+          }
+          return c;
+        }),
+      );
 
       setTransitioningPatientPathwayId(patientPathwayId);
       try {
@@ -236,7 +296,7 @@ export function useDashboardPipeline(pathways: DashboardPathwayOption[]): UseDas
         toast.success(t("drag.transitionSuccess"));
         await reload({ silent: true });
       } catch {
-        /* erro: toast global no apiClient */
+        setColumns(columnsSnapshot);
       } finally {
         setTransitioningPatientPathwayId(null);
       }

@@ -1,3 +1,4 @@
+import { revalidateTenantClientsList, revalidateTenantOpmeSuppliersList } from "@/infrastructure/cache/revalidate-tenant-lists";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
@@ -135,6 +136,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     return jsonError("VALIDATION_ERROR", apiT("errors.noFieldsToUpdate"), 422);
   }
 
+  const opmeChanged = parsed.data.opmeSupplierId !== undefined;
   const row = await prisma.client.update({
     where: { id: existing.id },
     data,
@@ -154,6 +156,11 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
       patientPathways: { where: { completedAt: null }, take: 1, orderBy: { createdAt: "desc" }, select: { id: true } },
     },
   });
+
+  revalidateTenantClientsList(tenantCtx.tenantId);
+  if (opmeChanged) {
+    revalidateTenantOpmeSuppliersList(tenantCtx.tenantId);
+  }
 
   return jsonSuccess({
     client: {
@@ -211,6 +218,9 @@ export async function DELETE(request: Request, ctx: RouteCtx) {
       deletedByUserId: auth.session!.user.id,
     },
   });
+
+  revalidateTenantClientsList(tenantCtx.tenantId);
+  revalidateTenantOpmeSuppliersList(tenantCtx.tenantId);
 
   return jsonSuccess({ message: apiT("success.clientRemoved") });
 }

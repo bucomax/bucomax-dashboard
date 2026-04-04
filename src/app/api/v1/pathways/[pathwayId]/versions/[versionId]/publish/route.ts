@@ -1,3 +1,4 @@
+import { revalidateTenantPathwaysAndClientsLists } from "@/infrastructure/cache/revalidate-tenant-lists";
 import { prisma } from "@/infrastructure/database/prisma";
 import { deriveStagesFromGraph } from "@/lib/pathway/graph";
 import { getApiT } from "@/lib/api/i18n";
@@ -180,6 +181,8 @@ export async function POST(request: Request, ctx: RouteCtx) {
       stages: { orderBy: { sortOrder: "asc" } },
     },
   });
+
+  revalidateTenantPathwaysAndClientsLists(tenantCtx.tenantId);
 
   return jsonSuccess({
     version: {

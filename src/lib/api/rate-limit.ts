@@ -29,6 +29,18 @@ export async function rateLimit(
   preset: RateLimitPreset,
   identifier?: string,
 ): Promise<Response | null> {
+  /**
+   * Carga local: `PRESETS.api` é 120/min por usuário — scripts com alta concorrência viram só 429.
+   * Somente fora de produção e com env explícita (nunca habilitar em deploy).
+   */
+  if (
+    preset === "api" &&
+    process.env.NODE_ENV !== "production" &&
+    process.env.BUCOMAX_LOAD_TEST_DISABLE_API_RL === "1"
+  ) {
+    return null;
+  }
+
   const redis = getRedisConnection();
   if (!redis) return null;
 

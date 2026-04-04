@@ -1,3 +1,5 @@
+import { getCachedPathwaysList } from "@/infrastructure/cache/cached-pathways-list";
+import { revalidateTenantPathwaysList } from "@/infrastructure/cache/revalidate-tenant-lists";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -15,29 +17,8 @@ export async function GET(request: Request) {
   if (ctx.response) return ctx.response;
   const { tenantId } = ctx;
 
-  const rows = await prisma.carePathway.findMany({
-    where: { tenantId },
-    orderBy: { name: "asc" },
-    include: {
-      versions: {
-        where: { published: true },
-        orderBy: { version: "desc" },
-        take: 1,
-        select: { id: true, version: true },
-      },
-    },
-  });
-
-  return jsonSuccess({
-    pathways: rows.map((p) => ({
-      id: p.id,
-      name: p.name,
-      description: p.description,
-      publishedVersion: p.versions[0] ?? null,
-      createdAt: p.createdAt.toISOString(),
-      updatedAt: p.updatedAt.toISOString(),
-    })),
-  });
+  const data = await getCachedPathwaysList(tenantId);
+  return jsonSuccess(data);
 }
 
 export async function POST(request: Request) {
@@ -68,6 +49,8 @@ export async function POST(request: Request) {
       description: parsed.data.description?.trim() || null,
     },
   });
+
+  revalidateTenantPathwaysList(tenantId);
 
   return jsonSuccess(
     {

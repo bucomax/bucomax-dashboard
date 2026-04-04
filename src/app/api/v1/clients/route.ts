@@ -1,4 +1,6 @@
 import { prisma } from "@/infrastructure/database/prisma";
+import { getCachedClientsListPage } from "@/infrastructure/cache/cached-clients-list";
+import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-tenant-lists";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
@@ -13,127 +15,17 @@ import {
   mergeClientWhereWithVisibility,
 } from "@/lib/auth/client-visibility";
 import { validateClientOptionalRefs } from "@/lib/clients/validate-client-optional-refs";
-import { computeSlaHealthStatus } from "@/lib/pathway/sla-health";
+import {
+  CLIENT_LIST_INCLUDE,
+  buildClientsListBaseWhere,
+  serializeClientListItem,
+} from "@/lib/clients/clients-list-shared";
 import { postClientBodySchema } from "@/lib/validators/client";
 import { clientsListQuerySchema } from "@/lib/validators/clients-list-query";
-import type { Prisma } from "@prisma/client";
-
 export const dynamic = "force-dynamic";
 
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-/** Tamanho do lote quando o status SLA exige cálculo em memória. */
+/** Tamanho do lote quando o status SLA exige cálculo em memória (sem cache). */
 const STATUS_FILTER_SCAN_BATCH = 400;
-
-/** Jornada mais recente (ativa ou concluída), para a listagem não “sumir” o contexto após concluir tratamento. */
-const listInclude = {
-  assignedTo: { select: { id: true, name: true, email: true } },
-  opmeSupplier: { select: { id: true, name: true } },
-  patientPathways: {
-    orderBy: { updatedAt: "desc" as const },
-    take: 1,
-    select: {
-      id: true,
-      completedAt: true,
-      pathwayId: true,
-      enteredStageAt: true,
-      pathway: { select: { name: true } },
-      currentStage: {
-        select: {
-          id: true,
-          name: true,
-          alertWarningDays: true,
-          alertCriticalDays: true,
-        },
-      },
-    },
-  },
-} satisfies Prisma.ClientInclude;
-
-type ClientListRow = Prisma.ClientGetPayload<{ include: typeof listInclude }>;
-
-function clientSearchWhere(q: string): Prisma.ClientWhereInput {
-  const qDigits = q.replace(/\D/g, "");
-  const or: Prisma.ClientWhereInput[] = [
-    { name: { contains: q, mode: "insensitive" } },
-    { phone: { contains: q, mode: "insensitive" } },
-    { email: { contains: q, mode: "insensitive" } },
-  ];
-  if (qDigits.length > 0) {
-    or.push({ documentId: { contains: qDigits, mode: "insensitive" } });
-  }
-  return { OR: or };
-}
-
-function baseClientFields(c: ClientListRow) {
-  return {
-    id: c.id,
-    name: c.name,
-    phone: c.phone,
-    email: c.email,
-    caseDescription: c.caseDescription,
-    documentId: c.documentId,
-    assignedToUserId: c.assignedToUserId,
-    opmeSupplierId: c.opmeSupplierId,
-    assignedTo: c.assignedTo
-      ? { id: c.assignedTo.id, name: c.assignedTo.name, email: c.assignedTo.email }
-      : null,
-    opmeSupplier: c.opmeSupplier ? { id: c.opmeSupplier.id, name: c.opmeSupplier.name } : null,
-    createdAt: c.createdAt.toISOString(),
-    updatedAt: c.updatedAt.toISOString(),
-  };
-}
-
-function serializeClientListItem(c: ClientListRow, now: Date) {
-  const pp = c.patientPathways?.[0] ?? null;
-  if (!pp) {
-    return {
-      ...baseClientFields(c),
-      patientPathwayId: null,
-      pathwayId: null,
-      pathwayName: null,
-      currentStageId: null,
-      currentStageName: null,
-      daysInStage: null,
-      slaStatus: null,
-      journeyCompletedAt: null,
-    };
-  }
-
-  if (pp.completedAt) {
-    return {
-      ...baseClientFields(c),
-      patientPathwayId: pp.id,
-      pathwayId: pp.pathwayId,
-      pathwayName: pp.pathway.name,
-      currentStageId: null,
-      currentStageName: null,
-      daysInStage: null,
-      slaStatus: null,
-      journeyCompletedAt: pp.completedAt.toISOString(),
-    };
-  }
-
-  const daysInStage = Math.floor((now.getTime() - pp.enteredStageAt.getTime()) / MS_PER_DAY);
-  const slaStatus = computeSlaHealthStatus(
-    pp.enteredStageAt,
-    now,
-    pp.currentStage.alertWarningDays,
-    pp.currentStage.alertCriticalDays,
-  );
-
-  return {
-    ...baseClientFields(c),
-    patientPathwayId: pp.id,
-    pathwayId: pp.pathwayId,
-    pathwayName: pp.pathway.name,
-    currentStageId: pp.currentStage.id,
-    currentStageName: pp.currentStage.name,
-    daysInStage,
-    slaStatus,
-    journeyCompletedAt: null,
-  };
-}
 
 export async function GET(request: Request) {
   const apiT = await getApiT(request);
@@ -169,18 +61,7 @@ export async function GET(request: Request) {
   const offset = (page - 1) * limit;
   const now = new Date();
 
-  const ppFilter: Prisma.PatientPathwayWhereInput = { tenantId };
-  if (pathwayId) ppFilter.pathwayId = pathwayId;
-  if (stageId) ppFilter.currentStageId = stageId;
-
-  const hasPpFilter = Boolean(pathwayId || stageId);
-
-  const baseWhere: Prisma.ClientWhereInput = {
-    tenantId,
-    deletedAt: null,
-    ...(q ? clientSearchWhere(q) : {}),
-    ...(hasPpFilter ? { patientPathways: { some: ppFilter } } : {}),
-  };
+  const baseWhere = buildClientsListBaseWhere({ tenantId, q, pathwayId, stageId });
   const where = mergeClientWhereWithVisibility(baseWhere, clientScope, auth.session!.user.id);
 
   if (statusFilter) {
@@ -194,7 +75,7 @@ export async function GET(request: Request) {
         orderBy: { updatedAt: "desc" },
         take: STATUS_FILTER_SCAN_BATCH,
         skip,
-        include: listInclude,
+        include: CLIENT_LIST_INCLUDE,
       });
       if (batch.length === 0) break;
 
@@ -222,16 +103,17 @@ export async function GET(request: Request) {
     });
   }
 
-  const [items, total] = await Promise.all([
-    prisma.client.findMany({
-      where,
-      orderBy: { updatedAt: "desc" },
-      take: limit,
-      skip: offset,
-      include: listInclude,
-    }),
-    prisma.client.count({ where }),
-  ]);
+  const { items, total } = await getCachedClientsListPage({
+    tenantId,
+    viewerUserId: auth.session!.user.id,
+    globalRole: auth.session!.user.globalRole,
+    scope: clientScope,
+    limit,
+    page,
+    q,
+    pathwayId,
+    stageId,
+  });
 
   return jsonSuccess({
     data: items.map((c) => serializeClientListItem(c, now)),
@@ -304,6 +186,8 @@ export async function POST(request: Request) {
       patientPathways: { where: { completedAt: null }, take: 1, orderBy: { createdAt: "desc" }, select: { id: true } },
     },
   });
+
+  revalidateTenantClientsList(tenantId);
 
   return jsonSuccess(
     {

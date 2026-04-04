@@ -34,6 +34,9 @@ yarn-error.log*
 .env*
 !.env.example
 
+# gerado por `npm run test:session-cookie` (não commitar)
+.load-test-cookie.export.sh
+
 # vercel
 .vercel
 

@@ -1,3 +1,7 @@
+import {
+  revalidateTenantPathwaysAndClientsLists,
+  revalidateTenantPathwaysList,
+} from "@/infrastructure/cache/revalidate-tenant-lists";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -97,6 +101,8 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     data,
   });
 
+  revalidateTenantPathwaysAndClientsLists(tenantCtx.tenantId);
+
   return jsonSuccess({
     pathway: {
       id: row.id,
@@ -129,6 +135,8 @@ export async function DELETE(request: Request, ctx: RouteCtx) {
   }
 
   await prisma.carePathway.delete({ where: { id: pathwayId } });
+
+  revalidateTenantPathwaysList(tenantCtx.tenantId);
 
   return jsonSuccess({ message: apiT("success.pathwayDeleted") });
 }

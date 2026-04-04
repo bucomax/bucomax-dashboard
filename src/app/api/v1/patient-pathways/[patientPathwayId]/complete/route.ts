@@ -1,3 +1,4 @@
+import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-tenant-lists";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -43,6 +44,8 @@ export async function POST(request: Request, ctx: RouteCtx) {
       currentStage: { select: { id: true, name: true } },
     },
   });
+
+  revalidateTenantClientsList(tenantCtx.tenantId);
 
   return jsonSuccess({
     patientPathway: {

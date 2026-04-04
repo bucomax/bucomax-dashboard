@@ -1,3 +1,5 @@
+import { getCachedOpmeSuppliersPage } from "@/infrastructure/cache/cached-opme-suppliers-list";
+import { revalidateTenantOpmeSuppliersList } from "@/infrastructure/cache/revalidate-tenant-lists";
 import { prisma } from "@/infrastructure/database/prisma";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
@@ -38,42 +40,17 @@ export async function GET(request: Request) {
   }
 
   const { limit, page, q, includeInactive } = parsed.data;
-  const offset = (page - 1) * limit;
-  const where = {
-    tenantId: tenantCtx.tenantId,
-    ...(includeInactive ? {} : { active: true }),
-    ...(q ? { name: { contains: q, mode: "insensitive" as const } } : {}),
-  };
 
-  const [suppliers, totalItems] = await Promise.all([
-    prisma.opmeSupplier.findMany({
-      where,
-      orderBy: { name: "asc" },
-      take: limit,
-      skip: offset,
-      select: {
-        id: true,
-        name: true,
-        active: true,
-        _count: {
-          select: {
-            clients: {
-              where: { deletedAt: null },
-            },
-          },
-        },
-      },
-    }),
-    prisma.opmeSupplier.count({ where }),
-  ]);
+  const { data, totalItems } = await getCachedOpmeSuppliersPage({
+    tenantId: tenantCtx.tenantId,
+    limit,
+    page,
+    q,
+    includeInactive,
+  });
 
   return jsonSuccess({
-    data: suppliers.map((supplier) => ({
-      id: supplier.id,
-      name: supplier.name,
-      active: supplier.active,
-      activePatientsCount: supplier._count.clients,
-    })),
+    data,
     pagination: buildPagination(page, limit, totalItems),
   });
 }
@@ -119,6 +96,8 @@ export async function POST(request: Request) {
     },
     select: { id: true, name: true, active: true },
   });
+
+  revalidateTenantOpmeSuppliersList(tenantCtx.tenantId);
 
   return jsonSuccess(
     {
