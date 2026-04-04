@@ -1,9 +1,30 @@
 {
   "title": "Portal do paciente",
+  "landing": {
+    "title": "Portal do paciente",
+    "body": "O acesso é feito pelo link da sua clínica, no formato bucomax.com.br/nome-da-clinica/patient, ou pelo CPF nessa mesma página da clínica. Se você recebeu apenas um link sem o nome da clínica no endereço, peça à secretaria o endereço completo ou um novo convite."
+  },
   "enter": {
-    "validating": "Validando seu link…",
+    "validating": "Verificando…",
     "error": "Link inválido ou expirado. Peça um novo link à clínica.",
     "redirecting": "Entrando…"
+  },
+  "login": {
+    "title": "Entrar com CPF",
+    "subtitle": "Informe o CPF cadastrado na clínica. Enviaremos um código ao seu e-mail e, se configurado, ao WhatsApp.",
+    "cpfLabel": "CPF",
+    "cpfInvalid": "Informe um CPF válido (11 dígitos).",
+    "sendCode": "Receber código",
+    "sending": "Enviando…",
+    "codeSent": "Se este CPF estiver cadastrado, você receberá um código em instantes. Verifique e-mail e mensagens.",
+    "requestFailed": "Não foi possível enviar o código. Tente novamente.",
+    "codeLabel": "Código de 6 dígitos",
+    "codeInvalid": "Informe o código de 6 dígitos.",
+    "enter": "Entrar",
+    "verifying": "Validando…",
+    "verifyFailed": "Código inválido ou expirado.",
+    "back": "Voltar",
+    "haveLink": "Já tenho o link da clínica"
   },
   "timeline": {
     "title": "Linha do tempo",
@@ -27,7 +48,12 @@
   "home": {
     "retry": "Tentar novamente",
     "loading": "Carregando…",
-    "needLink": "Para acessar, use o link enviado por e-mail ou por mensagem pela sua clínica.",
+    "accessTitle": "Portal do paciente",
+    "accessSubtitle": "Acompanhe etapas, documentos e mensagens da clínica neste espaço. O acesso é feito com o convite que você recebeu ou com seu CPF cadastrado.",
+    "accessStepsTitle": "Como entrar",
+    "accessStepsHint": "Escolha uma das opções abaixo.",
+    "accessStepLink": "Abra no navegador o link que a clínica enviou (e-mail, WhatsApp ou SMS). O endereço inclui o nome da clínica no caminho.",
+    "accessStepCpf": "Ou toque em «Entrar com CPF», informe o número cadastrado e use o código que enviaremos ao seu e-mail e, quando configurado, ao WhatsApp.",
     "welcome": "Olá, {name}",
     "clinic": "Clínica: {clinic}",
     "noJourney": "Não há jornada ativa no momento. A clínica orientará os próximos passos.",
@@ -37,7 +63,8 @@
     "since": "Nesta etapa desde {date}",
     "logout": "Sair",
     "loadError": "Não foi possível carregar seus dados. Tente sair e abrir o link novamente.",
-    "staffLogin": "Acesso equipe (clínica)"
+    "staffLogin": "Acesso equipe (clínica)",
+    "readOnlyJourneyHint": "Etapa, checklist e mudanças de jornada são definidas pela equipe da clínica. Você acompanha aqui em tempo real; só os seus dados pessoais podem ser alterados por você."
   },
   "files": {
     "title": "Documentos",

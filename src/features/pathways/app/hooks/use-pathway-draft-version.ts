@@ -115,8 +115,16 @@ export function usePathwayDraftVersion(pathwayId: string) {
     setSaving(true);
     try {
       await persistPathwayNameIfChanged();
-      await patchPathwayVersionDraft(pathwayId, versionId, nextGraphJson);
-      setGraphJson(nextGraphJson);
+      const snapshot =
+        nextGraphJson != null &&
+        typeof nextGraphJson === "object" &&
+        !Array.isArray(nextGraphJson) &&
+        "nodes" in (nextGraphJson as object) &&
+        "edges" in (nextGraphJson as object)
+          ? structuredClone(nextGraphJson)
+          : nextGraphJson;
+      await patchPathwayVersionDraft(pathwayId, versionId, snapshot);
+      setGraphJson(snapshot);
       setSyncedPathwayName(pathwayNameBaselineRef.current);
     } finally {
       setSaving(false);

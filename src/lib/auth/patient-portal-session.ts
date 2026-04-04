@@ -9,6 +9,8 @@ import {
 export type PatientPortalSessionPayload = {
   clientId: string;
   tenantId: string;
+  /** Slug público da clínica (`Tenant.slug`), alinhado à URL `/[slug]/patient`. */
+  tenantSlug: string;
   exp: number;
 };
 
@@ -53,13 +55,15 @@ export function verifyPatientPortalSessionCookieValue(
   const o = parsed as Record<string, unknown>;
   const clientId = o.clientId;
   const tenantId = o.tenantId;
+  const tenantSlug = o.tenantSlug;
   const exp = o.exp;
   if (typeof clientId !== "string" || clientId.length === 0) return null;
   if (typeof tenantId !== "string" || tenantId.length === 0) return null;
+  if (typeof tenantSlug !== "string" || tenantSlug.length === 0) return null;
   if (typeof exp !== "number" || !Number.isFinite(exp)) return null;
   if (exp < Math.floor(Date.now() / 1000)) return null;
 
-  return { clientId, tenantId, exp };
+  return { clientId, tenantId, tenantSlug, exp };
 }
 
 export async function getPatientPortalSessionFromCookies(): Promise<PatientPortalSessionPayload | null> {

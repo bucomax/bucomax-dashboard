@@ -7,3 +7,12 @@ export const postPatientPortalExchangeBodySchema = z.object({
 export const postClientPortalLinkBodySchema = z.object({
   sendEmail: z.boolean().optional(),
 });
+
+export const postPatientPortalOtpRequestBodySchema = z.object({
+  documentId: z.string().min(1, "documentId obrigatório."),
+});
+
+export const postPatientPortalOtpVerifyBodySchema = z.object({
+  documentId: z.string().min(1, "documentId obrigatório."),
+  code: z.string().regex(/^\d{6}$/, "Código deve ter 6 dígitos."),
+});

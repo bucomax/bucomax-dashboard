@@ -24,23 +24,34 @@
   "home": {
     "title": "Home",
     "cards": {
-      "inProgress": "Patients in pathway",
+      "inProgress": "Active pathways",
+      "transitionsToday": "Stage transitions today",
       "completedToday": "Transitions today",
       "awaitingAction": "Idle for 48 h",
       "conversionRate": "Movement rate (7 d)"
     },
-    "insights": {
-      "title": "Operational insights",
-      "first": "{count, plural, =0 {All patients are on track.} =1 {1 patient idle for over 48 h — check the queue.} other {{count} patients idle for over 48 h — prioritize the longest pending.}}",
-      "second": "{count, plural, =0 {No stage transitions today.} =1 {1 stage transition today.} other {{count} stage transitions today — good flow.}}",
-      "third": "{percent}% of patients had stage changes in the last 7 days."
-    },
     "charts": {
-      "transitions7d": "Transitions per day (7 days)",
+      "weeklyActivity": {
+        "title": "Activity — last 7 days",
+        "infoAria": "How to read the activity chart",
+        "caption": "Each column is one calendar day (São Paulo). Three bars per day: stage transitions, new pathways started, and pathways closed — same window as a transitions-only chart, plus intake and completions. Complements the tiles above.",
+        "empty": "No pathways started, stage transitions, or completions in the last 7 days.",
+        "legendTransitions": "Transitions",
+        "legendNew": "New pathways",
+        "legendClosed": "Closed",
+        "tooltipHeading": "{dateLong} · {weekday}",
+        "tooltipTransitions": "{count, plural, =0 {No stage transitions this day.} =1 {1 stage transition.} other {{count} stage transitions.}}",
+        "tooltipNew": "{count, plural, =0 {No new pathways this day.} =1 {1 new pathway started.} other {{count} new pathways started.}}",
+        "tooltipClosed": "{count, plural, =0 {No pathways closed this day.} =1 {1 pathway closed.} other {{count} pathways closed.}}",
+        "columnAria": "{dateLong} ({weekday}): {transitions} stage transitions, {newPathways} new pathways, {completions} closed."
+      },
       "distribution": {
         "title": "Operational distribution",
+        "infoAria": "What operational distribution means",
+        "caption": "Open pathways idle for 48 h, active pathways with recent updates, and pathways closed today. The three rows can add up to more than “Active pathways” when closures happened today.",
         "awaiting": "Awaiting action",
         "active": "In progress",
+        "pathwaysClosedToday": "Pathways closed today",
         "completedToday": "Completed today"
       }
     }

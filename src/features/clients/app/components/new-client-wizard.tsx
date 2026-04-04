@@ -276,7 +276,19 @@ export function NewClientWizard({
                     onValueChange={(v) => setPathwayId(v ?? null)}
                   >
                     <SelectTrigger className="w-full max-w-md" size="default">
-                      <SelectValue placeholder={t("pathwayPlaceholder")} />
+                      <SelectValue placeholder={t("pathwayPlaceholder")}>
+                        {(value) => {
+                          if (value == null) return t("pathwayPlaceholder");
+                          const p = eligiblePathways.find((x) => x.id === value);
+                          if (!p) return value;
+                          return (
+                            <>
+                              {p.name}
+                              {p.publishedVersion ? ` · v${p.publishedVersion.version}` : ""}
+                            </>
+                          );
+                        }}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       {eligiblePathways.map((p) => (

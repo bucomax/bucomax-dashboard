@@ -1,9 +1,30 @@
 {
   "title": "Patient portal",
+  "landing": {
+    "title": "Patient portal",
+    "body": "Sign in using your clinic link, e.g. app.example.com/clinic-name/patient, or with your CPF on that same clinic page. If your link has no clinic segment in the URL, ask the front desk for the full address or a new invite."
+  },
   "enter": {
-    "validating": "Validating your link…",
+    "validating": "Verifying…",
     "error": "Invalid or expired link. Ask your clinic for a new one.",
     "redirecting": "Signing you in…"
+  },
+  "login": {
+    "title": "Sign in with CPF",
+    "subtitle": "Enter the CPF on file with your clinic. We'll send a code to your email and, when configured, WhatsApp.",
+    "cpfLabel": "CPF",
+    "cpfInvalid": "Enter a valid CPF (11 digits).",
+    "sendCode": "Send code",
+    "sending": "Sending…",
+    "codeSent": "If this CPF is registered, you'll receive a code shortly. Check email and messages.",
+    "requestFailed": "Could not send the code. Try again.",
+    "codeLabel": "6-digit code",
+    "codeInvalid": "Enter the 6-digit code.",
+    "enter": "Sign in",
+    "verifying": "Verifying…",
+    "verifyFailed": "Invalid or expired code.",
+    "back": "Back",
+    "haveLink": "I already have my clinic link"
   },
   "timeline": {
     "title": "Timeline",
@@ -27,7 +48,12 @@
   "home": {
     "retry": "Try again",
     "loading": "Loading…",
-    "needLink": "To sign in, use the link sent by your clinic by email or message.",
+    "accessTitle": "Patient portal",
+    "accessSubtitle": "Follow your stages, documents, and updates from your clinic in one place. Access works with the invite you received or with the CPF on file.",
+    "accessStepsTitle": "How to sign in",
+    "accessStepsHint": "You can use either option below.",
+    "accessStepLink": "Open the link your clinic sent (email, WhatsApp, or SMS). The address should include the clinic name in the path.",
+    "accessStepCpf": "Or tap “Sign in with CPF”, enter the ID on file with your clinic, and use the code we send to your email and, when enabled, WhatsApp.",
     "welcome": "Hello, {name}",
     "clinic": "Clinic: {clinic}",
     "noJourney": "There is no active care journey right now. Your clinic will guide next steps.",
@@ -37,7 +63,8 @@
     "since": "In this stage since {date}",
     "logout": "Sign out",
     "loadError": "Could not load your data. Try signing out and opening the link again.",
-    "staffLogin": "Staff sign-in (clinic)"
+    "staffLogin": "Staff sign-in (clinic)",
+    "readOnlyJourneyHint": "Stages, checklist, and journey changes are managed by your clinic team. You can follow progress here; only your personal details can be edited by you."
   },
   "files": {
     "title": "Documents",

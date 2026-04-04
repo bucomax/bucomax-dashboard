@@ -1,9 +1,8 @@
 "use client";
 
-import { AuthSuspenseFallback } from "@/features/auth/app/components/auth-suspense-fallback";
-import {
-  exchangePatientPortalToken,
-} from "@/lib/api/patient-portal-client";
+import { usePatientPortalTenantSlug } from "@/features/patient-portal/app/context/patient-portal-tenant-context";
+import { PatientPortalFullScreenLoading } from "@/features/patient-portal/app/components/patient-portal-full-screen-loading";
+import { exchangePatientPortalToken } from "@/lib/api/patient-portal-client";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { useRouter } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
@@ -11,6 +10,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 function PatientPortalEnterPageInner() {
+  const tenantSlug = usePatientPortalTenantSlug();
   const t = useTranslations("patientPortal");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -20,9 +20,9 @@ function PatientPortalEnterPageInner() {
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
-    void exchangePatientPortalToken(token)
+    void exchangePatientPortalToken(tenantSlug, token)
       .then(() => {
-        if (!cancelled) router.replace("/patient");
+        if (!cancelled) router.replace(`/${tenantSlug}/patient`);
       })
       .catch(() => {
         if (!cancelled) setError(t("enter.error"));
@@ -30,7 +30,7 @@ function PatientPortalEnterPageInner() {
     return () => {
       cancelled = true;
     };
-  }, [token, router, t]);
+  }, [token, router, t, tenantSlug]);
 
   if (!token) {
     return (
@@ -48,14 +48,13 @@ function PatientPortalEnterPageInner() {
     );
   }
 
-  return (
-    <p className="text-muted-foreground text-sm">{t("enter.validating")}</p>
-  );
+  return <PatientPortalFullScreenLoading message={t("enter.validating")} />;
 }
 
 export function PatientPortalEnterPage() {
+  const t = useTranslations("patientPortal");
   return (
-    <Suspense fallback={<AuthSuspenseFallback />}>
+    <Suspense fallback={<PatientPortalFullScreenLoading message={t("enter.validating")} />}>
       <PatientPortalEnterPageInner />
     </Suspense>
   );

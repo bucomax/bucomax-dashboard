@@ -23,11 +23,12 @@ import { listTenantMembersForPicker } from "@/features/settings/app/services/ten
 import { isPathwayDraftDirty } from "@/features/pathways/app/utils/pathway-graph";
 import { buildLinearEdges } from "@/features/pathways/app/utils/linear-graph-edges";
 import {
-  normalizePathwayStageNodesPositions,
+  ensurePathwayGraphNodePositions,
   parsePathwayStageNodes,
   updatePathwayStageNodeChecklistItems,
   updatePathwayStageNodeStageDocuments,
 } from "@/features/pathways/app/utils/pathway-stage-nodes";
+import { pathwayEditorGraphNodePosition } from "@/lib/pathway/graph-editor-layout";
 import type { PathwayStagesColumnEditorProps, StageSlaField } from "@/features/pathways/types/column-editor";
 import type { LabeledSelectOption } from "@/shared/components/forms/labeled-select";
 import { Link } from "@/i18n/navigation";
@@ -97,7 +98,7 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
 
   useLayoutEffect(() => {
     if (graphJson == null) return;
-    setNodes(normalizePathwayStageNodesPositions(parsePathwayStageNodes(graphJson)));
+    setNodes(ensurePathwayGraphNodePositions(parsePathwayStageNodes(graphJson)));
   }, [graphJson]);
 
   const isDraftDirty = useMemo(
@@ -159,23 +160,21 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
       const oldIndex = prev.findIndex((n) => n.id === active.id);
       const newIndex = prev.findIndex((n) => n.id === over.id);
       if (oldIndex < 0 || newIndex < 0) return prev;
-      return normalizePathwayStageNodesPositions(arrayMove(prev, oldIndex, newIndex));
+      return arrayMove(prev, oldIndex, newIndex);
     });
   }
 
   function addStage() {
     const id = `stage-${crypto.randomUUID()}`;
-    setNodes((nds) =>
-      normalizePathwayStageNodesPositions([
-        ...nds,
-        {
-          id,
-          type: "default",
-          position: { x: 0, y: 0 },
-          data: { label: `${tEditor("defaultStageLabel")} ${nds.length + 1}`, patientMessage: "" },
-        },
-      ]),
-    );
+    setNodes((nds) => [
+      ...nds,
+      {
+        id,
+        type: "default",
+        position: pathwayEditorGraphNodePosition(nds.length),
+        data: { label: `${tEditor("defaultStageLabel")} ${nds.length + 1}`, patientMessage: "" },
+      },
+    ]);
   }
 
   function updateLabel(id: string, label: string) {
@@ -316,7 +315,7 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
   }
 
   function applyRemoveStage(id: string) {
-    setNodes((nds) => normalizePathwayStageNodesPositions(nds.filter((n) => n.id !== id)));
+    setNodes((nds) => nds.filter((n) => n.id !== id));
   }
 
   function requestRemoveStage(id: string) {
@@ -407,12 +406,6 @@ export function PathwayStagesColumnEditor({ pathwayId }: PathwayStagesColumnEdit
             <Info className="size-4 shrink-0" aria-hidden />
             <AlertDescription>{tEditor("draftHint")}</AlertDescription>
           </Alert>
-          {publishPreviewLoading ? (
-            <p className="text-muted-foreground flex items-center gap-2 text-xs">
-              <Loader2 className="size-3.5 animate-spin" aria-hidden />
-              {tEditor("publishPreviewValidating")}
-            </p>
-          ) : null}
           {publishPreviewError ? (
             <Alert variant="destructive">
               <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

@@ -15,6 +15,11 @@ export type EmitNotificationInput = {
    * Usar só em eventos críticos explícitos (ex.: auto-cadastro pelo link/QR).
    */
   ignoreTenantNotificationPreference?: boolean;
+  /**
+   * Quando true, não restringe destinatários pelo escopo de visibilidade do paciente
+   * (`metadata.clientId`). Usar em avisos operacionais ao tenant inteiro (ex.: auto-cadastro).
+   */
+  skipClientVisibilityFilter?: boolean;
 };
 
 export interface INotificationEmitter {

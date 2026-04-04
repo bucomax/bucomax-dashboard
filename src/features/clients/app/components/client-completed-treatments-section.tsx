@@ -46,9 +46,15 @@ function uniqueActors(transitions: ClientCompletedTreatmentDto["transitions"]) {
 type ClientCompletedTreatmentsSectionProps = {
   client: ClientDetailClientDto;
   items: ClientCompletedTreatmentDto[];
+  /** No portal do paciente o download de PDF da ficha antiga usa outra API — aqui só listamos nomes. */
+  enableFileDownload?: boolean;
 };
 
-export function ClientCompletedTreatmentsSection({ client, items }: ClientCompletedTreatmentsSectionProps) {
+export function ClientCompletedTreatmentsSection({
+  client,
+  items,
+  enableFileDownload = true,
+}: ClientCompletedTreatmentsSectionProps) {
   const t = useTranslations("clients.detail.completedTreatments");
   const tHist = useTranslations("clients.detail.history");
   const tFiles = useTranslations("clients.detail.files");
@@ -172,21 +178,23 @@ export function ClientCompletedTreatmentsSection({ client, items }: ClientComple
                                     <span className="font-medium">{d.file.fileName}</span>
                                     <span className="text-muted-foreground text-xs"> · {d.file.mimeType}</span>
                                   </span>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="shrink-0"
-                                    disabled={downloadingId === d.file.id}
-                                    onClick={() => void handleDownloadFile(d.file.id)}
-                                  >
-                                    {downloadingId === d.file.id ? (
-                                      <Loader2 className="size-4 animate-spin" aria-hidden />
-                                    ) : (
-                                      <Download className="size-4" aria-hidden />
-                                    )}
-                                    {t("download")}
-                                  </Button>
+                                  {enableFileDownload ? (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="shrink-0"
+                                      disabled={downloadingId === d.file.id}
+                                      onClick={() => void handleDownloadFile(d.file.id)}
+                                    >
+                                      {downloadingId === d.file.id ? (
+                                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                                      ) : (
+                                        <Download className="size-4" aria-hidden />
+                                      )}
+                                      {t("download")}
+                                    </Button>
+                                  ) : null}
                                 </li>
                               ))}
                             </ul>

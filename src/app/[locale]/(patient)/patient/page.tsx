@@ -1,12 +1,25 @@
-import { PatientPortalHomePage } from "@/features/patient-portal/app/pages/patient-portal-home-page";
+import { Link } from "@/i18n/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("patientPortal");
-  return { title: t("title") };
+  return { title: t("landing.title") };
 }
 
-export default function PatientPortalPage() {
-  return <PatientPortalHomePage />;
+export default async function PatientPortalLandingPage() {
+  const t = await getTranslations("patientPortal");
+  return (
+    <div className="bg-background flex min-h-svh flex-col items-center justify-center px-4 py-12">
+      <div className="max-w-lg space-y-4 text-center">
+        <h1 className="text-2xl font-semibold tracking-tight">{t("landing.title")}</h1>
+        <p className="text-muted-foreground text-sm leading-relaxed">{t("landing.body")}</p>
+        <p className="text-muted-foreground text-sm">
+          <Link href="/login" className="text-foreground underline underline-offset-2">
+            {t("home.staffLogin")}
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
 }

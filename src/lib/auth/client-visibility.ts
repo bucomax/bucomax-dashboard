@@ -236,6 +236,12 @@ function metadataClientId(metadata: unknown): string | null {
   return typeof raw === "string" && raw.length > 0 ? raw : null;
 }
 
+/** Aviso ao tenant inteiro (in-app + lista); não esconder para membros com escopo “só atribuídos”. */
+function metadataSourceIsPatientSelfRegister(metadata: unknown): boolean {
+  if (metadata == null || typeof metadata !== "object" || Array.isArray(metadata)) return false;
+  return (metadata as { source?: unknown }).source === "patient_self_register";
+}
+
 type NotificationRow = { id: string; metadata: Prisma.JsonValue | null };
 
 /**
@@ -261,6 +267,7 @@ export async function filterNotificationsByClientScope(
   const map = new Map(clients.map((c) => [c.id, c]));
 
   return rows.filter((n) => {
+    if (metadataSourceIsPatientSelfRegister(n.metadata)) return true;
     const cid = metadataClientId(n.metadata);
     if (!cid) return true;
     const c = map.get(cid);

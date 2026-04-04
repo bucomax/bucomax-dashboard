@@ -7,6 +7,7 @@ import { deleteClientFile, reviewPatientPortalClientFile } from "@/features/clie
 import { toast } from "@/lib/toast";
 import { formatFileSize } from "@/lib/utils/format-bytes";
 import { formatListUpdatedAt } from "@/lib/utils/format-list-updated-at";
+import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/shared/components/ui/card";
 import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
@@ -18,6 +19,7 @@ import {
   ChevronRight,
   ExternalLink,
   FolderOpen,
+  Info,
   Loader2,
   RefreshCw,
   Trash2,
@@ -162,7 +164,10 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
       </CardHeader>
       <CardContent className="space-y-4">
         {data.data.length === 0 ? (
-          <p className="text-muted-foreground text-sm">{t("empty")}</p>
+          <Alert variant="info">
+            <Info className="size-4 shrink-0" aria-hidden />
+            <AlertDescription className="text-sm leading-snug">{t("empty")}</AlertDescription>
+          </Alert>
         ) : (
           <ul className="divide-border divide-y text-sm">
             {data.data.map((f) => (

@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     return jsonError("SERVICE_UNAVAILABLE", apiT("errors.storageNotConfigured"), 503);
   }
 
-  const portalCtx = await requireActivePatientPortalClient(apiT);
+  const portalCtx = await requireActivePatientPortalClient(request, apiT);
   if (!portalCtx.ok) return portalCtx.response;
 
   let body: unknown;

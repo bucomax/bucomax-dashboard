@@ -1,11 +1,18 @@
 "use client";
 
-import { ClientDetailAssigneeOverviewCard } from "@/features/clients/app/components/client-detail-assignee-overview-card";
+import { ClientDetailStartPathwayCard } from "@/features/clients/app/components/client-detail-start-pathway-card";
+import { ClientDetailSwitchPathwayHint } from "@/features/clients/app/components/client-detail-switch-pathway-hint";
 import { ClientDetailTimelineSection } from "@/features/clients/app/components/client-detail-timeline-section";
+import {
+  ClientDetailAssigneeSection,
+  ClientDetailChecklistCard,
+  ClientDetailJourneyCard,
+  ClientDetailNextActionsCard,
+} from "@/features/clients/app/components/client-detail-journey-panels";
+import { PatientPortalAccessDialog } from "@/features/clients/app/components/patient-portal-access-dialog";
 import { PatientSelfRegisterQrDialog } from "@/features/clients/app/components/patient-self-register-qr-dialog";
 import { ClientCompletedTreatmentsSection } from "@/features/clients/app/components/client-completed-treatments-section";
 import { ClientDetailCardTitle } from "@/features/clients/app/components/client-detail-card-title";
-import { JourneyStagesList } from "@/features/clients/app/components/client-detail-journey-stages-list";
 import { ClientDetailFilesCard } from "@/features/clients/app/components/client-detail-files-card";
 import { ClientDetailNotesCard } from "@/features/clients/app/components/client-detail-notes-card";
 import { ClientDetailProfileCard } from "@/features/clients/app/components/client-detail-profile-card";
@@ -17,16 +24,15 @@ import { TransitionBlockedByChecklistError } from "@/features/pathways/app/servi
 import { Link } from "@/i18n/navigation";
 import { toast } from "@/lib/toast";
 import { formatCpfDisplay } from "@/lib/validators/cpf";
-import { slaHealthPillClassName } from "@/lib/utils/sla-status-ui";
-import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
+import { formatPhoneBrDisplay } from "@/lib/validators/phone";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
+import { InfoTooltip } from "@/shared/components/ui/info-tooltip";
 import { Card, CardContent, CardDescription, CardHeader } from "@/shared/components/ui/card";
 import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
 import { Field, FieldLabel } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -39,36 +45,25 @@ import {
   ArrowLeft,
   ArrowRightLeft,
   Check,
-  CheckCircle2,
   ClipboardCheck,
-  ClipboardList,
   Copy,
   ExternalLink,
   FileText,
-  GitBranch,
-  Info,
-  ListChecks,
+  LayoutDashboard,
   Loader2,
   Mail,
-  MapPinned,
   Phone,
+  UserPlus,
+  UserRound,
   RefreshCw,
   Save,
   X,
 } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
 function waDigits(phone: string): string {
   return phone.replace(/\D/g, "");
-}
-
-function SlaPill({ status, label }: { status: SlaHealthStatus; label: string }) {
-  return (
-    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${slaHealthPillClassName(status)}`}>
-      {label}
-    </span>
-  );
 }
 
 type ClientDetailViewProps = {
@@ -78,7 +73,6 @@ type ClientDetailViewProps = {
 export function ClientDetailView({ clientId }: ClientDetailViewProps) {
   const t = useTranslations("clients.detail");
   const tp = useTranslations("pathways.patient");
-  const locale = useLocale();
   const { data, error, loading, reload } = useClientDetail(clientId);
   const { updateClientById, updating: savingNotes } = useUpdateClient();
   const {
@@ -108,9 +102,6 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
     const cur = pp.currentStage?.id;
     return pp.pathwayVersion.stages.filter((s) => s.id !== cur);
   }, [pp]);
-
-  const slaLabel = (status: SlaHealthStatus) =>
-    status === "ok" ? t("sla.ok") : status === "warning" ? t("sla.warning") : t("sla.danger");
 
   function openTransitionConfirm() {
     if (!pp || !toStageId) {
@@ -164,11 +155,10 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
     return pp.pathwayVersion.stages.find((s) => s.id === toStageId)?.documents ?? [];
   }, [pp, toStageId]);
 
-  const currentStageChecklist = pp?.currentStage?.checklistItems ?? [];
-  const completedChecklistCount = currentStageChecklist.filter((item) => item.completed).length;
   const incompleteRequiredChecklist = useMemo(
-    () => currentStageChecklist.filter((item) => item.requiredForTransition && !item.completed),
-    [currentStageChecklist],
+    () =>
+      (pp?.currentStage?.checklistItems ?? []).filter((item) => item.requiredForTransition && !item.completed),
+    [pp?.currentStage?.checklistItems],
   );
 
   const notesDirty = useMemo(() => {
@@ -242,11 +232,13 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
       if (result.emailSent) {
         toast.success(t("portalLink.emailSent"));
       } else {
+        window.open(result.enterUrl, "_blank", "noopener,noreferrer");
         try {
           await navigator.clipboard.writeText(result.enterUrl);
-          toast.success(t("portalLink.linkCopied"));
+          toast.success(t("portalLink.copyAndOpened"));
         } catch {
           window.prompt(t("portalLink.copyManually"), result.enterUrl);
+          toast.success(t("portalLink.openedTabClipboardManual"));
         }
       }
     } catch (e) {
@@ -258,101 +250,143 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-5 border-b border-border/60 pb-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-8">
-          <div className="min-w-0 flex-1 space-y-3">
-            <h2 className="text-2xl font-semibold tracking-tight md:text-[1.65rem]">{client.name}</h2>
-            <ul className="text-muted-foreground grid list-none gap-x-6 gap-y-2 text-sm sm:grid-cols-2 sm:gap-y-2.5">
-              {client.phone?.trim() ? (
-                <li className="flex min-w-0 items-center gap-2.5">
-                  <span className="bg-muted/60 text-muted-foreground/90 inline-flex size-8 shrink-0 items-center justify-center rounded-lg">
-                    <Phone className="size-3.5" aria-hidden />
-                  </span>
-                  <span className="min-w-0 tabular-nums">{client.phone}</span>
-                </li>
-              ) : null}
-              {client.documentId ? (
-                <li className="flex min-w-0 items-center gap-2.5">
-                  <span className="bg-muted/60 text-muted-foreground/90 inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-[10px] font-semibold tracking-wide">
-                    CPF
-                  </span>
-                  <span className="min-w-0 tabular-nums">{formatCpfDisplay(client.documentId)}</span>
-                </li>
-              ) : null}
-              {client.email?.trim() ? (
-                <li className="flex min-w-0 items-center gap-2.5 sm:col-span-2">
-                  <span className="bg-muted/60 text-muted-foreground/90 inline-flex size-8 shrink-0 items-center justify-center rounded-lg">
-                    <Mail className="size-3.5" aria-hidden />
-                  </span>
-                  <span className="min-w-0 truncate" title={client.email}>
-                    {client.email}
-                  </span>
-                </li>
-              ) : null}
-            </ul>
-          </div>
-
-          <div className="flex w-full min-w-0 flex-col gap-3 lg:max-w-xl lg:shrink-0">
-            <div className="bg-muted/15 border-border/70 rounded-xl border p-2.5">
-              <p className="text-muted-foreground mb-2 px-1 text-xs font-medium">{t("headerActionsLabel")}</p>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="bg-background/80"
-                  disabled={portalLinkBusy !== null || !client.email?.trim()}
-                  title={!client.email?.trim() ? t("portalLink.emailRequired") : undefined}
-                  onClick={() => void handlePatientPortalLink("email")}
-                >
-                  {portalLinkBusy === "email" ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Mail className="size-4" />
-                  )}
-                  {t("portalLink.sendEmail")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="bg-background/80"
-                  disabled={portalLinkBusy !== null}
-                  onClick={() => void handlePatientPortalLink("copy")}
-                >
-                  {portalLinkBusy === "copy" ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Copy className="size-4" />
-                  )}
-                  {t("portalLink.copyOnly")}
-                </Button>
-                <PatientSelfRegisterQrDialog
-                  clientId={client.id}
-                  triggerLabel={t("selfRegisterLinkThisPatient")}
-                  triggerClassName="bg-background/80"
-                />
-                {digits ? (
-                  <Button
-                    nativeButton={false}
-                    variant="outline"
-                    size="sm"
-                    className="bg-background/80"
-                    render={<a href={`https://wa.me/${digits}`} target="_blank" rel="noreferrer" />}
-                  >
-                    <ExternalLink className="size-4" />
-                    {t("whatsapp")}
-                  </Button>
-                ) : null}
+      <header className="border-border/60 space-y-4 border-b pb-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 lg:items-start">
+          <Card className="border-border min-w-0 gap-2 shadow-sm">
+            <CardHeader className="pb-0">
+              <div className="flex items-start justify-between gap-2">
+                <ClientDetailCardTitle icon={UserRound} className="min-w-0 flex-1">
+                  {t("identitySection.title")}
+                </ClientDetailCardTitle>
+                <InfoTooltip ariaLabel={t("identitySection.infoAria")}>{t("identitySection.hint")}</InfoTooltip>
               </div>
-            </div>
-            <div className="flex justify-start lg:justify-end">
-              <Button nativeButton={false} variant="ghost" size="sm" className="-mx-1 text-muted-foreground" render={<Link href="/dashboard/clients" />}>
-                <ArrowLeft className="size-4" />
-                {t("backToList")}
+            </CardHeader>
+            <CardContent className="space-y-3 pt-0">
+              <p className="text-xl font-semibold tracking-tight">{client.name}</p>
+              <ul className="text-muted-foreground flex flex-col gap-2.5 text-sm">
+                {client.phone?.trim() ? (
+                  <li className="bg-muted/30 flex min-w-0 items-center gap-3 rounded-lg border border-border/50 px-3 py-2">
+                    <span className="bg-muted/70 text-muted-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-md">
+                      <Phone className="size-3.5" aria-hidden />
+                    </span>
+                    <span className="min-w-0 tabular-nums">{formatPhoneBrDisplay(client.phone)}</span>
+                  </li>
+                ) : null}
+                {client.email?.trim() ? (
+                  <li className="bg-muted/30 flex min-w-0 items-center gap-3 rounded-lg border border-border/50 px-3 py-2">
+                    <span className="bg-muted/70 text-muted-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-md">
+                      <Mail className="size-3.5" aria-hidden />
+                    </span>
+                    <span className="min-w-0 truncate" title={client.email}>
+                      {client.email}
+                    </span>
+                  </li>
+                ) : null}
+                {client.documentId ? (
+                  <li className="bg-muted/30 flex min-w-0 items-center gap-3 rounded-lg border border-border/50 px-3 py-2">
+                    <span className="bg-muted/70 text-muted-foreground inline-flex size-8 shrink-0 items-center justify-center rounded-md text-[10px] font-semibold tracking-wide">
+                      {t("cpf")}
+                    </span>
+                    <span className="min-w-0 tabular-nums">{formatCpfDisplay(client.documentId)}</span>
+                  </li>
+                ) : null}
+              </ul>
+            </CardContent>
+          </Card>
+
+          <Card className="border-border min-w-0 gap-2 shadow-sm">
+            <CardHeader className="pb-0">
+              <div className="flex items-start justify-between gap-2">
+                <ClientDetailCardTitle icon={LayoutDashboard} className="min-w-0 flex-1">
+                  {t("portalSection.title")}
+                </ClientDetailCardTitle>
+                <InfoTooltip ariaLabel={t("portalSection.infoAria")}>{t("portalSection.description")}</InfoTooltip>
+              </div>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2 pt-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 w-full justify-start gap-2 bg-background/80 px-3 font-normal"
+                disabled={portalLinkBusy !== null || !client.email?.trim()}
+                title={!client.email?.trim() ? t("portalLink.emailRequired") : undefined}
+                onClick={() => void handlePatientPortalLink("email")}
+              >
+                {portalLinkBusy === "email" ? (
+                  <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <Mail className="size-4 shrink-0" aria-hidden />
+                )}
+                <span className="min-w-0 truncate text-left">{t("portalLink.sendEmail")}</span>
               </Button>
-            </div>
-          </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 w-full justify-start gap-2 bg-background/80 px-3 font-normal"
+                disabled={portalLinkBusy !== null}
+                onClick={() => void handlePatientPortalLink("copy")}
+              >
+                {portalLinkBusy === "copy" ? (
+                  <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+                ) : (
+                  <Copy className="size-4 shrink-0" aria-hidden />
+                )}
+                <span className="min-w-0 truncate text-left">{t("portalLink.copyLink")}</span>
+              </Button>
+              <PatientPortalAccessDialog
+                clientId={client.id}
+                triggerLabel={t("portalAccessDialog.trigger")}
+                triggerClassName="h-9 w-full justify-start gap-2 bg-background/80 px-3 font-normal"
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="border-border min-w-0 gap-2 shadow-sm md:col-span-2 lg:col-span-1">
+            <CardHeader className="pb-0">
+              <div className="flex items-start justify-between gap-2">
+                <ClientDetailCardTitle icon={UserPlus} className="min-w-0 flex-1">
+                  {t("selfRegisterSection.title")}
+                </ClientDetailCardTitle>
+                <InfoTooltip ariaLabel={t("selfRegisterSection.infoAria")}>
+                  {t("selfRegisterSection.description")}
+                </InfoTooltip>
+              </div>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2 pt-0">
+              <PatientSelfRegisterQrDialog
+                clientId={client.id}
+                triggerLabel={t("selfRegisterLinkThisPatient")}
+                triggerClassName="h-9 w-full justify-start gap-2 bg-background/80 px-3 font-normal"
+              />
+              {digits ? (
+                <Button
+                  nativeButton={false}
+                  variant="outline"
+                  size="sm"
+                  className="h-9 w-full justify-start gap-2 bg-background/80 px-3 font-normal"
+                  render={<a href={`https://wa.me/${digits}`} target="_blank" rel="noreferrer" />}
+                >
+                  <ExternalLink className="size-4 shrink-0" aria-hidden />
+                  <span className="min-w-0 truncate text-left">{t("whatsapp")}</span>
+                </Button>
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="flex justify-end pt-1">
+          <Button
+            nativeButton={false}
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground -mx-1"
+            render={<Link href="/dashboard/clients" />}
+          >
+            <ArrowLeft className="size-4" />
+            {t("backToList")}
+          </Button>
         </div>
       </header>
 
@@ -403,219 +437,24 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
       />
 
       {!pp ? (
-        <Card className="min-w-0">
-          <CardHeader>
-            <ClientDetailCardTitle icon={MapPinned}>{t("noPathway.title")}</ClientDetailCardTitle>
-            <CardDescription>
-              {(data.completedTreatments ?? []).length > 0
-                ? t("noPathway.descriptionWithHistory")
-                : t("noPathway.description")}
-            </CardDescription>
-          </CardHeader>
-        </Card>
+        <ClientDetailStartPathwayCard
+          clientId={client.id}
+          hasCompletedHistory={(data.completedTreatments ?? []).length > 0}
+          onStarted={() => void reload()}
+        />
       ) : (
         <>
-          <Card className="min-w-0">
-            <CardHeader>
-              <ClientDetailCardTitle icon={GitBranch}>{t("journey.title")}</ClientDetailCardTitle>
-              <CardDescription>{pp.pathway.name}</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {pp.completedAt ? (
-                <Alert variant="info">
-                  <Info className="size-4" aria-hidden />
-                  <AlertDescription>
-                    {t("journey.completedBanner", {
-                      date: new Date(pp.completedAt).toLocaleString(locale, {
-                        dateStyle: "medium",
-                        timeStyle: "short",
-                      }),
-                    })}
-                  </AlertDescription>
-                </Alert>
-              ) : null}
-              <div className="bg-muted/25 flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2.5 text-sm">
-                <span className="text-muted-foreground">{t("journey.currentStage")}</span>
-                <span className="font-medium">{pp.completedAt ? "—" : (pp.currentStage?.name ?? "—")}</span>
-                {pp.completedAt ? null : (
-                  <>
-                    <span className="text-muted-foreground">
-                      {t("journey.daysInStage", { days: pp.daysInStage })}
-                    </span>
-                    <SlaPill status={pp.slaStatus} label={slaLabel(pp.slaStatus)} />
-                  </>
-                )}
-              </div>
-              <JourneyStagesList
-                stages={pp.pathwayVersion.stages}
-                current={pp.currentStage ?? null}
-                journeyCompleted={pp.completedAt != null}
-              />
-            </CardContent>
-          </Card>
-
-          <ClientDetailAssigneeOverviewCard
-            overview={pp.assigneeOverview}
-            currentStageAssignee={pp.currentStageAssignee}
-          />
-
+          <ClientDetailJourneyCard pp={pp} />
           {pp.completedAt ? null : (
-            <Card className="min-w-0">
-              <CardHeader className="pb-3">
-                <p id="next-actions-summary-desc" className="sr-only">
-                  {t("nextActions.description")}
-                </p>
-                <div className="flex items-start justify-between gap-3">
-                  <ClientDetailCardTitle icon={ClipboardList} className="min-w-0 flex-1">
-                    {t("nextActions.title")}
-                  </ClientDetailCardTitle>
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <button
-                          type="button"
-                          className="text-muted-foreground hover:bg-muted/60 hover:text-foreground mt-0.5 shrink-0 rounded-md p-1 outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          aria-label={t("nextActions.helpAria")}
-                          aria-describedby="next-actions-summary-desc"
-                        >
-                          <Info className="size-4" aria-hidden />
-                        </button>
-                      }
-                    />
-                    <TooltipContent side="bottom" align="end" className="max-w-sm text-left text-sm">
-                      {t("nextActions.description")}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-0">
-                <div className="bg-muted/20 border-border/60 flex flex-col gap-3 rounded-lg border px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p className="text-muted-foreground text-xs font-medium">{t("journey.currentStage")}</p>
-                    <p className="text-foreground truncate text-base leading-tight font-semibold">
-                      {pp.currentStage?.name ?? "—"}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:shrink-0 sm:justify-end">
-                    <SlaPill status={pp.slaStatus} label={slaLabel(pp.slaStatus)} />
-                    <span className="text-muted-foreground text-sm tabular-nums">
-                      {t("journey.daysInStage", { days: pp.daysInStage })}
-                    </span>
-                  </div>
-                </div>
-
-                {pp.currentStage?.patientMessage?.trim() ? (
-                  <div className="border-border/70 bg-muted/10 rounded-lg border px-3 py-3">
-                    <p className="text-muted-foreground mb-2 text-xs font-medium">{t("nextActions.stageMessage")}</p>
-                    <p className="text-foreground/95 text-sm leading-relaxed whitespace-pre-wrap">
-                      {pp.currentStage.patientMessage}
-                    </p>
-                  </div>
-                ) : null}
-
-                {incompleteRequiredChecklist.length > 0 ? (
-                  <Alert variant="destructive" className="border-destructive/40">
-                    <Info className="size-4 shrink-0" aria-hidden />
-                    <AlertDescription>
-                      <p className="font-medium">{t("nextActions.pendingRequiredTitle")}</p>
-                      <ul className="mt-2 list-inside list-disc space-y-0.5">
-                        {incompleteRequiredChecklist.map((item) => (
-                          <li key={item.id}>{item.label}</li>
-                        ))}
-                      </ul>
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <div className="border-emerald-500/25 bg-emerald-500/[0.06] flex items-start gap-2.5 rounded-lg border px-3 py-2.5 dark:border-emerald-500/20 dark:bg-emerald-500/10">
-                    <CheckCircle2
-                      className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-400"
-                      aria-hidden
-                    />
-                    <p className="text-muted-foreground text-sm leading-snug">
-                      {t("nextActions.noBlockingChecklist")}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <ClientDetailSwitchPathwayHint patientPathwayId={pp.id} onCompleted={() => void reload()} />
           )}
-
-          <Card className="min-w-0">
-            <CardHeader>
-              <ClientDetailCardTitle icon={ListChecks}>{t("checklist.title")}</ClientDetailCardTitle>
-              <CardDescription>
-                {pp.completedAt
-                  ? t("journey.readOnlyHint")
-                  : pp.currentStage
-                    ? t("checklist.description", { stage: pp.currentStage.name })
-                    : t("checklist.descriptionEmpty")}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {pp.currentStage ? (
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="text-muted-foreground">{t("checklist.progressLabel")}</span>
-                  <span className="font-medium">
-                    {t("checklist.progress", {
-                      completed: completedChecklistCount,
-                      total: currentStageChecklist.length,
-                    })}
-                  </span>
-                </div>
-              ) : null}
-              {currentStageChecklist.length === 0 ? (
-                <Alert variant="info">
-                  <Info className="size-4" aria-hidden />
-                  <AlertDescription>
-                    {pp.currentStage ? t("checklist.empty") : t("checklist.descriptionEmpty")}
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <ul className="space-y-2">
-                  {currentStageChecklist.map((item) => {
-                    const isUpdating = updatingChecklistItemId === item.id;
-                    const pathwayClosed = pp.completedAt != null;
-                    return (
-                      <li key={item.id}>
-                        <label
-                          className={cn(
-                            "flex items-start gap-3 rounded-lg border p-3 text-sm",
-                            pathwayClosed ? "cursor-default" : "cursor-pointer",
-                          )}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={item.completed}
-                            disabled={isUpdating || pathwayClosed}
-                            onChange={(e) => void handleChecklistToggle(item.id, e.target.checked)}
-                            className="mt-0.5 size-4"
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span className={cn("block", item.completed && "text-muted-foreground line-through")}>
-                              {item.label}
-                              {item.requiredForTransition ? (
-                                <span className="text-muted-foreground ml-2 align-middle text-[10px] font-normal uppercase tracking-wide">
-                                  ({t("checklist.requiredBadge")})
-                                </span>
-                              ) : null}
-                            </span>
-                            {item.completedAt ? (
-                              <span className="text-muted-foreground mt-1 block text-xs">
-                                {t("checklist.completedAt", {
-                                  date: new Date(item.completedAt).toLocaleString(),
-                                })}
-                              </span>
-                            ) : null}
-                          </span>
-                          {isUpdating ? <Loader2 className="text-muted-foreground size-4 animate-spin" /> : null}
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+          <ClientDetailAssigneeSection pp={pp} />
+          <ClientDetailNextActionsCard pp={pp} />
+          <ClientDetailChecklistCard
+            pp={pp}
+            updatingChecklistItemId={updatingChecklistItemId}
+            onToggle={(id, checked) => void handleChecklistToggle(id, checked)}
+          />
 
           {pp.completedAt ? null : (
             <>

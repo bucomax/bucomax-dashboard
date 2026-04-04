@@ -61,8 +61,10 @@ export default async function LocaleLayout({
       suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col">
+      <head>
         <ThemeBlockingScript />
+      </head>
+      <body className="flex min-h-full flex-col">
         <NextIntlClientProvider key={locale} locale={locale} messages={messages}>
           <AuthSessionProvider>
             <ThemeProvider>

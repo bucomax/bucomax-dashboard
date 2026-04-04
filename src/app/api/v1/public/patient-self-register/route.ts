@@ -6,6 +6,7 @@ import { notifyStaffPatientSelfRegistered } from "@/infrastructure/email/notify-
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { validatePublicInviteTenantSlug } from "@/lib/tenants/validate-public-invite-tenant-slug";
 import { publicPatientSelfRegisterBodySchema } from "@/lib/validators/client";
 
 export const dynamic = "force-dynamic";
@@ -46,6 +47,10 @@ export async function GET(request: Request) {
     clientOk;
 
   if (!ok) {
+    return jsonSuccess({ valid: false } satisfies { valid: boolean });
+  }
+
+  if (!(await validatePublicInviteTenantSlug(request, row.tenantId))) {
     return jsonSuccess({ valid: false } satisfies { valid: boolean });
   }
 
@@ -113,6 +118,10 @@ export async function POST(request: Request) {
           inv.expiresAt <= now ||
           !inv.tenant.isActive
         ) {
+          return null;
+        }
+
+        if (!(await validatePublicInviteTenantSlug(request, inv.tenantId))) {
           return null;
         }
 

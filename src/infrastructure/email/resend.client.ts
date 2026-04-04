@@ -61,6 +61,7 @@ export function buildInviteSetPasswordUrl(token: string): string {
   return `${appUrl()}/auth/invite?token=${encodeURIComponent(token)}`;
 }
 
-export function buildPatientSelfRegisterUrl(token: string): string {
-  return `${appUrl()}/patient-self-register?token=${encodeURIComponent(token)}`;
+export function buildPatientSelfRegisterUrl(token: string, tenantSlug: string): string {
+  const slug = tenantSlug.trim();
+  return `${appUrl()}/${encodeURIComponent(slug)}/patient-self-register?token=${encodeURIComponent(token)}`;
 }

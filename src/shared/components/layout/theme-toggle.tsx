@@ -3,7 +3,7 @@
 import { Button } from "@/shared/components/ui/button";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePersistedAppStore } from "@/shared/stores/use-persisted-app-store";
 
 function useIsClient() {
@@ -18,8 +18,13 @@ export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const setThemePreference = usePersistedAppStore((s) => s.setThemePreference);
   const isClient = useIsClient();
+  const [domReady, setDomReady] = useState(false);
 
-  if (!isClient) {
+  useEffect(() => {
+    setDomReady(true);
+  }, []);
+
+  if (!isClient || !domReady || theme === undefined) {
     return (
       <Button variant="ghost" size="icon-sm" aria-label="Tema" disabled>
         <Sun className="size-4 opacity-0" />

@@ -8,29 +8,14 @@ import {
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
-import {
-  clientDetailPatientPathwaySelect,
-  collectPathwayStageDefaultAssigneeUserIds,
-  MAX_COMPLETED_TRANSITIONS,
-  type ClientDetailStageTransitionRow,
-  serializeActivePatientPathwayDetail,
-  serializeCompletedTreatment,
-} from "@/lib/clients/client-detail-pathway-serialization";
-import { loadStageAssigneeSummariesMap } from "@/lib/clients/load-stage-assignee-summaries";
+import { loadClientDetailResponseData } from "@/lib/clients/load-client-detail-response";
 import { validateClientOptionalRefs } from "@/lib/clients/validate-client-optional-refs";
-import { TenantRole, type Prisma } from "@prisma/client";
+import { TenantRole } from "@prisma/client";
 import { clientDetailQuerySchema } from "@/lib/validators/client-detail-query";
 import { digitsOnlyCpf } from "@/lib/validators/cpf";
 import { patchClientBodySchema } from "@/lib/validators/client";
 
 export const dynamic = "force-dynamic";
-
-const stageTransitionDetailInclude = {
-  fromStage: { select: { id: true, name: true, stageKey: true } },
-  toStage: { select: { id: true, name: true, stageKey: true } },
-  actor: { select: { id: true, name: true, email: true } },
-  forcedByUser: { select: { id: true, name: true, email: true } },
-} satisfies Prisma.StageTransitionInclude;
 
 type RouteCtx = { params: Promise<{ clientId: string }> };
 
@@ -53,8 +38,6 @@ export async function GET(request: Request, ctx: RouteCtx) {
     return jsonError("VALIDATION_ERROR", parsedQ.error.flatten().formErrors.join("; "), 422);
   }
   const { page, limit } = parsedQ.data;
-  const offset = (page - 1) * limit;
-  const now = new Date();
 
   const { clientId } = await ctx.params;
 
@@ -77,125 +60,8 @@ export async function GET(request: Request, ctx: RouteCtx) {
     return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
   }
 
-  const [activePp, completedPps] = await Promise.all([
-    prisma.patientPathway.findFirst({
-      where: { clientId, tenantId: tenantCtx.tenantId, completedAt: null },
-      orderBy: { updatedAt: "desc" },
-      select: clientDetailPatientPathwaySelect,
-    }),
-    prisma.patientPathway.findMany({
-      where: { clientId, tenantId: tenantCtx.tenantId, completedAt: { not: null } },
-      orderBy: { completedAt: "desc" },
-      select: clientDetailPatientPathwaySelect,
-    }),
-  ]);
-
-  const pathwaysForAssigneeLabels = [activePp, ...completedPps].filter((p) => p != null);
-  const assigneeByUserId = await loadStageAssigneeSummariesMap(
-    pathwaysForAssigneeLabels.flatMap(collectPathwayStageDefaultAssigneeUserIds),
-  );
-
-  const client = {
-    id: row.id,
-    name: row.name,
-    phone: row.phone,
-    email: row.email,
-    caseDescription: row.caseDescription,
-    documentId: row.documentId,
-    assignedToUserId: row.assignedToUserId,
-    opmeSupplierId: row.opmeSupplierId,
-    assignedTo: row.assignedTo
-      ? { id: row.assignedTo.id, name: row.assignedTo.name, email: row.assignedTo.email }
-      : null,
-    opmeSupplier: row.opmeSupplier ? { id: row.opmeSupplier.id, name: row.opmeSupplier.name } : null,
-    patientPathwayId: activePp?.id ?? null,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-  };
-
-  const completedTransitionBatches = await Promise.all(
-    completedPps.map((pp) =>
-      prisma.stageTransition.findMany({
-        where: { patientPathwayId: pp.id },
-        orderBy: { createdAt: "asc" },
-        take: MAX_COMPLETED_TRANSITIONS + 1,
-        include: stageTransitionDetailInclude,
-      }),
-    ),
-  );
-
-  const completedTreatments = completedPps.map((pp, i) => {
-    const raw = completedTransitionBatches[i] ?? [];
-    const truncated = raw.length > MAX_COMPLETED_TRANSITIONS;
-    return serializeCompletedTreatment(pp, raw.slice(0, MAX_COMPLETED_TRANSITIONS), {
-      transitionsTruncated: truncated,
-      assigneeByUserId,
-    });
-  });
-
-  if (!activePp) {
-    return jsonSuccess({
-      client,
-      patientPathway: null,
-      completedTreatments,
-    });
-  }
-
-  const [totalTransitions, transitionRows, entryToCurrentRaw] = await Promise.all([
-    prisma.stageTransition.count({ where: { patientPathwayId: activePp.id } }),
-    prisma.stageTransition.findMany({
-      where: { patientPathwayId: activePp.id },
-      orderBy: { createdAt: "desc" },
-      skip: offset,
-      take: limit,
-      include: stageTransitionDetailInclude,
-    }),
-    prisma.stageTransition.findFirst({
-      where: { patientPathwayId: activePp.id, toStageId: activePp.currentStage.id },
-      orderBy: { createdAt: "desc" },
-      include: stageTransitionDetailInclude,
-    }),
-  ]);
-
-  const entryToCurrentStageTransition: ClientDetailStageTransitionRow | null = entryToCurrentRaw
-    ? {
-        id: entryToCurrentRaw.id,
-        note: entryToCurrentRaw.note,
-        ruleOverrideReason: entryToCurrentRaw.ruleOverrideReason,
-        createdAt: entryToCurrentRaw.createdAt,
-        fromStage: entryToCurrentRaw.fromStage,
-        toStage: entryToCurrentRaw.toStage,
-        actor: entryToCurrentRaw.actor,
-        forcedByUser: entryToCurrentRaw.forcedByUser,
-      }
-    : null;
-
-  const transitionRowsMapped: ClientDetailStageTransitionRow[] = transitionRows.map((tr) => ({
-    id: tr.id,
-    note: tr.note,
-    ruleOverrideReason: tr.ruleOverrideReason,
-    createdAt: tr.createdAt,
-    fromStage: tr.fromStage,
-    toStage: tr.toStage,
-    actor: tr.actor,
-    forcedByUser: tr.forcedByUser,
-  }));
-
-  const patientPathway = serializeActivePatientPathwayDetail(activePp, {
-    now,
-    transitionRows: transitionRowsMapped,
-    totalTransitions,
-    page,
-    limit,
-    entryToCurrentStageTransition,
-    assigneeByUserId,
-  });
-
-  return jsonSuccess({
-    client,
-    patientPathway,
-    completedTreatments,
-  });
+  const payload = await loadClientDetailResponseData(tenantCtx.tenantId, row, page, limit);
+  return jsonSuccess(payload);
 }
 
 export async function PATCH(request: Request, ctx: RouteCtx) {

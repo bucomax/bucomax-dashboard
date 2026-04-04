@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import type { ReportsSummaryResponseData } from "@/features/dashboard/types/api";
+import { formatPhoneBrDisplay } from "@/lib/validators/phone";
 import { Button } from "@/shared/components/ui/button";
 import { ChevronLeft, ChevronRight, UserRound } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
@@ -45,7 +46,7 @@ export function ReportsCriticalPatientsCard({
                     {row.pathwayName} · {row.stageName}
                   </p>
                   <p className="text-muted-foreground text-sm">
-                    {t("criticalDays", { days: row.daysInStage })} · {row.phone}
+                    {t("criticalDays", { days: row.daysInStage })} · {formatPhoneBrDisplay(row.phone)}
                     {row.opmeSupplierName ? ` · ${row.opmeSupplierName}` : ""}
                   </p>
                 </div>

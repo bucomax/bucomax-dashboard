@@ -30,7 +30,7 @@ import { Form, FormCpf, FormInput, FormPhoneNumber, FormTextarea } from "@/share
 import { useTranslations } from "next-intl";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
-import { useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 
 type Phase = "loading" | "invalid" | "form" | "success";
 
@@ -39,6 +39,8 @@ function PatientSelfRegisterInner() {
   const tWiz = useTranslations("clients.wizard");
   const tGlobal = useTranslations("global");
   const tApi = useTranslations("api");
+  const params = useParams();
+  const tenantSlug = typeof params.tenantSlug === "string" ? params.tenantSlug : undefined;
   const searchParams = useSearchParams();
   const [phase, setPhase] = useState<Phase>("loading");
   const [token, setToken] = useState<string | null>(null);
@@ -73,7 +75,7 @@ function PatientSelfRegisterInner() {
       return;
     }
     let cancelled = false;
-    void fetchPatientSelfRegisterValidation(raw).then((r) => {
+    void fetchPatientSelfRegisterValidation(raw, tenantSlug).then((r) => {
       if (cancelled) return;
       if (!r.valid) {
         setFormPrefill(null);
@@ -88,7 +90,7 @@ function PatientSelfRegisterInner() {
     return () => {
       cancelled = true;
     };
-  }, [searchParams]);
+  }, [searchParams, tenantSlug]);
 
   useEffect(() => {
     if (phase !== "form" || !formPrefill) return;
@@ -107,7 +109,7 @@ function PatientSelfRegisterInner() {
     const parsed = patientSelfRegisterFormSchema.safeParse(values);
     if (!parsed.success) return;
     const body: PublicPatientSelfRegisterRequestBody = { ...parsed.data, token };
-    const result = await submitPatientSelfRegister(body);
+    const result = await submitPatientSelfRegister(body, tenantSlug);
     if (!result.ok) {
       setSubmitError(result.message);
       return;

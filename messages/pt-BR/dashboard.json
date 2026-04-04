@@ -24,23 +24,34 @@
   "home": {
     "title": "Início",
     "cards": {
-      "inProgress": "Pacientes em jornada",
+      "inProgress": "Jornadas ativas",
+      "transitionsToday": "Transições de etapa hoje",
       "completedToday": "Transições hoje",
       "awaitingAction": "Sem ação há 48 h",
       "conversionRate": "Taxa de movimentação (7 d)"
     },
-    "insights": {
-      "title": "Insights operacionais",
-      "first": "{count, plural, =0 {Todos os pacientes estão em dia.} =1 {1 paciente sem ação há mais de 48 h — verifique a fila.} other {{count} pacientes sem ação há mais de 48 h — priorize os com maior tempo.}}",
-      "second": "{count, plural, =0 {Nenhuma transição de etapa hoje.} =1 {1 transição de etapa hoje.} other {{count} transições de etapa hoje — bom fluxo.}}",
-      "third": "{percent}% dos pacientes tiveram movimentação nos últimos 7 dias."
-    },
     "charts": {
-      "transitions7d": "Transições por dia (7 dias)",
+      "weeklyActivity": {
+        "title": "Atividade nos últimos 7 dias",
+        "infoAria": "Como ler o gráfico de atividade",
+        "caption": "Cada coluna é um dia civil (Brasília). Três barras por dia: transições de etapa, novas jornadas iniciadas e encerradas — o mesmo recorte temporal que um gráfico só de transições, mais entradas e saídas. Complementa os cartões acima.",
+        "empty": "Nenhuma jornada iniciada, transição ou encerramento nos últimos 7 dias.",
+        "legendTransitions": "Transições",
+        "legendNew": "Novas jornadas",
+        "legendClosed": "Encerradas",
+        "tooltipHeading": "{dateLong} · {weekday}",
+        "tooltipTransitions": "{count, plural, =0 {Nenhuma transição de etapa neste dia.} =1 {1 transição de etapa.} other {{count} transições de etapa.}}",
+        "tooltipNew": "{count, plural, =0 {Nenhuma nova jornada neste dia.} =1 {1 nova jornada iniciada.} other {{count} novas jornadas iniciadas.}}",
+        "tooltipClosed": "{count, plural, =0 {Nenhuma jornada encerrada neste dia.} =1 {1 jornada encerrada.} other {{count} jornadas encerradas.}}",
+        "columnAria": "{dateLong} ({weekday}): {transitions} transições de etapa, {newPathways} novas jornadas, {completions} encerradas."
+      },
       "distribution": {
         "title": "Distribuição operacional",
+        "infoAria": "Entenda a distribuição operacional",
+        "caption": "Jornadas em aberto sem atualização há 48 h, jornadas ativas com movimento recente e jornadas encerradas hoje. A soma das três linhas pode ser maior que «Jornadas ativas» quando houve encerramentos no dia.",
         "awaiting": "Aguardando ação",
         "active": "Em andamento",
+        "pathwaysClosedToday": "Jornadas encerradas hoje",
         "completedToday": "Concluídos hoje"
       }
     }

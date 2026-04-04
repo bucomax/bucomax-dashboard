@@ -1,5 +1,9 @@
 import type { SeedStageDocumentBundleItem, StageSeed } from "./types";
 
+/** Manter alinhado a `src/lib/pathway/graph-editor-layout.ts` (pathwayEditorGraphNodePosition). */
+const SEED_GRAPH_NODE_ORIGIN = { x: 80, y: 56 };
+const SEED_GRAPH_NODE_STEP = { x: 280, y: 160 };
+
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function daysAgo(days: number, hour = 10) {
@@ -21,7 +25,10 @@ export function buildGraphJson(stages: StageSeed[]) {
   const nodes = stages.map((stage, index) => ({
     id: stage.key,
     type: "default",
-    position: { x: 40 + index * 24, y: 40 + index * 24 },
+    position: {
+      x: SEED_GRAPH_NODE_ORIGIN.x + index * SEED_GRAPH_NODE_STEP.x,
+      y: SEED_GRAPH_NODE_ORIGIN.y + index * SEED_GRAPH_NODE_STEP.y,
+    },
     data: {
       label: stage.name,
       patientMessage: stage.patientMessage,

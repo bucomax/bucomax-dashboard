@@ -68,11 +68,20 @@ export async function POST(request: Request) {
     },
   });
 
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { slug: true },
+  });
+  const tenantSlug = tenant?.slug ?? "";
+  if (!tenantSlug) {
+    return jsonError("SERVICE_UNAVAILABLE", apiT("errors.tenantNotFound"), 503);
+  }
+
   return jsonSuccess(
     {
       token,
       expiresAt: expiresAt.toISOString(),
-      registerUrl: buildPatientSelfRegisterUrl(token),
+      registerUrl: buildPatientSelfRegisterUrl(token, tenantSlug),
     },
     { status: 201 },
   );

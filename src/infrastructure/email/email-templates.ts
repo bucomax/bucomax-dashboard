@@ -215,9 +215,14 @@ export function getPatientPortalMagicLinkHtml(params: {
   patientName: string;
   clinicName: string;
   enterUrl: string;
+  /** Se true, o texto alerta uso único do link (envio por e-mail). */
+  singleUse: boolean;
 }): string {
   const patient = escapeHtmlText(params.patientName);
   const clinic = escapeHtmlText(params.clinicName);
+  const reuseNote = params.singleUse
+    ? "Este link expira em 72 horas e só pode ser usado uma vez."
+    : "Este link expira em 72 horas e pode ser aberto várias vezes até lá (guarde-o em local seguro).";
   const content = `
     <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND.text}; line-height: 1.3;">
       Acesse seu acompanhamento
@@ -236,8 +241,37 @@ export function getPatientPortalMagicLinkHtml(params: {
       <a href="${params.enterUrl}" style="color: ${BRAND.link}; text-decoration: underline;">${params.enterUrl}</a>
     </p>
     <p style="margin: 24px 0 0; padding-top: 20px; border-top: 1px solid ${BRAND.border}; font-size: 12px; color: ${BRAND.textMuted};">
-      Este link expira em 72 horas e só pode ser usado uma vez. Se você não solicitou este acesso, ignore este e-mail.
+      ${reuseNote} Se você não solicitou este acesso, ignore este e-mail.
     </p>
   `;
   return baseLayout(content, `Acesso ao portal — ${escapeHtmlText(params.clinicName)}`);
+}
+
+/** Paciente: código para entrar no portal com CPF (OTP). */
+export function getPatientPortalOtpHtml(params: {
+  patientName: string;
+  clinicName: string;
+  code: string;
+}): string {
+  const patient = escapeHtmlText(params.patientName);
+  const clinic = escapeHtmlText(params.clinicName);
+  const code = escapeHtmlText(params.code);
+  const content = `
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND.text}; line-height: 1.3;">
+      Seu código de acesso
+    </h1>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      Olá, ${patient}!
+    </p>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      Use o código abaixo para entrar no portal da clínica <strong>${clinic}</strong>. Ele vale por poucos minutos.
+    </p>
+    <p style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: 0.2em; color: ${BRAND.primary}; text-align: center;">
+      ${code}
+    </p>
+    <p style="margin: 24px 0 0; padding-top: 20px; border-top: 1px solid ${BRAND.border}; font-size: 12px; color: ${BRAND.textMuted};">
+      Se você não pediu este código, ignore este e-mail.
+    </p>
+  `;
+  return baseLayout(content, `Código do portal — ${escapeHtmlText(params.clinicName)}`);
 }

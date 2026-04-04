@@ -1,5 +1,6 @@
 "use client";
 
+import { usePatientPortalTenantSlug } from "@/features/patient-portal/app/context/patient-portal-tenant-context";
 import {
   fetchPatientPortalFiles,
   requestPatientPortalFileDownloadPresign,
@@ -21,6 +22,7 @@ type Props = {
 };
 
 export function PatientPortalFilesSection({ formatDateTime, onAfterUpload }: Props) {
+  const tenantSlug = usePatientPortalTenantSlug();
   const t = useTranslations("patientPortal");
   const inputRef = useRef<HTMLInputElement>(null);
   const [data, setData] = useState<PatientPortalFilesListResponseData | null>(null);
@@ -35,7 +37,7 @@ export function PatientPortalFilesSection({ formatDateTime, onAfterUpload }: Pro
     (p: number) => {
       setLoading(true);
       setError(null);
-      void fetchPatientPortalFiles(p, limit)
+      void fetchPatientPortalFiles(tenantSlug, p, limit)
         .then((d) => {
           setData(d);
           setPage(p);
@@ -49,7 +51,7 @@ export function PatientPortalFilesSection({ formatDateTime, onAfterUpload }: Pro
         })
         .finally(() => setLoading(false));
     },
-    [limit, t],
+    [limit, t, tenantSlug],
   );
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export function PatientPortalFilesSection({ formatDateTime, onAfterUpload }: Pro
     setUploading(true);
     setError(null);
     try {
-      await uploadPatientPortalFile(file);
+      await uploadPatientPortalFile(tenantSlug, file);
       onAfterUpload?.();
       load(page);
     } catch (err: unknown) {
@@ -77,7 +79,7 @@ export function PatientPortalFilesSection({ formatDateTime, onAfterUpload }: Pro
   async function openDownload(fileId: string) {
     setDownloadId(fileId);
     try {
-      const url = await requestPatientPortalFileDownloadPresign(fileId);
+      const url = await requestPatientPortalFileDownloadPresign(tenantSlug, fileId);
       window.open(url, "_blank", "noopener,noreferrer");
     } catch {
       setError(t("files.downloadError"));

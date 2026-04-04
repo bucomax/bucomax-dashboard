@@ -6,17 +6,32 @@ import {
   type PathwayStageDocumentDraft,
   type StageChecklistDraftItem,
 } from "@/lib/pathway/graph";
+import { pathwayEditorGraphNodePosition } from "@/lib/pathway/graph-editor-layout";
 
 export function parsePathwayStageNodes(graphJson: unknown): Node[] {
   const graph = graphJson as { nodes?: Node[] };
   return Array.isArray(graph.nodes) ? graph.nodes : [];
 }
 
-export function normalizePathwayStageNodesPositions(nodes: Node[]): Node[] {
+function nodeHasPersistedPosition(node: Node): boolean {
+  const p = node.position;
+  return (
+    p != null &&
+    typeof p === "object" &&
+    Number.isFinite(p.x) &&
+    Number.isFinite(p.y)
+  );
+}
+
+/**
+ * Garante `type` e `position` persistível: **não** sobrescreve coordenadas já salvas
+ * (layout do editor de grafo); só preenche quando falta ou é inválido.
+ */
+export function ensurePathwayGraphNodePositions(nodes: Node[]): Node[] {
   return nodes.map((node, index) => ({
     ...node,
     type: node.type ?? "default",
-    position: { x: 40 + index * 24, y: 40 + index * 24 },
+    position: nodeHasPersistedPosition(node) ? node.position : pathwayEditorGraphNodePosition(index),
   }));
 }
 

@@ -3,6 +3,7 @@
 import type { KanbanPatientPathway } from "@/features/dashboard/types";
 import { slaHealthKanbanCardClassName } from "@/lib/utils/sla-status-ui";
 import { cn } from "@/lib/utils";
+import { formatPhoneBrDisplay } from "@/lib/validators/phone";
 import { Siren } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
@@ -48,7 +49,7 @@ export function PipelineKanbanDragPreview({ pp }: { pp: KanbanPatientPathway }) 
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="font-medium">{pp.client.name}</p>
-            <p className="text-muted-foreground mt-0.5 text-xs">{pp.client.phone}</p>
+            <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">{formatPhoneBrDisplay(pp.client.phone)}</p>
           </div>
         </div>
         <div

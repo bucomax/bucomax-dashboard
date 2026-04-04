@@ -1,6 +1,6 @@
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { getPatientPortalSessionFromCookies } from "@/lib/auth/patient-portal-session";
+import { requireActivePatientPortalClient } from "@/lib/auth/patient-portal-request";
 import { buildClientTimelinePage } from "@/lib/clients/client-timeline";
 import { mapClientTimelineForPatientPortal } from "@/lib/clients/patient-portal-timeline-map";
 import { prisma } from "@/infrastructure/database/prisma";
@@ -10,10 +10,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const apiT = await getApiT(request);
-  const portal = await getPatientPortalSessionFromCookies();
-  if (!portal) {
-    return jsonError("UNAUTHORIZED", apiT("errors.patientPortalSessionRequired"), 401);
-  }
+  const portalCtx = await requireActivePatientPortalClient(request, apiT);
+  if (!portalCtx.ok) return portalCtx.response;
+  const portal = portalCtx.data.portal;
 
   const url = new URL(request.url);
   const parsedQ = clientTimelineQuerySchema.safeParse({
@@ -25,18 +24,6 @@ export async function GET(request: Request) {
   }
 
   const { page, limit } = parsedQ.data;
-
-  const client = await prisma.client.findFirst({
-    where: {
-      id: portal.clientId,
-      tenantId: portal.tenantId,
-      deletedAt: null,
-    },
-    select: { id: true },
-  });
-  if (!client) {
-    return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
-  }
 
   const raw = await buildClientTimelinePage(prisma, portal.tenantId, portal.clientId, page, limit);
   return jsonSuccess(mapClientTimelineForPatientPortal(raw));

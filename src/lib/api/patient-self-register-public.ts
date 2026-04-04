@@ -1,3 +1,4 @@
+import { PUBLIC_INVITE_TENANT_SLUG_HEADER } from "@/lib/constants/public-invite";
 import { routing } from "@/i18n/routing";
 import type {
   PublicPatientSelfRegisterRequestBody,
@@ -14,13 +15,24 @@ function acceptLanguageForPublicRequest(): string {
   return routing.defaultLocale;
 }
 
+function tenantSlugHeaders(tenantSlug: string | undefined): HeadersInit {
+  const h: Record<string, string> = {
+    "Accept-Language": acceptLanguageForPublicRequest(),
+  };
+  if (tenantSlug?.trim()) {
+    h[PUBLIC_INVITE_TENANT_SLUG_HEADER] = tenantSlug.trim();
+  }
+  return h;
+}
+
 export async function fetchPatientSelfRegisterValidation(
   token: string,
+  tenantSlug?: string,
 ): Promise<PublicPatientSelfRegisterValidateResponseData> {
   const res = await fetch(
     `/api/v1/public/patient-self-register?token=${encodeURIComponent(token)}`,
     {
-      headers: { "Accept-Language": acceptLanguageForPublicRequest() },
+      headers: tenantSlugHeaders(tenantSlug),
       cache: "no-store",
     },
   );
@@ -33,12 +45,13 @@ export async function fetchPatientSelfRegisterValidation(
 
 export async function submitPatientSelfRegister(
   body: PublicPatientSelfRegisterRequestBody,
+  tenantSlug?: string,
 ): Promise<{ ok: true; data: PublicPatientSelfRegisterSubmitResponseData } | { ok: false; message: string }> {
   const res = await fetch("/api/v1/public/patient-self-register", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Accept-Language": acceptLanguageForPublicRequest(),
+      ...tenantSlugHeaders(tenantSlug),
     },
     body: JSON.stringify(body),
   });

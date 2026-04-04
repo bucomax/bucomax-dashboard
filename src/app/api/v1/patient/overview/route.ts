@@ -1,6 +1,6 @@
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { getPatientPortalSessionFromCookies } from "@/lib/auth/patient-portal-session";
+import { requireActivePatientPortalClient } from "@/lib/auth/patient-portal-request";
 import { prisma } from "@/infrastructure/database/prisma";
 import type { PatientPortalOverviewResponse } from "@/types/api/patient-portal-v1";
 
@@ -8,10 +8,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const apiT = await getApiT(request);
-  const portal = await getPatientPortalSessionFromCookies();
-  if (!portal) {
-    return jsonError("UNAUTHORIZED", apiT("errors.patientPortalSessionRequired"), 401);
-  }
+  const portalCtx = await requireActivePatientPortalClient(request, apiT);
+  if (!portalCtx.ok) return portalCtx.response;
+  const portal = portalCtx.data.portal;
 
   const client = await prisma.client.findFirst({
     where: {

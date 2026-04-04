@@ -1,6 +1,23 @@
 import type { ApiPagination } from "@/lib/api/pagination";
-import type { ClientTimelineAuditEventType } from "@/types/api/clients-v1";
+import type { ClientDetailResponseData, ClientTimelineAuditEventType } from "@/types/api/clients-v1";
 import type { PatientPortalFileReviewStatusDto } from "@/types/api/files-v1";
+
+/** `GET /api/v1/patient/detail` — mesma forma que a ficha interna; campos operacionais da equipe vêm nulos + contexto da clínica. */
+export type PatientPortalDetailResponseData = ClientDetailResponseData & {
+  tenant: { name: string };
+};
+
+/** Resposta de `PATCH /api/v1/patient/profile`. */
+export type PatientPortalProfilePatchResponseData = {
+  client: {
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+    documentId: string | null;
+    updatedAt: string;
+  };
+};
 
 /** `GET /api/v1/patient/overview` */
 export type PatientPortalOverviewResponse = {

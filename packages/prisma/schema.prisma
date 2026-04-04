@@ -196,8 +196,9 @@ model Client {
   patientPathways            PatientPathway[]
   patientNotes               PatientNote[]
   patientSelfRegisterInvites PatientSelfRegisterInvite[]
-  patientPortalLinkTokens    PatientPortalLinkToken[]
-  auditEvents                AuditEvent[]
+  patientPortalLinkTokens      PatientPortalLinkToken[]
+  patientPortalOtpChallenges PatientPortalOtpChallenge[]
+  auditEvents                  AuditEvent[]
 
   @@index([tenantId])
   @@index([tenantId, deletedAt])
@@ -205,8 +206,9 @@ model Client {
 }
 
 /**
- * Magic link único para o paciente acessar o portal (Fase 8).
- * Após `POST /api/v1/public/patient-portal/exchange`, emite cookie de sessão e marca `usedAt`.
+ * Magic link para o paciente acessar o portal (Fase 8).
+ * `singleUse`: se true, após exchange válido marca `usedAt` (ex.: link por e-mail).
+ * Se false, o mesmo token pode trocar por sessão até expirar (ex.: QR / cópia de URL).
  */
 model PatientPortalLinkToken {
   id        String    @id @default(cuid())
@@ -214,10 +216,30 @@ model PatientPortalLinkToken {
   client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   token     String    @unique
   expiresAt DateTime
-  usedAt    DateTime?
+  /** Uso único: preenchido após o primeiro exchange bem-sucedido quando `singleUse` é true. */
+  usedAt     DateTime?
+  singleUse Boolean   @default(true)
   createdAt DateTime  @default(now())
 
   @@index([clientId])
+}
+
+/**
+ * Código OTP (CPF + e-mail/WhatsApp) para sessão do portal, escopo tenant.
+ */
+model PatientPortalOtpChallenge {
+  id         String    @id @default(cuid())
+  clientId   String
+  client     Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tenantId   String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([tenantId, clientId])
+  @@index([createdAt])
 }
 
 /**

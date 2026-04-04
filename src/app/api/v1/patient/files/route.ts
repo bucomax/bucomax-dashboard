@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const apiT = await getApiT(request);
-  const portalCtx = await requireActivePatientPortalClient(apiT);
+  const portalCtx = await requireActivePatientPortalClient(request, apiT);
   if (!portalCtx.ok) return portalCtx.response;
 
   const url = new URL(request.url);
@@ -73,7 +73,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const apiT = await getApiT(request);
-  const portalCtx = await requireActivePatientPortalClient(apiT);
+  const portalCtx = await requireActivePatientPortalClient(request, apiT);
   if (!portalCtx.ok) return portalCtx.response;
 
   let body: unknown;

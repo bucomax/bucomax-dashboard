@@ -128,7 +128,7 @@ export function PatientSelfRegisterQrDialog({
         onClick={handleOpen}
       >
         <QrCode className="size-4 shrink-0" aria-hidden />
-        {label}
+        <span className="min-w-0 truncate text-left">{label}</span>
       </Button>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <StandardDialogContent

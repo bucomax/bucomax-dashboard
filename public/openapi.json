@@ -1390,10 +1390,18 @@
         }
       }
     },
-    "/api/v1/public/patient-portal/exchange": {
+    "/api/v1/public/patient-portal/{tenantSlug}/exchange": {
       "post": {
-        "summary": "Troca token do link mágico por cookie de sessão do portal (`patient_portal_session`)",
+        "summary": "Troca token do link mágico por cookie de sessão do portal (`patient_portal_session`). O `tenantSlug` deve ser o slug da clínica (mesmo da URL pública).",
         "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "tenantSlug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1409,18 +1417,161 @@
         "responses": {
           "200": { "description": "Sessão criada (Set-Cookie)" },
           "401": { "description": "Token inválido, expirado ou já usado" },
+          "404": { "description": "Clínica não encontrada ou inativa" },
           "503": { "description": "Segredo de assinatura ausente" }
+        }
+      }
+    },
+    "/api/v1/public/patient-portal/{tenantSlug}/otp/request": {
+      "post": {
+        "summary": "Solicita código OTP por CPF (e-mail e/ou webhook WhatsApp se configurados). Resposta uniforme por LGPD.",
+        "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "tenantSlug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["documentId"],
+                "properties": { "documentId": { "type": "string", "description": "CPF (com ou sem máscara)" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "`{ ok: true }` — sempre que a requisição for válida" },
+          "422": { "description": "Validação" },
+          "429": { "description": "Limite de solicitações" }
+        }
+      }
+    },
+    "/api/v1/public/patient-portal/{tenantSlug}/otp/verify": {
+      "post": {
+        "summary": "Confirma OTP e cria sessão do portal (Set-Cookie)",
+        "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "tenantSlug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["documentId", "code"],
+                "properties": {
+                  "documentId": { "type": "string" },
+                  "code": { "type": "string", "pattern": "^\\d{6}$" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Sessão criada (Set-Cookie)" },
+          "401": { "description": "Código inválido ou expirado" },
+          "503": { "description": "Segredo ausente" }
         }
       }
     },
     "/api/v1/patient/overview": {
       "get": {
-        "summary": "Resumo para o paciente (cookie do portal; separado do NextAuth staff)",
+        "summary": "Resumo para o paciente (cookie do portal + header `x-patient-portal-tenant-slug` = slug da clínica da URL)",
         "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "x-patient-portal-tenant-slug",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
         "responses": {
           "200": { "description": "Nome, clínica, jornada ativa / etapa atual" },
-          "401": { "description": "Sem sessão do portal" },
+          "401": { "description": "Sem sessão do portal ou header do slug" },
+          "403": { "description": "Slug não corresponde à sessão" },
           "404": { "description": "Paciente inexistente ou removido" }
+        }
+      }
+    },
+    "/api/v1/patient/detail": {
+      "get": {
+        "summary": "Ficha alinhada à interna (somente leitura operacional; `tenant` + dados pessoais; transições paginadas)",
+        "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "x-patient-portal-tenant-slug",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "default": 1 }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
+          }
+        ],
+        "responses": {
+          "200": { "description": "`data` espelha GET /api/v1/clients/:id com campos internos omitidos + `tenant.name`" },
+          "401": { "description": "Sem sessão do portal ou header do slug" },
+          "403": { "description": "Slug não corresponde à sessão" },
+          "404": { "description": "Paciente inexistente ou removido" },
+          "422": { "description": "Query inválida" }
+        }
+      }
+    },
+    "/api/v1/patient/profile": {
+      "patch": {
+        "summary": "Atualiza só dados pessoais do paciente (nome, telefone, e-mail, CPF)",
+        "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "x-patient-portal-tenant-slug",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string", "minLength": 1, "maxLength": 200 },
+                  "phone": { "type": "string", "minLength": 1, "maxLength": 40 },
+                  "email": { "type": "string", "format": "email" },
+                  "documentId": { "type": "string", "description": "CPF (com ou sem máscara; 11 dígitos)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Paciente atualizado" },
+          "401": { "description": "Sem sessão do portal ou header do slug" },
+          "403": { "description": "Slug não corresponde à sessão" },
+          "404": { "description": "Paciente inexistente ou removido" },
+          "422": { "description": "Validação (ex.: CPF)" }
         }
       }
     },
@@ -1429,6 +1580,12 @@
         "summary": "Linha do tempo somente leitura (dados sanitizados para o paciente)",
         "tags": ["Patient portal"],
         "parameters": [
+          {
+            "name": "x-patient-portal-tenant-slug",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
           {
             "name": "page",
             "in": "query",
@@ -1442,7 +1599,8 @@
         ],
         "responses": {
           "200": { "description": "Eventos da jornada (paginado)" },
-          "401": { "description": "Sem sessão do portal" },
+          "401": { "description": "Sem sessão do portal ou header do slug" },
+          "403": { "description": "Slug não corresponde à sessão" },
           "404": { "description": "Paciente inexistente ou removido" }
         }
       }
@@ -1452,6 +1610,12 @@
         "summary": "Lista documentos (clínica + envios do paciente; rejeitados ocultos)",
         "tags": ["Patient portal"],
         "parameters": [
+          {
+            "name": "x-patient-portal-tenant-slug",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          },
           {
             "name": "page",
             "in": "query",
@@ -1465,13 +1629,22 @@
         ],
         "responses": {
           "200": { "description": "`data` + `pagination`" },
-          "401": { "description": "Sem sessão do portal" },
+          "401": { "description": "Sem sessão do portal ou header do slug" },
+          "403": { "description": "Slug não corresponde à sessão" },
           "404": { "description": "Paciente inexistente ou removido" }
         }
       },
       "post": {
         "summary": "Registra upload do paciente (status PENDING até validação na ficha)",
         "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "x-patient-portal-tenant-slug",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1503,6 +1676,14 @@
       "post": {
         "summary": "URL pré-assinada PUT para upload no storage (portal do paciente)",
         "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "x-patient-portal-tenant-slug",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -1530,6 +1711,14 @@
       "post": {
         "summary": "URL temporária GET só para arquivos liberados ao paciente (NOT_APPLICABLE ou APPROVED)",
         "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "x-patient-portal-tenant-slug",
+            "in": "header",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {

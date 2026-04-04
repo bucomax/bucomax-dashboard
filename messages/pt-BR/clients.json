@@ -40,8 +40,21 @@
   "list": {
     "title": "Pacientes",
     "description": "Lista de pacientes do tenant ativo.",
+    "contextHint": "Esta lista mostra todos os pacientes do tenant em que você está logado. Use filtros e busca para localizar registros. Cadastro público e cadastro pela equipe são fluxos diferentes: o primeiro é o formulário na web; o segundo é o assistente completo no painel.",
+    "contextInfoAria": "Mais informações sobre esta lista (passe o mouse ou foque)",
     "newPatient": "Novo paciente",
+    "newPatientSection": {
+      "title": "Cadastro pela equipe",
+      "hint": "Abre o assistente no painel: dados do paciente, escolha da jornada publicada e confirmação. O paciente passa a aparecer nesta lista com a jornada iniciada.",
+      "infoAria": "Explicação do cadastro pela equipe (passe o mouse ou foque)"
+    },
     "selfRegisterQr": "QR / link de cadastro",
+    "invitePublic": {
+      "title": "Cadastro público",
+      "hint": "Para quem ainda não está na lista: preenche o formulário na web. Não é o portal de jornada (acompanhamento de etapas).",
+      "button": "QR / link de cadastro",
+      "infoAria": "Explicação do cadastro público (passe o mouse ou foque)"
+    },
     "search": "Buscar",
     "searchPlaceholder": "Nome, telefone, CPF ou e-mail",
     "noResults": "Nenhum paciente encontrado com essa busca.",
@@ -138,20 +151,51 @@
   "detail": {
     "pageTitle": "Paciente",
     "pageDescription": "Jornada, timeline e histórico de etapas.",
+    "identitySection": {
+      "title": "Identificação",
+      "hint": "Nome e contatos deste cadastro. Para alterar dados clínicos ou responsáveis, use os blocos abaixo na ficha.",
+      "infoAria": "Explicação da identificação (passe o mouse ou foque)"
+    },
     "cpf": "CPF",
     "loadError": "Erro ao carregar o paciente.",
     "retry": "Tentar novamente",
     "backToList": "Voltar à lista",
-    "headerActionsLabel": "Links e atalhos",
-    "selfRegisterLinkThisPatient": "Completar cadastro (link / QR)",
+    "portalSection": {
+      "title": "Portal",
+      "description": "Paciente já cadastrado: vê etapas, envia documentos e acompanha a linha do tempo.",
+      "infoAria": "Explicação do portal (passe o mouse ou foque)"
+    },
+    "selfRegisterSection": {
+      "title": "Formulário público",
+      "description": "Primeiro cadastro ou atualização de dados pelo link/QR do formulário.",
+      "infoAria": "Explicação do formulário público (passe o mouse ou foque)"
+    },
+    "selfRegisterLinkThisPatient": "QR / link do formulário",
     "portalLink": {
-      "sendEmail": "Enviar link do portal por e-mail",
-      "copyOnly": "Acessar portal do paciente",
+      "sendEmail": "Enviar link do portal (e-mail)",
+      "copyOnly": "Copiar link do portal",
+      "copyLink": "Copiar link do portal",
       "emailRequired": "Cadastre um e-mail no paciente para enviar o link automaticamente.",
       "emailSent": "E-mail com o link do portal enviado ao paciente.",
       "linkCopied": "Link copiado. Envie ao paciente por um canal seguro.",
+      "copyAndOpened": "Link copiado e aberto em uma nova aba.",
+      "openedTabClipboardManual": "Link aberto em nova aba. Use a caixa abaixo para copiar se o navegador não copiou automaticamente.",
       "copyManually": "Copie o link abaixo e envie ao paciente:",
       "error": "Não foi possível gerar o link do portal."
+    },
+    "portalAccessDialog": {
+      "trigger": "QR / link do portal",
+      "title": "Acesso ao portal do paciente",
+      "description": "O paciente abre o link ou escaneia o QR para ver jornada e documentos.",
+      "loadError": "Não foi possível gerar o link. Tente de novo.",
+      "expiryHint": "Link válido até {date}",
+      "linkLabel": "Link do portal",
+      "copyLink": "Copiar",
+      "copied": "Link copiado.",
+      "shareTitle": "Portal — acompanhamento",
+      "shareMessagePlain": "Acesse seu acompanhamento: {url}",
+      "shareNative": "Compartilhar…",
+      "shareWhatsApp": "WhatsApp"
     },
     "whatsapp": "WhatsApp",
     "caseNotes": {
@@ -218,8 +262,29 @@
     },
     "noPathway": {
       "title": "Sem jornada ativa",
-      "description": "Este paciente ainda não foi matriculado em uma jornada publicada.",
-      "descriptionWithHistory": "Não há jornada em andamento. Os tratamentos já concluídos estão na seção abaixo."
+      "sectionDescription": "Associe a este paciente uma jornada que a clínica já tenha publicado. Equivale ao passo «Jornada» do assistente «Novo paciente», reaproveitando os dados desta ficha — não é outro cadastro.",
+      "empty": "Nenhuma jornada ativa para este paciente.",
+      "emptyWithHistory": "No momento não há jornada em andamento. Tratamentos já encerrados estão na seção abaixo.",
+      "portalCardDescription": "Quando a clínica iniciar seu acompanhamento em uma jornada, você verá as etapas e orientações aqui.",
+      "portalCardDescriptionWithHistory": "No momento não há jornada em andamento. Se já existir histórico concluído, ele aparece na seção abaixo."
+    },
+    "startPathway": {
+      "submit": "Iniciar jornada",
+      "submitting": "Iniciando…",
+      "success": "Jornada iniciada para este paciente.",
+      "error": "Não foi possível iniciar a jornada.",
+      "pickPathway": "Selecione uma jornada publicada."
+    },
+    "switchPathway": {
+      "hint": "Para matricular em outra jornada, conclua primeiro a atual. Depois use «Iniciar jornada» nesta ficha.",
+      "action": "Concluir jornada atual…",
+      "dialogTitle": "Concluir jornada atual?",
+      "dialogDescription": "A jornada que está em andamento para este paciente será encerrada. Em seguida você poderá escolher outra jornada publicada aqui nesta ficha.",
+      "cancel": "Cancelar",
+      "confirm": "Concluir jornada",
+      "completing": "Concluindo…",
+      "completeSuccess": "Jornada concluída. Escolha a próxima jornada nesta ficha.",
+      "completeError": "Não foi possível concluir a jornada."
     },
     "completedTreatments": {
       "title": "Tratamentos concluídos",
@@ -272,8 +337,8 @@
       "requiredBadge": "obrigatório p/ etapa",
       "description": "Acompanhe os itens operacionais da etapa {stage}.",
       "descriptionEmpty": "A etapa atual deste paciente ainda não possui checklist configurado.",
-      "progressLabel": "Progresso",
-      "progress": "{completed}/{total} itens concluídos",
+      "progressLabel": "Progresso do checklist",
+      "progress": "{completed} de {total} itens concluídos",
       "empty": "Nenhum item de checklist nesta etapa.",
       "completedAt": "Concluído em {date}",
       "saveError": "Não foi possível atualizar o checklist."
@@ -299,7 +364,13 @@
     },
     "profile": {
       "title": "Contato e gestão",
-      "description": "E-mail, CPF, responsável interno e fornecedor OPME (quando aplicável).",
+      "description": "E-mail, telefone, CPF, responsável interno e fornecedor OPME (quando aplicável).",
+      "patientTitle": "Seus dados",
+      "patientDescription": "Nome completo, telefone, e-mail e CPF. A clínica continua responsável pela jornada e documentos.",
+      "name": "Nome completo",
+      "nameRequired": "Informe o nome completo.",
+      "phone": "Telefone",
+      "phoneHint": "Com DDD (10 ou 11 dígitos). O número é exibido com máscara.",
       "email": "E-mail",
       "cpf": "CPF",
       "cpfHint": "Obrigatório. 11 dígitos.",

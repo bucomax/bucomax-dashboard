@@ -1,6 +1,5 @@
 import { prisma } from "@/infrastructure/database/prisma";
 import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
-import { filterUserIdsWhoCanViewClient } from "@/lib/auth/client-visibility";
 import { getPatientSelfRegisteredStaffHtml } from "@/infrastructure/email/email-templates";
 import { isEmailConfigured, sendEmail } from "@/infrastructure/email/resend.client";
 import { getPublicAppUrl } from "@/lib/config/urls";
@@ -14,9 +13,9 @@ type NotifyParams = {
 
 /**
  * Notifica membros do tenant após cadastro público do paciente:
- * - **Painel:** notificação in-app tipo `new_patient` para todos os membros (sempre, mesmo se
- *   «novos pacientes» estiver desligado nas preferências — é evento explícito de auto-cadastro).
- * - **E-mail:** template transacional Bucomax (Resend) quando `RESEND_API_KEY` está configurada.
+ * - **Painel:** notificação in-app tipo `new_patient` para todos os membros (sem filtrar por
+ *   «só atribuídos»; preferência «novos pacientes» é ignorada — evento explícito de auto-cadastro).
+ * - **E-mail:** mesmo alcance (todos com e-mail no tenant), quando `RESEND_API_KEY` está configurada.
  */
 export async function notifyStaffPatientSelfRegistered(params: NotifyParams): Promise<void> {
   const { tenantId, clientId, patientName, clinicName } = params;
@@ -30,6 +29,7 @@ export async function notifyStaffPatientSelfRegistered(params: NotifyParams): Pr
     body: `Cadastro concluído pelo link. Escolha a jornada de tratamento no painel.`,
     correlationId: clientId,
     ignoreTenantNotificationPreference: true,
+    skipClientVisibilityFilter: true,
     metadata: {
       clientId,
       source: "patient_self_register",
@@ -48,11 +48,7 @@ export async function notifyStaffPatientSelfRegistered(params: NotifyParams): Pr
     },
   });
 
-  const memberUserIds = memberships.map((m) => m.userId);
-  const allowedIds = new Set(await filterUserIdsWhoCanViewClient(tenantId, clientId, memberUserIds));
-
   const recipients = memberships
-    .filter((m) => allowedIds.has(m.userId))
     .map((m) => m.user)
     .filter((u) => u.deletedAt == null && u.email.trim().length > 0);
 

@@ -5,6 +5,7 @@ import { useKanbanDragOverlayMode } from "@/features/dashboard/app/components/pi
 import { useRouter } from "@/i18n/navigation";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { formatPhoneBrDisplay } from "@/lib/validators/phone";
 import { cn } from "@/lib/utils";
 import { slaHealthKanbanCardClassName } from "@/lib/utils/sla-status-ui";
 import { Button } from "@/shared/components/ui/button";
@@ -98,7 +99,9 @@ export function PipelineKanbanPatientCard({
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="font-medium">{pp.client.name}</p>
-            <p className="text-muted-foreground mt-0.5 text-xs">{pp.client.phone}</p>
+            <p className="text-muted-foreground mt-0.5 text-xs tabular-nums">
+              {formatPhoneBrDisplay(pp.client.phone)}
+            </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {isTransitioning ? <Loader2 className="text-muted-foreground size-4 animate-spin" /> : null}

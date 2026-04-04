@@ -40,8 +40,21 @@
   "list": {
     "title": "Patients",
     "description": "Patients for the active tenant.",
+    "contextHint": "This list shows every patient in your current tenant. Use search and filters to find records. Public signup and staff registration are different: the first is the web form; the second is the full in-app wizard.",
+    "contextInfoAria": "More about this list (hover or focus)",
     "newPatient": "New patient",
+    "newPatientSection": {
+      "title": "Staff registration",
+      "hint": "Opens the in-app wizard: patient details, choose a published pathway, and confirm. The patient appears in this list with the journey started.",
+      "infoAria": "About staff registration (hover or focus)"
+    },
     "selfRegisterQr": "QR / signup link",
+    "invitePublic": {
+      "title": "Public signup",
+      "hint": "For people not yet on your list: they fill out the web form. This is not the care journey portal (stage tracking for enrolled patients).",
+      "button": "QR / signup link",
+      "infoAria": "About public signup (hover or focus)"
+    },
     "search": "Search",
     "searchPlaceholder": "Name, phone, CPF, or email",
     "noResults": "No patients match this search.",
@@ -138,20 +151,51 @@
   "detail": {
     "pageTitle": "Patient",
     "pageDescription": "Pathway, timeline, and stage history.",
+    "identitySection": {
+      "title": "Identity",
+      "hint": "Name and contact details on file. Use the cards below to edit clinical notes, assignment, and other fields.",
+      "infoAria": "Identity hint (hover or focus)"
+    },
     "cpf": "CPF",
     "loadError": "Failed to load patient.",
     "retry": "Try again",
     "backToList": "Back to list",
-    "headerActionsLabel": "Links & shortcuts",
-    "selfRegisterLinkThisPatient": "Complete registration (link / QR)",
+    "portalSection": {
+      "title": "Portal",
+      "description": "For enrolled patients: view stages, upload files, and follow the timeline.",
+      "infoAria": "Portal explanation (hover or focus)"
+    },
+    "selfRegisterSection": {
+      "title": "Public intake form",
+      "description": "First-time registration or profile updates via form link/QR.",
+      "infoAria": "Public form explanation (hover or focus)"
+    },
+    "selfRegisterLinkThisPatient": "QR / form link",
     "portalLink": {
-      "sendEmail": "Email portal link to patient",
-      "copyOnly": "Open patient portal (link)",
+      "sendEmail": "Send portal link (email)",
+      "copyOnly": "Copy portal link",
+      "copyLink": "Copy portal link",
       "emailRequired": "Add an email on the patient record to send the link automatically.",
       "emailSent": "Portal link emailed to the patient.",
       "linkCopied": "Link copied. Send it to the patient through a secure channel.",
+      "copyAndOpened": "Link copied and opened in a new tab.",
+      "openedTabClipboardManual": "Link opened in a new tab. Use the dialog below to copy if the browser blocked clipboard access.",
       "copyManually": "Copy the link below and send it to the patient:",
       "error": "Could not generate the portal link."
+    },
+    "portalAccessDialog": {
+      "trigger": "QR / portal link",
+      "title": "Patient portal access",
+      "description": "The patient opens the link or scans the QR code to view journey and documents.",
+      "loadError": "Could not create the link. Try again.",
+      "expiryHint": "Link valid until {date}",
+      "linkLabel": "Portal link",
+      "copyLink": "Copy",
+      "copied": "Link copied.",
+      "shareTitle": "Portal — your care",
+      "shareMessagePlain": "View your care journey: {url}",
+      "shareNative": "Share…",
+      "shareWhatsApp": "WhatsApp"
     },
     "whatsapp": "WhatsApp",
     "caseNotes": {
@@ -218,8 +262,29 @@
     },
     "noPathway": {
       "title": "No active pathway",
-      "description": "This patient is not enrolled in a published pathway yet.",
-      "descriptionWithHistory": "There is no pathway in progress. Completed treatments are listed in the section below."
+      "sectionDescription": "Link this patient to a pathway your clinic has already published—the same «Pathway» step as «New patient», reusing what’s already on this record (not a second registration).",
+      "empty": "No active journey for this patient.",
+      "emptyWithHistory": "There is no journey in progress right now. Completed treatments are in the section below.",
+      "portalCardDescription": "When the clinic starts your care in a published pathway, you will see the steps and guidance here.",
+      "portalCardDescriptionWithHistory": "There is no journey in progress right now. If you have completed care history, it appears in the section below."
+    },
+    "startPathway": {
+      "submit": "Start pathway",
+      "submitting": "Starting…",
+      "success": "Pathway started for this patient.",
+      "error": "Could not start the pathway.",
+      "pickPathway": "Select a published pathway."
+    },
+    "switchPathway": {
+      "hint": "To enroll in another pathway, finish the current one first. Then use «Start pathway» on this record.",
+      "action": "Complete current pathway…",
+      "dialogTitle": "Complete current pathway?",
+      "dialogDescription": "The pathway in progress for this patient will be closed. You can then choose another published pathway on this page.",
+      "cancel": "Cancel",
+      "confirm": "Complete pathway",
+      "completing": "Completing…",
+      "completeSuccess": "Pathway completed. Choose the next pathway on this page.",
+      "completeError": "Could not complete the pathway."
     },
     "completedTreatments": {
       "title": "Completed treatments",
@@ -272,8 +337,8 @@
       "requiredBadge": "required for stage move",
       "description": "Track the operational items for stage {stage}.",
       "descriptionEmpty": "The current stage for this patient does not have a configured checklist yet.",
-      "progressLabel": "Progress",
-      "progress": "{completed}/{total} items completed",
+      "progressLabel": "Checklist progress",
+      "progress": "{completed} of {total} items completed",
       "empty": "No checklist items for this stage.",
       "completedAt": "Completed at {date}",
       "saveError": "Could not update the checklist."
@@ -299,7 +364,13 @@
     },
     "profile": {
       "title": "Contact & ownership",
-      "description": "Email, CPF, internal owner, and OPME supplier when applicable.",
+      "description": "Email, phone, CPF, internal owner, and OPME supplier when applicable.",
+      "patientTitle": "Your details",
+      "patientDescription": "Full name, phone, email, and CPF. Your clinic still manages your care journey and documents.",
+      "name": "Full name",
+      "nameRequired": "Please enter your full name.",
+      "phone": "Phone",
+      "phoneHint": "Include area code (10–11 digits). Shown with formatting.",
       "email": "Email",
       "cpf": "CPF",
       "cpfHint": "Required. 11 digits.",

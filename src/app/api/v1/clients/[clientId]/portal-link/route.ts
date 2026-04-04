@@ -65,27 +65,34 @@ export async function POST(request: Request, ctx: RouteCtx) {
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + PATIENT_PORTAL_LINK_TTL_MS);
 
+  const singleUse = sendEmailFlag;
+
   await prisma.patientPortalLinkToken.create({
     data: {
       clientId: client.id,
       token,
       expiresAt,
+      singleUse,
     },
   });
 
-  const enterUrl = `${getPublicAppUrl()}/patient/enter?token=${encodeURIComponent(token)}`;
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: { name: true, slug: true },
+  });
+  const clinicName = tenant?.name ?? "Clínica";
+  const tenantSlug = tenant?.slug ?? "";
+  if (!tenantSlug) {
+    return jsonError("SERVICE_UNAVAILABLE", apiT("errors.tenantNotFound"), 503);
+  }
+
+  const enterUrl = `${getPublicAppUrl()}/${tenantSlug}/patient/enter?token=${encodeURIComponent(token)}`;
 
   let emailSent = false;
   if (sendEmailFlag && email) {
     if (!isEmailConfigured()) {
       return jsonError("SERVICE_UNAVAILABLE", apiT("errors.invitesNotConfigured"), 503);
     }
-
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { name: true },
-    });
-    const clinicName = tenant?.name ?? "Clínica";
 
     const { error } = await sendEmail({
       to: email,
@@ -94,6 +101,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
         patientName: client.name,
         clinicName,
         enterUrl,
+        singleUse,
       }),
       text: `Olá, ${client.name}. Acesse seu acompanhamento: ${enterUrl}`,
     });

@@ -93,7 +93,7 @@ export const notificationEmitter: INotificationEmitter = {
     if (userIds.length === 0) return;
 
     const scopedClientId = getClientIdFromPlainMetadata(input.metadata);
-    if (scopedClientId) {
+    if (scopedClientId && !input.skipClientVisibilityFilter) {
       userIds = await filterUserIdsWhoCanViewClient(input.tenantId, scopedClientId, userIds);
     }
     if (userIds.length === 0) return;

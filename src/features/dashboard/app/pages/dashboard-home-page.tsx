@@ -1,3 +1,4 @@
+import { DashboardWeeklyActivityChart } from "@/features/dashboard/app/components/dashboard-weekly-activity-chart";
 import { DashboardPipelineSection } from "@/features/dashboard/app/components/dashboard-pipeline-section";
 import { prisma } from "@/infrastructure/database/prisma";
 import { DashboardPage } from "@/shared/components/layout/dashboard-page";
@@ -7,12 +8,19 @@ import {
   Activity,
   BarChart3,
   Clock,
-  Lightbulb,
   PieChart,
   TrendingUp,
   Users,
 } from "lucide-react";
-import { getTranslations } from "next-intl/server";
+import {
+  calendarDayKeyInTimeZone,
+  DASHBOARD_CHART_TIMEZONE,
+  formatCalendarDayLongLabel,
+  lastNCalendarDaysInTimeZone,
+  startOfSaoPauloCalendarDay,
+} from "@/lib/utils/dashboard-chart-calendar";
+import { InfoTooltip } from "@/shared/components/ui/info-tooltip";
+import { getLocale, getTranslations } from "next-intl/server";
 import { Suspense } from "react";
 
 type DashboardHomePageProps = {
@@ -21,13 +29,21 @@ type DashboardHomePageProps = {
 
 export async function DashboardHomePage({ user }: DashboardHomePageProps) {
   const t = await getTranslations("dashboard.home");
+  const locale = await getLocale();
+  const weekdayLocale = locale === "en" ? "en-US" : "pt-BR";
   const tenantId = user.tenantId ?? null;
 
   const now = new Date();
-  const startToday = new Date(now);
-  startToday.setHours(0, 0, 0, 0);
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const todayKeySp = calendarDayKeyInTimeZone(now, DASHBOARD_CHART_TIMEZONE);
+  const startTodaySp = startOfSaoPauloCalendarDay(todayKeySp);
   const staleThreshold = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+  const transitionsQueryFrom = new Date(now.getTime() - 10 * 86_400_000);
+
+  function weekdayShortFromDayKey(dayKeyYmd: string): string {
+    const [y, m, d] = dayKeyYmd.split("-").map(Number);
+    const noonUtc = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+    return new Intl.DateTimeFormat(weekdayLocale, { weekday: "short" }).format(noonUtc).replace(/\./g, "");
+  }
 
   const pathwayOptions = tenantId
     ? await prisma.carePathway.findMany({
@@ -54,81 +70,131 @@ export async function DashboardHomePage({ user }: DashboardHomePageProps) {
 
   const metrics = tenantId
     ? await (async () => {
-        const [inProgress, completedToday, awaitingAction, transitionsLast7Days] = await Promise.all([
+        const [
+          pathwaysActive,
+          transitionsToday,
+          awaitingAction,
+          pathwaysCompletedToday,
+          transitionsLast7Days,
+          pathwayCompletionTimestamps,
+          pathwayStartTimestamps,
+        ] = await Promise.all([
           prisma.patientPathway.count({
-            where: { tenantId },
+            where: { tenantId, completedAt: null },
           }),
           prisma.stageTransition.count({
             where: {
-              createdAt: { gte: startToday },
+              createdAt: { gte: startTodaySp },
               patientPathway: { tenantId },
             },
           }),
           prisma.patientPathway.count({
             where: {
               tenantId,
+              completedAt: null,
               updatedAt: { lte: staleThreshold },
+            },
+          }),
+          prisma.patientPathway.count({
+            where: {
+              tenantId,
+              completedAt: { gte: startTodaySp },
             },
           }),
           prisma.stageTransition.findMany({
             where: {
-              createdAt: { gte: sevenDaysAgo },
+              createdAt: { gte: transitionsQueryFrom },
               patientPathway: { tenantId },
             },
             select: { patientPathwayId: true, createdAt: true },
           }),
+          prisma.patientPathway.findMany({
+            where: {
+              tenantId,
+              completedAt: { gte: transitionsQueryFrom },
+            },
+            select: { completedAt: true },
+          }),
+          prisma.patientPathway.findMany({
+            where: {
+              tenantId,
+              createdAt: { gte: transitionsQueryFrom },
+            },
+            select: { createdAt: true },
+          }),
         ]);
 
-        const touchedLast7Days = new Set(transitionsLast7Days.map((row) => row.patientPathwayId)).size;
+        const calendarKeys7 = new Set(lastNCalendarDaysInTimeZone(now, 7, DASHBOARD_CHART_TIMEZONE));
+        const touchedLast7Days = new Set(
+          transitionsLast7Days
+            .filter((row) =>
+              calendarKeys7.has(calendarDayKeyInTimeZone(row.createdAt, DASHBOARD_CHART_TIMEZONE)),
+            )
+            .map((row) => row.patientPathwayId),
+        ).size;
         const conversionRate =
-          inProgress > 0 ? Math.round((touchedLast7Days / inProgress) * 100) : 0;
+          pathwaysActive > 0 ? Math.round((touchedLast7Days / pathwaysActive) * 100) : 0;
 
         return {
-          inProgress,
-          completedToday,
+          pathwaysActive,
+          transitionsToday,
           awaitingAction,
+          pathwaysCompletedToday,
           conversionRate,
           transitionsLast7Days,
+          pathwayCompletionTimestamps,
+          pathwayStartTimestamps,
         };
       })()
     : {
-        inProgress: 0,
-        completedToday: 0,
+        pathwaysActive: 0,
+        transitionsToday: 0,
         awaitingAction: 0,
+        pathwaysCompletedToday: 0,
         conversionRate: 0,
         transitionsLast7Days: [] as { patientPathwayId: string; createdAt: Date }[],
+        pathwayCompletionTimestamps: [] as { completedAt: Date }[],
+        pathwayStartTimestamps: [] as { createdAt: Date }[],
       };
 
-  const dayFormatter = new Intl.DateTimeFormat("pt-BR", { weekday: "short" });
-  const dailyTransitionChart = Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(startToday);
-    day.setDate(startToday.getDate() - (6 - index));
-    const nextDay = new Date(day);
-    nextDay.setDate(day.getDate() + 1);
-    const count = metrics.transitionsLast7Days.filter(
-      (row) => row.createdAt >= day && row.createdAt < nextDay,
-    ).length;
-    return {
-      label: dayFormatter.format(day).replace(".", ""),
-      count,
-    };
-  });
-  const maxDailyTransitions = Math.max(...dailyTransitionChart.map((item) => item.count), 1);
+  const dayKeys7 = lastNCalendarDaysInTimeZone(now, 7, DASHBOARD_CHART_TIMEZONE);
+  const transitionCountsByDay = new Map<string, number>();
+  for (const row of metrics.transitionsLast7Days) {
+    const k = calendarDayKeyInTimeZone(row.createdAt, DASHBOARD_CHART_TIMEZONE);
+    transitionCountsByDay.set(k, (transitionCountsByDay.get(k) ?? 0) + 1);
+  }
+  const completionsByDay = new Map<string, number>();
+  for (const row of metrics.pathwayCompletionTimestamps) {
+    const at = row.completedAt;
+    if (!at) continue;
+    const k = calendarDayKeyInTimeZone(at, DASHBOARD_CHART_TIMEZONE);
+    completionsByDay.set(k, (completionsByDay.get(k) ?? 0) + 1);
+  }
+  const startsByDay = new Map<string, number>();
+  for (const row of metrics.pathwayStartTimestamps) {
+    const k = calendarDayKeyInTimeZone(row.createdAt, DASHBOARD_CHART_TIMEZONE);
+    startsByDay.set(k, (startsByDay.get(k) ?? 0) + 1);
+  }
+  const weeklyActivityDays = dayKeys7.map((dayKey) => ({
+    dayKey,
+    label: weekdayShortFromDayKey(dayKey),
+    dateLong: formatCalendarDayLongLabel(dayKey, locale, DASHBOARD_CHART_TIMEZONE),
+    transitions: transitionCountsByDay.get(dayKey) ?? 0,
+    newPathways: startsByDay.get(dayKey) ?? 0,
+    completions: completionsByDay.get(dayKey) ?? 0,
+  }));
+  const weeklyActivityTotal = weeklyActivityDays.reduce(
+    (s, d) => s + d.transitions + d.newPathways + d.completions,
+    0,
+  );
 
+  const pathwaysActiveMoving = Math.max(metrics.pathwaysActive - metrics.awaitingAction, 0);
   const distributionChart = [
     { label: t("charts.distribution.awaiting"), value: metrics.awaitingAction },
-    {
-      label: t("charts.distribution.active"),
-      value: Math.max(metrics.inProgress - metrics.awaitingAction, 0),
-    },
-    { label: t("charts.distribution.completedToday"), value: metrics.completedToday },
+    { label: t("charts.distribution.active"), value: pathwaysActiveMoving },
+    { label: t("charts.distribution.pathwaysClosedToday"), value: metrics.pathwaysCompletedToday },
   ];
   const distributionTotal = distributionChart.reduce((sum, item) => sum + item.value, 0);
-  const insights = [
-    t("insights.first", { count: metrics.awaitingAction }),
-    t("insights.second", { count: metrics.completedToday }),
-    t("insights.third", { percent: metrics.conversionRate }),
-  ];
 
   return (
     <DashboardPage>
@@ -138,14 +204,14 @@ export async function DashboardHomePage({ user }: DashboardHomePageProps) {
             <Users className="size-4 text-sky-500" aria-hidden />
             <p className="text-muted-foreground text-xs">{t("cards.inProgress")}</p>
           </div>
-          <p className="mt-2 text-2xl font-semibold">{metrics.inProgress}</p>
+          <p className="mt-2 text-2xl font-semibold">{metrics.pathwaysActive}</p>
         </div>
         <div className="rounded-xl border border-l-4 border-l-emerald-500 bg-emerald-50/60 p-5 text-card-foreground shadow-sm dark:bg-emerald-950/25">
           <div className="flex items-center gap-2">
             <Activity className="size-4 text-emerald-500" aria-hidden />
-            <p className="text-muted-foreground text-xs">{t("cards.completedToday")}</p>
+            <p className="text-muted-foreground text-xs">{t("cards.transitionsToday")}</p>
           </div>
-          <p className="mt-2 text-2xl font-semibold">{metrics.completedToday}</p>
+          <p className="mt-2 text-2xl font-semibold">{metrics.transitionsToday}</p>
         </div>
         <div className="rounded-xl border border-l-4 border-l-amber-500 bg-amber-50/70 p-5 text-card-foreground shadow-sm dark:bg-amber-950/30">
           <div className="flex items-center gap-2">
@@ -163,40 +229,31 @@ export async function DashboardHomePage({ user }: DashboardHomePageProps) {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="bg-card text-card-foreground rounded-xl border p-6 shadow-sm">
-          <p className="text-foreground mb-3 flex items-center gap-2 text-[15px] font-bold">
-            <Lightbulb className="size-4 text-amber-500" aria-hidden />
-            {t("insights.title")}
-          </p>
-          <ul className="text-muted-foreground list-inside list-disc space-y-2 text-sm">
-            {insights.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="bg-card text-card-foreground rounded-xl border p-6 shadow-sm">
-          <p className="text-foreground mb-4 flex items-center gap-2 text-[15px] font-bold">
-            <BarChart3 className="size-4 text-primary" aria-hidden />
-            {t("charts.transitions7d")}
-          </p>
-          <div className="flex h-36 items-end gap-2">
-            {dailyTransitionChart.map((item) => (
-              <div key={item.label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                <div
-                  className="bg-primary/80 w-full rounded-sm"
-                  style={{ height: `${Math.max((item.count / maxDailyTransitions) * 100, 6)}%` }}
-                />
-                <span className="text-muted-foreground text-[11px]">{item.label}</span>
-              </div>
-            ))}
+      <div className="grid gap-4 lg:grid-cols-2 lg:items-stretch">
+        <div className="bg-card text-card-foreground h-full min-h-0 rounded-xl border p-6 shadow-sm">
+          <div className="mb-4 flex items-start justify-between gap-2">
+            <p className="text-foreground flex min-w-0 flex-1 items-center gap-2 text-[15px] font-bold">
+              <BarChart3 className="text-primary size-4 shrink-0" aria-hidden />
+              {t("charts.weeklyActivity.title")}
+            </p>
+            <InfoTooltip ariaLabel={t("charts.weeklyActivity.infoAria")}>{t("charts.weeklyActivity.caption")}</InfoTooltip>
           </div>
+          {weeklyActivityTotal === 0 ? (
+            <p className="text-muted-foreground flex h-40 items-center justify-center rounded-lg border border-dashed text-center text-sm">
+              {t("charts.weeklyActivity.empty")}
+            </p>
+          ) : (
+            <DashboardWeeklyActivityChart items={weeklyActivityDays} />
+          )}
         </div>
-        <div className="bg-card text-card-foreground rounded-xl border p-6 shadow-sm">
-          <p className="text-foreground mb-4 flex items-center gap-2 text-[15px] font-bold">
-            <PieChart className="size-4 text-primary" aria-hidden />
-            {t("charts.distribution.title")}
-          </p>
+        <div className="bg-card text-card-foreground h-full min-h-0 rounded-xl border p-6 shadow-sm">
+          <div className="mb-4 flex items-start justify-between gap-2">
+            <p className="text-foreground flex min-w-0 flex-1 items-center gap-2 text-[15px] font-bold">
+              <PieChart className="text-primary size-4 shrink-0" aria-hidden />
+              {t("charts.distribution.title")}
+            </p>
+            <InfoTooltip ariaLabel={t("charts.distribution.infoAria")}>{t("charts.distribution.caption")}</InfoTooltip>
+          </div>
           <div className="space-y-3">
             {distributionChart.map((item) => {
               const pct = distributionTotal > 0 ? Math.round((item.value / distributionTotal) * 100) : 0;

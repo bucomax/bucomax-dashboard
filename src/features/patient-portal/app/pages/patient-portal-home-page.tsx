@@ -1,9 +1,20 @@
 "use client";
 
+import { ClientCompletedTreatmentsSection } from "@/features/clients/app/components/client-completed-treatments-section";
+import { ClientDetailCardTitle } from "@/features/clients/app/components/client-detail-card-title";
+import {
+  ClientDetailAssigneeSection,
+  ClientDetailChecklistCard,
+  ClientDetailJourneyCard,
+  ClientDetailNextActionsCard,
+} from "@/features/clients/app/components/client-detail-journey-panels";
+import { ClientDetailProfileCard } from "@/features/clients/app/components/client-detail-profile-card";
+import { usePatientPortalClientDetail } from "@/features/patient-portal/app/hooks/use-patient-portal-client-detail";
+import { usePatientPortalTenantSlug } from "@/features/patient-portal/app/context/patient-portal-tenant-context";
+import { PatientPortalAccessGate } from "@/features/patient-portal/app/components/patient-portal-access-gate";
 import { PatientPortalFilesSection } from "@/features/patient-portal/app/components/patient-portal-files-section";
 import { PatientPortalTimelineSection } from "@/features/patient-portal/app/components/patient-portal-timeline-section";
 import {
-  fetchPatientPortalOverview,
   fetchPatientPortalTimeline,
   logoutPatientPortal,
   PatientPortalUnauthorizedError,
@@ -11,84 +22,54 @@ import {
 import { Link } from "@/i18n/navigation";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Info } from "lucide-react";
+import { Card, CardDescription, CardHeader } from "@/shared/components/ui/card";
+import { Info, MapPinned } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
-import type {
-  PatientPortalOverviewResponse,
-  PatientPortalTimelineResponseData,
-} from "@/types/api/patient-portal-v1";
+import type { PatientPortalTimelineResponseData } from "@/types/api/patient-portal-v1";
 
 export function PatientPortalHomePage() {
+  const tenantSlug = usePatientPortalTenantSlug();
   const t = useTranslations("patientPortal");
+  const td = useTranslations("clients.detail");
   const locale = useLocale();
-  const [data, setData] = useState<PatientPortalOverviewResponse | null>(null);
+  const { data, error, loading, needsLink, reload } = usePatientPortalClientDetail(tenantSlug);
   const [timeline, setTimeline] = useState<PatientPortalTimelineResponseData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [timelineLoading, setTimelineLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [timelineError, setTimelineError] = useState<string | null>(null);
-  const [needsLink, setNeedsLink] = useState(false);
+  const [timelineRefresh, setTimelineRefresh] = useState(0);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(null);
+  const loadTimeline = useCallback(() => {
+    setTimelineLoading(true);
     setTimelineError(null);
-    setNeedsLink(false);
-    void Promise.allSettled([fetchPatientPortalOverview(), fetchPatientPortalTimeline(1, 20)])
-      .then((results) => {
-        const [overviewResult, timelineResult] = results;
-        if (overviewResult.status === "rejected") {
-          const e = overviewResult.reason;
-          if (e instanceof PatientPortalUnauthorizedError) {
-            setData(null);
-            setTimeline(null);
-            setNeedsLink(true);
-            return;
-          }
-          setError(t("home.loadError"));
+    void fetchPatientPortalTimeline(tenantSlug, 1, 20)
+      .then(setTimeline)
+      .catch((e) => {
+        if (e instanceof PatientPortalUnauthorizedError) {
+          setTimeline(null);
           return;
         }
-        setData(overviewResult.value);
-        if (timelineResult.status === "fulfilled") {
-          setTimeline(timelineResult.value);
-        } else {
-          setTimeline(null);
-          setTimelineError(t("timeline.loadError"));
-        }
+        setTimelineError(t("timeline.loadError"));
       })
-      .finally(() => setLoading(false));
-  }, [t]);
+      .finally(() => setTimelineLoading(false));
+  }, [t, tenantSlug]);
 
   useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      void load();
-    });
-    return () => cancelAnimationFrame(id);
-  }, [load]);
+    if (!data) return;
+    loadTimeline();
+  }, [data, loadTimeline, timelineRefresh]);
 
   const loadTimelinePage = useCallback(
     (page: number) => {
       setTimelineLoading(true);
       setTimelineError(null);
-      void fetchPatientPortalTimeline(page, 20)
-        .then((tl) => setTimeline(tl))
+      void fetchPatientPortalTimeline(tenantSlug, page, 20)
+        .then(setTimeline)
         .catch(() => setTimelineError(t("timeline.loadError")))
         .finally(() => setTimelineLoading(false));
     },
-    [t],
+    [t, tenantSlug],
   );
-
-  const formatDate = (iso: string) => {
-    try {
-      return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "pt-BR", {
-        dateStyle: "medium",
-      }).format(new Date(iso));
-    } catch {
-      return iso;
-    }
-  };
 
   const formatDateTime = (iso: string) => {
     try {
@@ -103,39 +84,36 @@ export function PatientPortalHomePage() {
 
   async function onLogout() {
     await logoutPatientPortal();
-    setData(null);
     setTimeline(null);
-    load();
+    reload();
   }
 
-  if (loading) {
+  if (loading && !data) {
     return <p className="text-muted-foreground text-sm">{t("home.loading")}</p>;
   }
 
   if (needsLink) {
-    return (
-      <div className="max-w-md space-y-2">
-        <p className="text-muted-foreground text-sm">{t("home.needLink")}</p>
-      </div>
-    );
+    return <PatientPortalAccessGate tenantSlug={tenantSlug} />;
   }
 
   if (error || !data) {
     return (
       <div className="max-w-md space-y-4">
         <p className="text-muted-foreground text-sm">{error ?? t("home.loadError")}</p>
-        <Button type="button" variant="outline" size="sm" onClick={() => load()}>
+        <Button type="button" variant="outline" size="sm" onClick={() => reload()}>
           {t("home.retry")}
         </Button>
       </div>
     );
   }
 
+  const { client, patientPathway: pp, completedTreatments = [] } = data;
+
   return (
     <div className="mx-auto flex w-full flex-col gap-6">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{t("home.welcome", { name: data.client.name })}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">{t("home.welcome", { name: client.name })}</h1>
           <p className="text-muted-foreground text-sm">{t("home.clinic", { clinic: data.tenant.name })}</p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => void onLogout()}>
@@ -143,42 +121,61 @@ export function PatientPortalHomePage() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t("home.journeyTitle")}</CardTitle>
-          <CardDescription>
-            {data.activeJourney ? data.activeJourney.pathwayName : t("home.journeyDescription")}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          {data.activeJourney ? (
-            <>
-              <p>
-                <span className="text-muted-foreground">{t("home.currentStage")}: </span>
-                {data.activeJourney.currentStageName}
-              </p>
-              <p className="text-muted-foreground">
-                {t("home.since", { date: formatDate(data.activeJourney.enteredStageAt) })}
-              </p>
-            </>
-          ) : (
-            <Alert variant="info">
-              <Info className="size-4" aria-hidden />
-              <AlertDescription>{t("home.noJourney")}</AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+      <div className="columns-1 gap-6 [column-fill:balance] lg:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
+        <ClientDetailProfileCard
+          clientId={client.id}
+          client={client}
+          variant="patient"
+          tenantSlug={tenantSlug}
+          onSaved={() => {
+            reload();
+            setTimelineRefresh((n) => n + 1);
+          }}
+        />
 
-      <PatientPortalTimelineSection
-        timeline={timeline}
-        loading={timelineLoading}
-        error={timelineError}
-        onPageChange={loadTimelinePage}
-        formatDateTime={formatDateTime}
-      />
+        {!pp ? (
+          <Card className="min-w-0">
+            <CardHeader>
+              <ClientDetailCardTitle icon={MapPinned}>{td("noPathway.title")}</ClientDetailCardTitle>
+              <CardDescription>
+                {completedTreatments.length > 0
+                  ? td("noPathway.portalCardDescriptionWithHistory")
+                  : td("noPathway.portalCardDescription")}
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        ) : (
+          <>
+            <ClientDetailJourneyCard pp={pp} />
+            <ClientDetailAssigneeSection pp={pp} />
+            <ClientDetailNextActionsCard pp={pp} />
+            <ClientDetailChecklistCard pp={pp} readOnly />
+          </>
+        )}
 
-      <PatientPortalFilesSection formatDateTime={formatDateTime} onAfterUpload={() => loadTimelinePage(1)} />
+        <PatientPortalTimelineSection
+          timeline={timeline}
+          loading={timelineLoading}
+          error={timelineError}
+          onPageChange={loadTimelinePage}
+          formatDateTime={formatDateTime}
+        />
+
+        <PatientPortalFilesSection formatDateTime={formatDateTime} onAfterUpload={() => loadTimelinePage(1)} />
+      </div>
+
+      <div className="[column-span:all] min-w-0 w-full">
+        <ClientCompletedTreatmentsSection
+          client={client}
+          items={completedTreatments}
+          enableFileDownload={false}
+        />
+      </div>
+
+      <Alert variant="info" className="[column-span:all]">
+        <Info className="size-4" aria-hidden />
+        <AlertDescription className="text-sm">{t("home.readOnlyJourneyHint")}</AlertDescription>
+      </Alert>
 
       <p className="text-muted-foreground text-center text-xs">
         <Link href="/login" className="underline underline-offset-2">

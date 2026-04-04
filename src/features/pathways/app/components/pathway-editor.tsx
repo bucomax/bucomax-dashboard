@@ -23,8 +23,10 @@ import { usePathwayPublishPreview } from "@/features/pathways/app/hooks/use-path
 import { listTenantMembersForPicker } from "@/features/settings/app/services/tenant-settings.service";
 import { isPathwayDraftDirty, parsePathwayGraph } from "@/features/pathways/app/utils/pathway-graph";
 import { normalizeStageDefaultAssigneeUserIds } from "@/lib/pathway/graph";
+import { pathwayEditorFitViewOptions, pathwayEditorGraphNodePosition } from "@/lib/pathway/graph-editor-layout";
 import { setStageNodeDefaultAssignees } from "@/lib/pathway/stage-node-assignees";
 import {
+  ensurePathwayGraphNodePositions,
   updatePathwayStageNodeChecklistItems,
   updatePathwayStageNodeStageDocuments,
 } from "@/features/pathways/app/utils/pathway-stage-nodes";
@@ -114,7 +116,7 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
   useLayoutEffect(() => {
     if (graphJson == null) return;
     const parsed = parsePathwayGraph(graphJson);
-    setNodes(parsed.nodes);
+    setNodes(ensurePathwayGraphNodePositions(parsed.nodes));
     setEdges(parsed.edges);
     setSelectedId(null);
   }, [graphJson, setEdges, setNodes]);
@@ -187,7 +189,7 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
       {
         id,
         type: "default",
-        position: { x: 40 + nds.length * 24, y: 40 + nds.length * 24 },
+        position: pathwayEditorGraphNodePosition(nds.length),
         data: { label: `${t("defaultStageLabel")} ${nds.length + 1}`, patientMessage: "" },
       },
     ]);
@@ -410,12 +412,6 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
             <Info className="size-4 shrink-0" aria-hidden />
             <AlertDescription>{t("draftHint")}</AlertDescription>
           </Alert>
-          {publishPreviewLoading ? (
-            <p className="text-muted-foreground flex items-center gap-2 text-xs">
-              <Loader2 className="size-3.5 animate-spin" aria-hidden />
-              {t("publishPreviewValidating")}
-            </p>
-          ) : null}
           {publishPreviewError ? (
             <Alert variant="destructive">
               <AlertDescription className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -475,12 +471,13 @@ function PathwayEditorInner({ pathwayId }: PathwayEditorProps) {
             onNodeClick={(_, n) => setSelectedId(n.id)}
             onPaneClick={() => setSelectedId(null)}
             fitView
+            fitViewOptions={pathwayEditorFitViewOptions}
             nodesDraggable
             nodesConnectable
             elementsSelectable
           >
             <Background />
-            <Controls />
+            <Controls fitViewOptions={pathwayEditorFitViewOptions} />
             <MiniMap />
           </ReactFlow>
         </div>

@@ -17,11 +17,32 @@ const authMiddleware = withAuth(
 
 const PUBLIC_PAGES = ["/", "/login", "/auth/forgot-password", "/auth/reset-password", "/auth/invite"];
 
+function isPublicPath(pathname: string): boolean {
+  if (PUBLIC_PAGES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    return true;
+  }
+  /** Landing do portal (sem slug). */
+  if (pathname === "/patient") {
+    return true;
+  }
+  /** Auto-cadastro legado: `/patient-self-register?token=`. */
+  if (pathname === "/patient-self-register") {
+    return true;
+  }
+  /** `/{tenantSlug}/patient/*` — portal do paciente. */
+  if (/^\/[^/]+\/patient(\/.*)?$/.test(pathname)) {
+    return true;
+  }
+  /** `/{tenantSlug}/patient-self-register` — cadastro pelo link/QR. */
+  if (/^\/[^/]+\/patient-self-register(\/.*)?$/.test(pathname)) {
+    return true;
+  }
+  return false;
+}
+
 export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const isPublic = PUBLIC_PAGES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-
-  if (isPublic) return intlMiddleware(req);
+  if (isPublicPath(pathname)) return intlMiddleware(req);
   return (authMiddleware as unknown as (req: NextRequest) => Response)(req);
 }
 
