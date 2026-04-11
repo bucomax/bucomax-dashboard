@@ -5,11 +5,12 @@ import { useCreateClientFlow } from "@/features/clients/app/hooks/use-create-cli
 import { useClientPathwayOptions } from "@/features/clients/app/hooks/use-client-pathway-options";
 import { useRouter } from "@/i18n/navigation";
 import { toast } from "@/lib/toast";
+import { formatCepDisplay } from "@/lib/validators/cep";
 import { formatCpfDisplay } from "@/lib/validators/cpf";
 import { formatPhoneBrDisplay } from "@/lib/validators/phone";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Form, FormCpf, FormInput, FormPhoneNumber, FormTextarea } from "@/shared/components/forms";
+import { Form, FormCep, FormCpf, FormInput, FormPhoneNumber, FormTextarea } from "@/shared/components/forms";
 import {
   Select,
   SelectContent,
@@ -27,7 +28,7 @@ import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 
 const PICKER_NONE = "__none__";
 
@@ -86,8 +87,21 @@ export function NewClientWizard({
       caseDescription: "",
       documentId: "",
       email: "",
+      isMinor: false,
+      guardianName: "",
+      guardianDocumentId: "",
+      guardianPhone: "",
+      postalCode: "",
+      addressLine: "",
+      addressNumber: "",
+      addressComp: "",
+      neighborhood: "",
+      city: "",
+      state: "",
     },
   });
+
+  const isMinorWatched = useWatch({ control: form.control, name: "isMinor" });
 
   const selectedPathway = useMemo(
     () => eligiblePathways.find((p) => p.id === pathwayId) ?? null,
@@ -95,6 +109,8 @@ export function NewClientWizard({
   );
   const reviewPhone = String(form.getValues("phone") ?? "");
   const reviewDocumentId = String(form.getValues("documentId") ?? "");
+  const reviewIsMinor = Boolean(form.getValues("isMinor"));
+  const reviewPostal = String(form.getValues("postalCode") ?? "");
 
   function goBack() {
     if (step === 1) return;
@@ -129,9 +145,20 @@ export function NewClientWizard({
         phone: String(values.phone ?? ""),
         caseDescription: values.caseDescription?.trim() || undefined,
         documentId: values.documentId ?? "",
-        email: String(values.email ?? "").trim() || undefined,
+        email: String(values.email ?? "").trim(),
         assignedToUserId: assignedToUserId === PICKER_NONE ? undefined : assignedToUserId,
         opmeSupplierId: opmeSupplierId === PICKER_NONE ? undefined : opmeSupplierId,
+        isMinor: Boolean(values.isMinor),
+        guardianName: String(values.guardianName ?? "").trim() || undefined,
+        guardianDocumentId: values.guardianDocumentId ?? "",
+        guardianPhone: String(values.guardianPhone ?? ""),
+        postalCode: String(values.postalCode ?? "").trim() || undefined,
+        addressLine: String(values.addressLine ?? "").trim() || undefined,
+        addressNumber: String(values.addressNumber ?? "").trim() || undefined,
+        addressComp: String(values.addressComp ?? "").trim() || undefined,
+        neighborhood: String(values.neighborhood ?? "").trim() || undefined,
+        city: String(values.city ?? "").trim() || undefined,
+        state: String(values.state ?? "").trim() || undefined,
       });
       if (!parsed.success) {
         const msg = joinTranslatedZodIssues(parsed.error, (key) =>
@@ -188,19 +215,50 @@ export function NewClientWizard({
         <Form {...form}>
           {step === 1 ? (
             <div className="flex flex-col gap-4">
-              <div className="grid gap-4 lg:grid-cols-3">
-                <FormInput name="name" label={t("name")} autoComplete="name" />
-                <FormPhoneNumber name="phone" label={t("phone")} description={t("phoneHint")} />
-                <FormCpf name="documentId" label={t("documentId")} description={t("documentIdHint")} />
+              <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
+                <p className="text-sm font-medium">{t("patientSection")}</p>
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <FormInput name="name" label={t("name")} autoComplete="name" />
+                  <FormPhoneNumber name="phone" label={t("phone")} description={t("phoneHint")} />
+                  <FormInput
+                    name="email"
+                    label={t("email")}
+                    description={t("emailHint")}
+                    type="email"
+                    autoComplete="email"
+                  />
+                </div>
+                <FormCpf
+                  name="documentId"
+                  label={isMinorWatched ? t("documentIdMinor") : t("documentId")}
+                  description={isMinorWatched ? t("documentIdMinorHint") : t("documentIdHint")}
+                />
+                <Controller
+                  name="isMinor"
+                  control={form.control}
+                  render={({ field }) => (
+                    <label className="border-border bg-background/60 flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={(e) => field.onChange(e.target.checked)}
+                        className="mt-0.5 size-4"
+                      />
+                      <span className="min-w-0">{t("isMinor")}</span>
+                    </label>
+                  )}
+                />
               </div>
-              <FormInput
-                name="email"
-                label={t("email")}
-                description={t("emailHint")}
-                type="email"
-                autoComplete="email"
-                required={false}
-              />
+              {isMinorWatched ? (
+                <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
+                  <p className="text-sm font-medium">{t("guardianSection")}</p>
+                  <div className="grid gap-4 lg:grid-cols-3">
+                    <FormInput name="guardianName" label={t("guardianName")} autoComplete="name" />
+                    <FormCpf name="guardianDocumentId" label={t("guardianDocumentId")} />
+                    <FormPhoneNumber name="guardianPhone" label={t("guardianPhone")} />
+                  </div>
+                </div>
+              ) : null}
               {pickersError ? <p className="text-destructive text-sm">{pickersError}</p> : null}
               <div className="grid gap-4 lg:grid-cols-2">
                 <Field>
@@ -250,6 +308,22 @@ export function NewClientWizard({
                 description={t("caseDescriptionHint")}
                 rows={4}
               />
+              <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
+                <p className="text-sm font-medium">{t("addressSection")}</p>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <FormCep
+                    name="postalCode"
+                    label={t("postalCode")}
+                    description={t("postalCodeHint")}
+                  />
+                  <FormInput name="addressLine" label={t("addressLine")} autoComplete="street-address" />
+                  <FormInput name="addressNumber" label={t("addressNumber")} />
+                  <FormInput name="addressComp" label={t("addressComp")} required={false} />
+                  <FormInput name="neighborhood" label={t("neighborhood")} />
+                  <FormInput name="city" label={t("city")} autoComplete="address-level2" />
+                  <FormInput name="state" label={t("state")} maxLength={2} className="uppercase" />
+                </div>
+              </div>
             </div>
           ) : null}
 
@@ -321,8 +395,51 @@ export function NewClientWizard({
                   <dd>{String(form.getValues("email") ?? "").trim() || "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-muted-foreground">{t("documentId")}</dt>
+                  <dt className="text-muted-foreground">
+                    {reviewIsMinor ? t("documentIdMinor") : t("documentId")}
+                  </dt>
                   <dd>{reviewDocumentId ? formatCpfDisplay(reviewDocumentId) : "—"}</dd>
+                </div>
+                {reviewIsMinor ? (
+                  <>
+                    <div className="sm:col-span-2">
+                      <dt className="text-muted-foreground">{t("guardianSection")}</dt>
+                      <dd>
+                        {String(form.getValues("guardianName") ?? "").trim() || "—"} ·{" "}
+                        {String(form.getValues("guardianDocumentId") ?? "").trim()
+                          ? formatCpfDisplay(String(form.getValues("guardianDocumentId")))
+                          : "—"}
+                      </dd>
+                    </div>
+                  </>
+                ) : null}
+                <div className="sm:col-span-2">
+                  <dt className="text-muted-foreground">{t("addressSection")}</dt>
+                  <dd className="space-y-0.5">
+                    <span className="block">
+                      {reviewPostal ? formatCepDisplay(reviewPostal) : "—"}
+                      {String(form.getValues("addressLine") ?? "").trim()
+                        ? ` · ${String(form.getValues("addressLine")).trim()}`
+                        : ""}
+                      {String(form.getValues("addressNumber") ?? "").trim()
+                        ? `, ${String(form.getValues("addressNumber")).trim()}`
+                        : ""}
+                    </span>
+                    {String(form.getValues("addressComp") ?? "").trim() ? (
+                      <span className="text-muted-foreground block text-xs">
+                        {String(form.getValues("addressComp")).trim()}
+                      </span>
+                    ) : null}
+                    <span className="block">
+                      {[
+                        String(form.getValues("neighborhood") ?? "").trim(),
+                        String(form.getValues("city") ?? "").trim(),
+                        String(form.getValues("state") ?? "").trim().toUpperCase(),
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") || "—"}
+                    </span>
+                  </dd>
                 </div>
                 <div className="sm:col-span-2">
                   <dt className="text-muted-foreground">{t("reviewPathway")}</dt>

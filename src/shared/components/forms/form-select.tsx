@@ -2,12 +2,8 @@
 
 import * as React from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "@/shared/components/ui/field";
+import { FieldLabelWithHint } from "@/shared/components/forms/field-label-with-hint";
+import { Field, FieldError } from "@/shared/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -59,8 +55,7 @@ export function FormSelect({
 
         return (
           <Field data-invalid={!!fieldState.error} className={containerClassName}>
-            <FieldLabel htmlFor={selectId}>{label}</FieldLabel>
-            {description ? <FieldDescription>{description}</FieldDescription> : null}
+            <FieldLabelWithHint htmlFor={selectId} label={label} description={description} />
             <Select
               name={name}
               value={value}

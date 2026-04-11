@@ -1,10 +1,9 @@
 "use client";
 
-import {
-  Field,
-  FieldDescription,
-  FieldLabel,
-} from "@/shared/components/ui/field";
+import * as React from "react";
+
+import { FieldLabelWithHint } from "@/shared/components/forms/field-label-with-hint";
+import { Field } from "@/shared/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -44,18 +43,19 @@ export function LabeledSelect({
   className,
   triggerClassName,
 }: LabeledSelectProps) {
+  const autoId = React.useId();
+  const controlId = id ?? autoId;
   const selectedLabel = options.find((o) => o.value === value)?.label;
 
   return (
     <Field className={className}>
-      <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      {description ? <FieldDescription>{description}</FieldDescription> : null}
+      <FieldLabelWithHint htmlFor={controlId} label={label} description={description} />
       <Select
         value={value}
         onValueChange={(v) => onValueChange(v ?? "")}
         disabled={disabled}
       >
-        <SelectTrigger id={id} className={cn("w-full", triggerClassName)}>
+        <SelectTrigger id={controlId} className={cn("w-full", triggerClassName)}>
           <SelectValue placeholder={placeholder}>{selectedLabel}</SelectValue>
         </SelectTrigger>
         <SelectContent>

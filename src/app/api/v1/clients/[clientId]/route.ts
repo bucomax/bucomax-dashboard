@@ -1,5 +1,6 @@
 import { revalidateTenantClientsList, revalidateTenantOpmeSuppliersList } from "@/infrastructure/cache/revalidate-tenant-lists";
 import { prisma } from "@/infrastructure/database/prisma";
+import { TenantRole, type Prisma } from "@prisma/client";
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -9,9 +10,9 @@ import {
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
+import { mapPrismaClientRowToClientDto } from "@/lib/clients/clients-list-shared";
 import { loadClientDetailResponseData } from "@/lib/clients/load-client-detail-response";
 import { validateClientOptionalRefs } from "@/lib/clients/validate-client-optional-refs";
-import { TenantRole } from "@prisma/client";
 import { clientDetailQuerySchema } from "@/lib/validators/client-detail-query";
 import { digitsOnlyCpf } from "@/lib/validators/cpf";
 import { patchClientBodySchema } from "@/lib/validators/client";
@@ -49,6 +50,17 @@ export async function GET(request: Request, ctx: RouteCtx) {
     email: true,
     caseDescription: true,
     documentId: true,
+    postalCode: true,
+    addressLine: true,
+    addressNumber: true,
+    addressComp: true,
+    neighborhood: true,
+    city: true,
+    state: true,
+    isMinor: true,
+    guardianName: true,
+    guardianDocumentId: true,
+    guardianPhone: true,
     assignedToUserId: true,
     opmeSupplierId: true,
     createdAt: true,
@@ -110,27 +122,39 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
   );
   if (refErr) return refErr;
 
-  const data: {
-    name?: string;
-    phone?: string;
-    email?: string | null;
-    caseDescription?: string | null;
-    documentId?: string | null;
-    assignedToUserId?: string | null;
-    opmeSupplierId?: string | null;
-  } = {};
-  if (parsed.data.name !== undefined) data.name = parsed.data.name.trim();
-  if (parsed.data.phone !== undefined) data.phone = parsed.data.phone.trim();
-  if (parsed.data.email !== undefined) data.email = parsed.data.email;
-  if (parsed.data.caseDescription !== undefined) {
-    data.caseDescription =
-      parsed.data.caseDescription === null ? null : parsed.data.caseDescription.trim() || null;
+  const p = parsed.data;
+  const data: Prisma.ClientUncheckedUpdateInput = {};
+  if (p.name !== undefined) data.name = p.name.trim();
+  if (p.phone !== undefined) data.phone = p.phone.trim();
+  if (p.email !== undefined) data.email = p.email;
+  if (p.caseDescription !== undefined) {
+    data.caseDescription = p.caseDescription === null ? null : p.caseDescription.trim() || null;
   }
-  if (parsed.data.documentId !== undefined && parsed.data.documentId !== null) {
-    data.documentId = digitsOnlyCpf(parsed.data.documentId);
+  if (p.documentId !== undefined) {
+    data.documentId = p.documentId === null ? null : digitsOnlyCpf(p.documentId);
   }
-  if (parsed.data.assignedToUserId !== undefined) data.assignedToUserId = parsed.data.assignedToUserId;
-  if (parsed.data.opmeSupplierId !== undefined) data.opmeSupplierId = parsed.data.opmeSupplierId;
+  if (p.assignedToUserId !== undefined) data.assignedToUserId = p.assignedToUserId;
+  if (p.opmeSupplierId !== undefined) data.opmeSupplierId = p.opmeSupplierId;
+  if (p.postalCode !== undefined) data.postalCode = p.postalCode;
+  if (p.addressLine !== undefined) data.addressLine = p.addressLine;
+  if (p.addressNumber !== undefined) data.addressNumber = p.addressNumber;
+  if (p.addressComp !== undefined) data.addressComp = p.addressComp;
+  if (p.neighborhood !== undefined) data.neighborhood = p.neighborhood;
+  if (p.city !== undefined) data.city = p.city;
+  if (p.state !== undefined) data.state = p.state;
+  if (p.isMinor !== undefined) data.isMinor = p.isMinor;
+  if (p.guardianName !== undefined) data.guardianName = p.guardianName;
+  if (p.guardianDocumentId !== undefined) {
+    data.guardianDocumentId =
+      p.guardianDocumentId === null ? null : digitsOnlyCpf(p.guardianDocumentId);
+  }
+  if (p.guardianPhone !== undefined) data.guardianPhone = p.guardianPhone;
+
+  if (p.isMinor === false) {
+    data.guardianName = null;
+    data.guardianDocumentId = null;
+    data.guardianPhone = null;
+  }
 
   if (Object.keys(data).length === 0) {
     return jsonError("VALIDATION_ERROR", apiT("errors.noFieldsToUpdate"), 422);
@@ -147,6 +171,17 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
       email: true,
       caseDescription: true,
       documentId: true,
+      postalCode: true,
+      addressLine: true,
+      addressNumber: true,
+      addressComp: true,
+      neighborhood: true,
+      city: true,
+      state: true,
+      isMinor: true,
+      guardianName: true,
+      guardianDocumentId: true,
+      guardianPhone: true,
       assignedToUserId: true,
       opmeSupplierId: true,
       createdAt: true,
@@ -163,23 +198,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
   }
 
   return jsonSuccess({
-    client: {
-      id: row.id,
-      name: row.name,
-      phone: row.phone,
-      email: row.email,
-      caseDescription: row.caseDescription,
-      documentId: row.documentId,
-      assignedToUserId: row.assignedToUserId,
-      opmeSupplierId: row.opmeSupplierId,
-      assignedTo: row.assignedTo
-        ? { id: row.assignedTo.id, name: row.assignedTo.name, email: row.assignedTo.email }
-        : null,
-      opmeSupplier: row.opmeSupplier ? { id: row.opmeSupplier.id, name: row.opmeSupplier.name } : null,
-      patientPathwayId: row.patientPathways?.[0]?.id ?? null,
-      createdAt: row.createdAt.toISOString(),
-      updatedAt: row.updatedAt.toISOString(),
-    },
+    client: mapPrismaClientRowToClientDto(row),
   });
 }
 

@@ -2,12 +2,8 @@
 
 import * as React from "react";
 import { Controller, useFormContext } from "react-hook-form";
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldLabel,
-} from "@/shared/components/ui/field";
+import { FieldLabelWithHint } from "@/shared/components/forms/field-label-with-hint";
+import { Field, FieldError } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
 import { digitsOnlyPhone, formatPhoneBrDisplay } from "@/lib/validators/phone";
 
@@ -49,8 +45,7 @@ export function FormPhoneNumber({
 
         return (
           <Field data-invalid={!!fieldState.error} className={containerClassName}>
-            <FieldLabel htmlFor={inputId}>{label}</FieldLabel>
-            {description ? <FieldDescription>{description}</FieldDescription> : null}
+            <FieldLabelWithHint htmlFor={inputId} label={label} description={description} />
             <Input
               id={inputId}
               {...inputProps}

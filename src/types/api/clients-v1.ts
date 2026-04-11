@@ -16,6 +16,17 @@ export type ClientDto = {
   email: string | null;
   caseDescription: string | null;
   documentId: string | null;
+  postalCode: string | null;
+  addressLine: string | null;
+  addressNumber: string | null;
+  addressComp: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  isMinor: boolean;
+  guardianName: string | null;
+  guardianDocumentId: string | null;
+  guardianPhone: string | null;
   assignedToUserId: string | null;
   opmeSupplierId: string | null;
   assignedTo: { id: string; name: string | null; email: string } | null;
@@ -133,6 +144,17 @@ export type ClientDetailClientDto = {
   email: string | null;
   caseDescription: string | null;
   documentId: string | null;
+  postalCode: string | null;
+  addressLine: string | null;
+  addressNumber: string | null;
+  addressComp: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  isMinor: boolean;
+  guardianName: string | null;
+  guardianDocumentId: string | null;
+  guardianPhone: string | null;
   assignedToUserId: string | null;
   opmeSupplierId: string | null;
   assignedTo: { id: string; name: string | null; email: string } | null;
@@ -328,6 +350,17 @@ export type PublicPatientSelfRegisterFormPrefillDto = {
   email: string | null;
   documentId: string | null;
   caseDescription: string | null;
+  postalCode: string | null;
+  addressLine: string | null;
+  addressNumber: string | null;
+  addressComp: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  isMinor: boolean;
+  guardianName: string | null;
+  guardianDocumentId: string | null;
+  guardianPhone: string | null;
 };
 
 /** `GET /api/v1/public/patient-self-register?token=` */
@@ -339,7 +372,10 @@ export type PublicPatientSelfRegisterValidateResponseData = {
 };
 
 /** Corpo `POST /api/v1/public/patient-self-register` (campos do paciente + token). */
-export type PublicPatientSelfRegisterRequestBody = z.infer<typeof publicPatientSelfRegisterBodySchema>;
+export type PublicPatientSelfRegisterRequestBody = Omit<
+  z.infer<typeof publicPatientSelfRegisterBodySchema>,
+  "assignedToUserId" | "opmeSupplierId"
+>;
 
 /** `POST /api/v1/public/patient-self-register` — sucesso. */
 export type PublicPatientSelfRegisterSubmitResponseData = {

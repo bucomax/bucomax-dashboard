@@ -79,9 +79,14 @@
     "validationOverrideReasonMin": "Override justification must be at least 10 characters.",
     "validationCpfRequired": "CPF is required.",
     "validationCpf11Digits": "CPF must be exactly 11 digits.",
-    "validationCpfCannotRemove": "Removing the patient's CPF is not allowed.",
+    "validationCpfCannotRemove": "Removing the patient's CPF is not allowed (except for minors).",
+    "validationGuardianNameRequired": "Enter the legal guardian's full name.",
+    "validationGuardianCpfRequired": "Enter the guardian's CPF (11 digits).",
+    "validationCepInvalid": "Invalid postal code. Use 8 digits.",
     "validationPhoneRequired": "Phone number is required.",
     "validationPhoneBrDigits": "Invalid phone (use area code + number, 10 or 11 digits).",
+    "validationEmailRequired": "Email is required.",
+    "validationEmailInvalid": "Invalid email address.",
     "patientSelfRegisterInvalidOrExpired": "This link is invalid, expired, or already used. Ask the clinic for a new QR code."
   },
   "success": {

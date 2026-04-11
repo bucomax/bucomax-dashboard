@@ -180,6 +180,21 @@ model Client {
   email            String?
   caseDescription  String?          @db.Text
   documentId       String?
+
+  // === Endereço ===
+  postalCode      String?
+  addressLine     String?
+  addressNumber   String?
+  addressComp     String?
+  neighborhood    String?
+  city            String?
+  state           String?            // UF (2 chars)
+
+  // === Menor de idade / Responsável ===
+  isMinor            Boolean          @default(false)
+  guardianName       String?
+  guardianDocumentId String?          // CPF do responsável (11 dígitos)
+  guardianPhone      String?
   assignedToUserId String?
   assignedTo       User?            @relation("ClientAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
   opmeSupplierId   String?

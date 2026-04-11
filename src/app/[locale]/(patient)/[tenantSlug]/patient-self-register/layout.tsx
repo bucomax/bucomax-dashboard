@@ -16,5 +16,5 @@ export default async function TenantPatientSelfRegisterLayout({
     notFound();
   }
 
-  return <AuthLayout>{children}</AuthLayout>;
+  return <AuthLayout variant="wide">{children}</AuthLayout>;
 }

@@ -26,6 +26,17 @@ export type ClientDetailClientRow = {
   email: string | null;
   caseDescription: string | null;
   documentId: string | null;
+  postalCode: string | null;
+  addressLine: string | null;
+  addressNumber: string | null;
+  addressComp: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  isMinor: boolean;
+  guardianName: string | null;
+  guardianDocumentId: string | null;
+  guardianPhone: string | null;
   assignedToUserId: string | null;
   opmeSupplierId: string | null;
   createdAt: Date;
@@ -69,6 +80,17 @@ export async function loadClientDetailResponseData(
     email: row.email,
     caseDescription: row.caseDescription,
     documentId: row.documentId,
+    postalCode: row.postalCode,
+    addressLine: row.addressLine,
+    addressNumber: row.addressNumber,
+    addressComp: row.addressComp,
+    neighborhood: row.neighborhood,
+    city: row.city,
+    state: row.state,
+    isMinor: row.isMinor,
+    guardianName: row.guardianName,
+    guardianDocumentId: row.guardianDocumentId,
+    guardianPhone: row.guardianPhone,
     assignedToUserId: row.assignedToUserId,
     opmeSupplierId: row.opmeSupplierId,
     assignedTo: row.assignedTo

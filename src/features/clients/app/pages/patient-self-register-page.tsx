@@ -6,10 +6,8 @@ import {
   patientSelfRegisterFormSchema,
   type PatientSelfRegisterFormValues,
 } from "@/features/clients/app/utils/schemas";
-import type {
-  PublicPatientSelfRegisterFormPrefillDto,
-  PublicPatientSelfRegisterRequestBody,
-} from "@/types/api/clients-v1";
+import type { PublicPatientSelfRegisterFormPrefillDto } from "@/types/api/clients-v1";
+import { publicPatientSelfRegisterBodySchema } from "@/lib/validators/client";
 import {
   fetchPatientSelfRegisterValidation,
   submitPatientSelfRegister,
@@ -26,10 +24,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/shared/components/ui/card";
-import { Form, FormCpf, FormInput, FormPhoneNumber, FormTextarea } from "@/shared/components/forms";
+import { Form, FormCep, FormCpf, FormInput, FormPhoneNumber, FormTextarea } from "@/shared/components/forms";
 import { useTranslations } from "next-intl";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { useParams, useSearchParams } from "next/navigation";
 
 type Phase = "loading" | "invalid" | "form" | "success";
@@ -64,8 +62,21 @@ function PatientSelfRegisterInner() {
       caseDescription: "",
       documentId: "",
       email: "",
+      isMinor: false,
+      guardianName: "",
+      guardianDocumentId: "",
+      guardianPhone: "",
+      postalCode: "",
+      addressLine: "",
+      addressNumber: "",
+      addressComp: "",
+      neighborhood: "",
+      city: "",
+      state: "",
     },
   });
+
+  const isMinorWatched = useWatch({ control: form.control, name: "isMinor" });
 
   useEffect(() => {
     const raw = searchParams.get("token")?.trim() ?? "";
@@ -100,6 +111,17 @@ function PatientSelfRegisterInner() {
       email: formPrefill.email ?? "",
       documentId: formPrefill.documentId ?? "",
       caseDescription: formPrefill.caseDescription ?? "",
+      isMinor: formPrefill.isMinor,
+      guardianName: formPrefill.guardianName ?? "",
+      guardianDocumentId: formPrefill.guardianDocumentId ?? "",
+      guardianPhone: formPrefill.guardianPhone ?? "",
+      postalCode: formPrefill.postalCode ?? "",
+      addressLine: formPrefill.addressLine ?? "",
+      addressNumber: formPrefill.addressNumber ?? "",
+      addressComp: formPrefill.addressComp ?? "",
+      neighborhood: formPrefill.neighborhood ?? "",
+      city: formPrefill.city ?? "",
+      state: formPrefill.state ?? "",
     });
   }, [phase, formPrefill, form]);
 
@@ -108,8 +130,9 @@ function PatientSelfRegisterInner() {
     setSubmitError(null);
     const parsed = patientSelfRegisterFormSchema.safeParse(values);
     if (!parsed.success) return;
-    const body: PublicPatientSelfRegisterRequestBody = { ...parsed.data, token };
-    const result = await submitPatientSelfRegister(body, tenantSlug);
+    const apiParsed = publicPatientSelfRegisterBodySchema.safeParse({ ...parsed.data, token });
+    if (!apiParsed.success) return;
+    const result = await submitPatientSelfRegister(apiParsed.data, tenantSlug);
     if (!result.ok) {
       setSubmitError(result.message);
       return;
@@ -158,7 +181,7 @@ function PatientSelfRegisterInner() {
       ) : null}
 
       {phase === "form" ? (
-        <Card className="w-full border shadow-xl shadow-black/5 dark:shadow-black/20">
+        <Card className="@container/patient-register w-full border shadow-xl shadow-black/5 dark:shadow-black/20">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl">{t("pageTitle")}</CardTitle>
             <CardDescription className="space-y-2">
@@ -174,21 +197,93 @@ function PatientSelfRegisterInner() {
                 onSubmit={form.handleSubmit(onSubmit)}
                 className="flex flex-col gap-4 pb-2"
               >
-                <FormInput name="name" label={tWiz("name")} autoComplete="name" />
-                <FormPhoneNumber
-                  name="phone"
-                  label={tWiz("phone")}
-                  description={tWiz("phoneHint")}
-                  autoComplete="tel"
-                />
-                <FormCpf name="documentId" label={tWiz("documentId")} description={tWiz("documentIdHint")} />
-                <FormInput
-                  name="email"
-                  label={tWiz("email")}
-                  description={tWiz("emailHint")}
-                  type="email"
-                  autoComplete="email"
-                />
+                <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
+                  <p className="text-sm font-medium">{tWiz("patientSection")}</p>
+                  <div className="grid grid-cols-1 gap-4 @min-[40rem]/patient-register:grid-cols-3">
+                    <div className="min-w-0">
+                      <FormInput name="name" label={tWiz("name")} autoComplete="name" />
+                    </div>
+                    <div className="min-w-0">
+                      <FormPhoneNumber
+                        name="phone"
+                        label={tWiz("phone")}
+                        description={tWiz("phoneHint")}
+                        autoComplete="tel"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <FormInput
+                        name="email"
+                        label={tWiz("email")}
+                        description={tWiz("emailHint")}
+                        type="email"
+                        autoComplete="email"
+                      />
+                    </div>
+                  </div>
+                  <FormCpf
+                    name="documentId"
+                    label={isMinorWatched ? tWiz("documentIdMinor") : tWiz("documentId")}
+                    description={isMinorWatched ? tWiz("documentIdMinorHint") : tWiz("documentIdHint")}
+                  />
+                  <Controller
+                    name="isMinor"
+                    control={form.control}
+                    render={({ field }) => (
+                      <label className="border-border bg-background/60 flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                          className="mt-0.5 size-4"
+                        />
+                        <span className="min-w-0">{tWiz("isMinor")}</span>
+                      </label>
+                    )}
+                  />
+                </div>
+                {isMinorWatched ? (
+                  <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
+                    <p className="text-sm font-medium">{tWiz("guardianSection")}</p>
+                    <div className="grid grid-cols-1 gap-4 @min-[40rem]/patient-register:grid-cols-3">
+                      <div className="min-w-0">
+                        <FormInput name="guardianName" label={tWiz("guardianName")} autoComplete="name" />
+                      </div>
+                      <div className="min-w-0">
+                        <FormCpf name="guardianDocumentId" label={tWiz("guardianDocumentId")} />
+                      </div>
+                      <div className="min-w-0">
+                        <FormPhoneNumber name="guardianPhone" label={tWiz("guardianPhone")} />
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
+                  <p className="text-sm font-medium">{tWiz("addressSection")}</p>
+                  <div className="grid grid-cols-1 gap-4 @min-[30rem]/patient-register:grid-cols-2">
+                    <div className="min-w-0">
+                      <FormCep name="postalCode" label={tWiz("postalCode")} description={tWiz("postalCodeHint")} />
+                    </div>
+                    <div className="min-w-0">
+                      <FormInput name="addressLine" label={tWiz("addressLine")} autoComplete="street-address" />
+                    </div>
+                    <div className="min-w-0">
+                      <FormInput name="addressNumber" label={tWiz("addressNumber")} />
+                    </div>
+                    <div className="min-w-0">
+                      <FormInput name="addressComp" label={tWiz("addressComp")} />
+                    </div>
+                    <div className="min-w-0">
+                      <FormInput name="neighborhood" label={tWiz("neighborhood")} />
+                    </div>
+                    <div className="min-w-0">
+                      <FormInput name="city" label={tWiz("city")} autoComplete="address-level2" />
+                    </div>
+                    <div className="min-w-0">
+                      <FormInput name="state" label={tWiz("state")} maxLength={2} className="uppercase" />
+                    </div>
+                  </div>
+                </div>
                 <FormTextarea
                   name="caseDescription"
                   label={tWiz("caseDescription")}

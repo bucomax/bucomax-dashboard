@@ -79,9 +79,14 @@
     "validationOverrideReasonMin": "A justificativa do override deve ter pelo menos 10 caracteres.",
     "validationCpfRequired": "Informe o CPF.",
     "validationCpf11Digits": "O CPF deve ter exatamente 11 dígitos.",
-    "validationCpfCannotRemove": "Não é permitido remover o CPF do paciente.",
+    "validationCpfCannotRemove": "Não é permitido remover o CPF do paciente (exceto para menor de idade).",
+    "validationGuardianNameRequired": "Informe o nome do responsável legal.",
+    "validationGuardianCpfRequired": "Informe o CPF do responsável (11 dígitos).",
+    "validationCepInvalid": "CEP inválido. Use 8 dígitos.",
     "validationPhoneRequired": "Informe o telefone.",
     "validationPhoneBrDigits": "Telefone inválido (use DDD + número, 10 ou 11 dígitos).",
+    "validationEmailRequired": "Informe o e-mail.",
+    "validationEmailInvalid": "E-mail inválido.",
     "patientSelfRegisterInvalidOrExpired": "Link inválido, expirado ou já utilizado. Peça um novo QR code na clínica."
   },
   "success": {

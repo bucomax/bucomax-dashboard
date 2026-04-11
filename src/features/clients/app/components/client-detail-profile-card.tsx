@@ -5,10 +5,12 @@ import { useUpdateClient } from "@/features/clients/app/hooks/use-update-client"
 import { useCreateOpmeSupplier } from "@/features/settings/app/hooks/use-create-opme-supplier";
 import { useTenantSettingsPickers } from "@/features/settings/app/hooks/use-tenant-settings-pickers";
 import { patchPatientPortalProfile } from "@/lib/api/patient-portal-client";
-import type { ClientDetailClientDto } from "@/types/api/clients-v1";
+import type { PatchPatientPortalProfileBody } from "@/lib/validators/patient-portal-profile";
+import type { ClientDetailClientDto, PatchClientRequestBody } from "@/types/api/clients-v1";
 import { toast } from "@/lib/toast";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/shared/components/ui/card";
+import { digitsOnlyCep, formatCepDisplay } from "@/lib/validators/cep";
 import { digitsOnlyCpf, formatCpfDisplay } from "@/lib/validators/cpf";
 import { digitsOnlyPhone, formatPhoneBrDisplay, phoneDigitsSchema } from "@/lib/validators/phone";
 import { Field, FieldDescription, FieldLabel } from "@/shared/components/ui/field";
@@ -35,6 +37,11 @@ type ClientDetailProfileCardProps = {
   /** Obrigatório quando `variant` é `patient`. */
   tenantSlug?: string;
 };
+
+function normNullable(s: string | null | undefined): string | null {
+  const t = (s ?? "").trim();
+  return t === "" ? null : t;
+}
 
 export function ClientDetailProfileCard({
   clientId,
@@ -67,6 +74,23 @@ export function ClientDetailProfileCard({
   const [draftOpme, setDraftOpme] = useState(client.opmeSupplierId ?? NONE);
   const [newOpmeName, setNewOpmeName] = useState("");
 
+  const [draftPostalCode, setDraftPostalCode] = useState(() => digitsOnlyCep(client.postalCode ?? ""));
+  const [draftAddressLine, setDraftAddressLine] = useState(client.addressLine ?? "");
+  const [draftAddressNumber, setDraftAddressNumber] = useState(client.addressNumber ?? "");
+  const [draftAddressComp, setDraftAddressComp] = useState(client.addressComp ?? "");
+  const [draftNeighborhood, setDraftNeighborhood] = useState(client.neighborhood ?? "");
+  const [draftCity, setDraftCity] = useState(client.city ?? "");
+  const [draftState, setDraftState] = useState((client.state ?? "").toUpperCase());
+
+  const [draftIsMinor, setDraftIsMinor] = useState(client.isMinor);
+  const [draftGuardianName, setDraftGuardianName] = useState(client.guardianName ?? "");
+  const [draftGuardianDocumentDigits, setDraftGuardianDocumentDigits] = useState(() =>
+    digitsOnlyCpf(client.guardianDocumentId ?? ""),
+  );
+  const [draftGuardianPhoneDigits, setDraftGuardianPhoneDigits] = useState(() =>
+    digitsOnlyPhone(client.guardianPhone ?? ""),
+  );
+
   useEffect(() => {
     setDraftName(client.name);
     setDraftPhoneDigits(digitsOnlyPhone(client.phone));
@@ -74,6 +98,17 @@ export function ClientDetailProfileCard({
     setDraftDocumentDigits(digitsOnlyCpf(client.documentId ?? ""));
     setDraftAssigned(client.assignedToUserId ?? NONE);
     setDraftOpme(client.opmeSupplierId ?? NONE);
+    setDraftPostalCode(digitsOnlyCep(client.postalCode ?? ""));
+    setDraftAddressLine(client.addressLine ?? "");
+    setDraftAddressNumber(client.addressNumber ?? "");
+    setDraftAddressComp(client.addressComp ?? "");
+    setDraftNeighborhood(client.neighborhood ?? "");
+    setDraftCity(client.city ?? "");
+    setDraftState((client.state ?? "").toUpperCase());
+    setDraftIsMinor(client.isMinor);
+    setDraftGuardianName(client.guardianName ?? "");
+    setDraftGuardianDocumentDigits(digitsOnlyCpf(client.guardianDocumentId ?? ""));
+    setDraftGuardianPhoneDigits(digitsOnlyPhone(client.guardianPhone ?? ""));
   }, [
     client.id,
     client.updatedAt,
@@ -83,6 +118,17 @@ export function ClientDetailProfileCard({
     client.documentId,
     client.assignedToUserId,
     client.opmeSupplierId,
+    client.postalCode,
+    client.addressLine,
+    client.addressNumber,
+    client.addressComp,
+    client.neighborhood,
+    client.city,
+    client.state,
+    client.isMinor,
+    client.guardianName,
+    client.guardianDocumentId,
+    client.guardianPhone,
   ]);
 
   const dirty = useMemo(() => {
@@ -90,12 +136,34 @@ export function ClientDetailProfileCard({
     const serverEmail = client.email;
     const serverDoc = digitsOnlyCpf(client.documentId ?? "");
     const docNorm = draftDocumentDigits.length === 0 ? "" : draftDocumentDigits;
+    const cepNorm = (() => {
+      const d = digitsOnlyCep(draftPostalCode);
+      return d.length === 8 ? d : "";
+    })();
+    const serverCep = client.postalCode ?? "";
+
+    const addressDirty =
+      cepNorm !== serverCep ||
+      normNullable(draftAddressLine) !== normNullable(client.addressLine) ||
+      normNullable(draftAddressNumber) !== normNullable(client.addressNumber) ||
+      normNullable(draftAddressComp) !== normNullable(client.addressComp) ||
+      normNullable(draftNeighborhood) !== normNullable(client.neighborhood) ||
+      normNullable(draftCity) !== normNullable(client.city) ||
+      normNullable(draftState) !== normNullable(client.state?.toUpperCase() ?? null);
+
+    const guardianDirty =
+      draftIsMinor !== client.isMinor ||
+      normNullable(draftGuardianName) !== normNullable(client.guardianName) ||
+      digitsOnlyCpf(draftGuardianDocumentDigits) !== digitsOnlyCpf(client.guardianDocumentId ?? "") ||
+      digitsOnlyPhone(draftGuardianPhoneDigits) !== digitsOnlyPhone(client.guardianPhone ?? "");
+
     if (isPatient) {
       return (
         draftName.trim() !== client.name.trim() ||
         digitsOnlyPhone(draftPhoneDigits) !== digitsOnlyPhone(client.phone) ||
         emailNorm !== serverEmail ||
-        docNorm !== serverDoc
+        docNorm !== serverDoc ||
+        addressDirty
       );
     }
     const a = draftAssigned === NONE ? null : draftAssigned;
@@ -105,7 +173,9 @@ export function ClientDetailProfileCard({
       emailNorm !== serverEmail ||
       docNorm !== serverDoc ||
       a !== client.assignedToUserId ||
-      o !== client.opmeSupplierId
+      o !== client.opmeSupplierId ||
+      addressDirty ||
+      guardianDirty
     );
   }, [
     isPatient,
@@ -115,27 +185,29 @@ export function ClientDetailProfileCard({
     draftDocumentDigits,
     draftAssigned,
     draftOpme,
+    draftPostalCode,
+    draftAddressLine,
+    draftAddressNumber,
+    draftAddressComp,
+    draftNeighborhood,
+    draftCity,
+    draftState,
+    draftIsMinor,
+    draftGuardianName,
+    draftGuardianDocumentDigits,
+    draftGuardianPhoneDigits,
     client,
   ]);
 
   async function saveProfile() {
-    const emailTrim = draftEmail.trim();
-    const doc = draftDocumentDigits;
-    if (doc.length === 0) {
-      toast.error(tApi("errors.validationCpfRequired"));
-      return;
-    }
-    if (doc.length !== 11) {
-      toast.error(tApi("errors.validationCpf11Digits"));
-      return;
-    }
-
     const phoneDigits = digitsOnlyPhone(draftPhoneDigits);
-    const phoneOk = phoneDigitsSchema.safeParse(phoneDigits).success;
-    if (!phoneOk) {
+    if (!phoneDigitsSchema.safeParse(phoneDigits).success) {
       toast.error(tApi("errors.validationPhoneBrDigits"));
       return;
     }
+
+    const emailTrim = draftEmail.trim();
+    const emailNorm = emailTrim === "" ? null : emailTrim;
 
     if (isPatient) {
       const nameTrim = draftName.trim();
@@ -147,14 +219,54 @@ export function ClientDetailProfileCard({
         toast.error(t("saveError"));
         return;
       }
+      const doc = draftDocumentDigits;
+      if (!client.isMinor) {
+        if (doc.length !== 11) {
+          toast.error(doc.length === 0 ? tApi("errors.validationCpfRequired") : tApi("errors.validationCpf11Digits"));
+          return;
+        }
+      } else if (doc.length > 0 && doc.length !== 11) {
+        toast.error(tApi("errors.validationCpf11Digits"));
+        return;
+      }
+
+      const body: PatchPatientPortalProfileBody = {};
+      if (nameTrim !== client.name.trim()) body.name = nameTrim;
+      if (phoneDigits !== digitsOnlyPhone(client.phone)) body.phone = phoneDigits;
+      if (emailNorm !== client.email) body.email = emailTrim === "" ? "" : emailTrim;
+      if (digitsOnlyCpf(doc) !== digitsOnlyCpf(client.documentId ?? "")) {
+        body.documentId = doc.length === 0 ? "" : doc;
+      }
+
+      const pCep = digitsOnlyCep(draftPostalCode);
+      const sCep = client.postalCode ?? "";
+      const cepVal = pCep.length === 8 ? pCep : null;
+      const sCepNorm = sCep.length === 8 ? sCep : null;
+      if (cepVal !== sCepNorm) body.postalCode = cepVal;
+      if (normNullable(draftAddressLine) !== normNullable(client.addressLine)) {
+        body.addressLine = normNullable(draftAddressLine);
+      }
+      if (normNullable(draftAddressNumber) !== normNullable(client.addressNumber)) {
+        body.addressNumber = normNullable(draftAddressNumber);
+      }
+      if (normNullable(draftAddressComp) !== normNullable(client.addressComp)) {
+        body.addressComp = normNullable(draftAddressComp);
+      }
+      if (normNullable(draftNeighborhood) !== normNullable(client.neighborhood)) {
+        body.neighborhood = normNullable(draftNeighborhood);
+      }
+      if (normNullable(draftCity) !== normNullable(client.city)) body.city = normNullable(draftCity);
+      if (normNullable(draftState) !== normNullable(client.state)) {
+        body.state = normNullable(draftState)?.toUpperCase() ?? null;
+      }
+
+      if (Object.keys(body).length === 0) {
+        return;
+      }
+
       setSavingPatient(true);
       try {
-        await patchPatientPortalProfile(tenantSlug.trim(), {
-          name: nameTrim,
-          phone: phoneDigits,
-          email: emailTrim === "" ? "" : emailTrim,
-          documentId: doc,
-        });
+        await patchPatientPortalProfile(tenantSlug.trim(), body);
         toast.success(t("saved"));
         onSaved();
       } catch (e) {
@@ -165,14 +277,98 @@ export function ClientDetailProfileCard({
       return;
     }
 
+    const doc = draftDocumentDigits;
+    if (draftIsMinor) {
+      const gName = draftGuardianName.trim();
+      const gDoc = digitsOnlyCpf(draftGuardianDocumentDigits);
+      if (!gName) {
+        toast.error(tApi("errors.validationGuardianNameRequired"));
+        return;
+      }
+      if (gDoc.length !== 11) {
+        toast.error(tApi("errors.validationGuardianCpfRequired"));
+        return;
+      }
+      if (doc.length > 0 && doc.length !== 11) {
+        toast.error(tApi("errors.validationCpf11Digits"));
+        return;
+      }
+    } else {
+      if (doc.length !== 11) {
+        toast.error(doc.length === 0 ? tApi("errors.validationCpfRequired") : tApi("errors.validationCpf11Digits"));
+        return;
+      }
+    }
+
+    const body: PatchClientRequestBody = {};
+    if (phoneDigits !== digitsOnlyPhone(client.phone)) body.phone = phoneDigits;
+    if (emailNorm !== client.email) body.email = emailNorm;
+
+    const serverDoc = digitsOnlyCpf(client.documentId ?? "");
+    if (draftIsMinor) {
+      if (doc.length === 0) {
+        if (serverDoc.length > 0) body.documentId = null;
+      } else if (doc !== serverDoc) {
+        body.documentId = doc;
+      }
+    } else if (doc !== serverDoc) {
+      body.documentId = doc;
+    }
+
+    if (draftIsMinor !== client.isMinor) body.isMinor = draftIsMinor;
+
+    const gName = draftGuardianName.trim();
+    const gDoc = digitsOnlyCpf(draftGuardianDocumentDigits);
+    const gPhone = digitsOnlyPhone(draftGuardianPhoneDigits);
+
+    if (draftIsMinor) {
+      if (draftIsMinor !== client.isMinor) {
+        body.guardianName = gName;
+        body.guardianDocumentId = gDoc;
+        body.guardianPhone = gPhone.length > 0 ? gPhone : null;
+      } else {
+        if (gName !== (client.guardianName ?? "").trim()) body.guardianName = gName;
+        if (gDoc !== digitsOnlyCpf(client.guardianDocumentId ?? "")) body.guardianDocumentId = gDoc;
+        if (gPhone !== digitsOnlyPhone(client.guardianPhone ?? "")) {
+          body.guardianPhone = gPhone.length > 0 ? gPhone : null;
+        }
+      }
+    }
+
+    const pCep = digitsOnlyCep(draftPostalCode);
+    const cepVal = pCep.length === 8 ? pCep : null;
+    const serverCep = client.postalCode ?? "";
+    const serverCepNorm = serverCep.length === 8 ? serverCep : null;
+    if (cepVal !== serverCepNorm) body.postalCode = cepVal;
+
+    if (normNullable(draftAddressLine) !== normNullable(client.addressLine)) {
+      body.addressLine = normNullable(draftAddressLine);
+    }
+    if (normNullable(draftAddressNumber) !== normNullable(client.addressNumber)) {
+      body.addressNumber = normNullable(draftAddressNumber);
+    }
+    if (normNullable(draftAddressComp) !== normNullable(client.addressComp)) {
+      body.addressComp = normNullable(draftAddressComp);
+    }
+    if (normNullable(draftNeighborhood) !== normNullable(client.neighborhood)) {
+      body.neighborhood = normNullable(draftNeighborhood);
+    }
+    if (normNullable(draftCity) !== normNullable(client.city)) body.city = normNullable(draftCity);
+    if (normNullable(draftState) !== normNullable(client.state)) {
+      body.state = normNullable(draftState)?.toUpperCase() ?? null;
+    }
+
+    const a = draftAssigned === NONE ? null : draftAssigned;
+    const o = draftOpme === NONE ? null : draftOpme;
+    if (a !== client.assignedToUserId) body.assignedToUserId = a;
+    if (o !== client.opmeSupplierId) body.opmeSupplierId = o;
+
+    if (Object.keys(body).length === 0) {
+      return;
+    }
+
     try {
-      await updateClientById(clientId, {
-        phone: phoneDigits,
-        email: emailTrim === "" ? null : emailTrim,
-        documentId: doc,
-        assignedToUserId: draftAssigned === NONE ? null : draftAssigned,
-        opmeSupplierId: draftOpme === NONE ? null : draftOpme,
-      });
+      await updateClientById(clientId, body);
       toast.success(t("saved"));
       onSaved();
     } catch {
@@ -193,6 +389,9 @@ export function ClientDetailProfileCard({
       /* erro: toast global no apiClient */
     }
   }
+
+  const showGuardianReadonly =
+    isPatient && (client.guardianName || client.guardianDocumentId || client.guardianPhone);
 
   return (
     <Card className="min-w-0">
@@ -260,7 +459,9 @@ export function ClientDetailProfileCard({
         ) : null}
         <Field>
           <FieldLabel htmlFor="client-profile-cpf">{t("cpf")}</FieldLabel>
-          <FieldDescription>{t("cpfHint")}</FieldDescription>
+          <FieldDescription>
+            {client.isMinor ? t("cpfHintMinor") : t("cpfHint")}
+          </FieldDescription>
           <Input
             id="client-profile-cpf"
             type="text"
@@ -272,6 +473,158 @@ export function ClientDetailProfileCard({
             className="w-full min-w-0 tabular-nums"
           />
         </Field>
+
+        {!isPatient ? (
+          <label className="border-border flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm">
+            <input
+              type="checkbox"
+              checked={draftIsMinor}
+              onChange={(e) => setDraftIsMinor(e.target.checked)}
+              disabled={saving}
+              className="mt-0.5 size-4"
+            />
+            <span>{t("isMinor")}</span>
+          </label>
+        ) : null}
+
+        {!isPatient && draftIsMinor ? (
+          <div className="bg-muted/40 space-y-3 rounded-lg border p-4">
+            <p className="text-sm font-medium">{t("guardianSection")}</p>
+            <Field>
+              <FieldLabel htmlFor="guardian-name">{t("guardianName")}</FieldLabel>
+              <Input
+                id="guardian-name"
+                value={draftGuardianName}
+                onChange={(e) => setDraftGuardianName(e.target.value)}
+                disabled={saving}
+                className="w-full min-w-0"
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="guardian-cpf">{t("guardianDocumentId")}</FieldLabel>
+              <Input
+                id="guardian-cpf"
+                inputMode="numeric"
+                value={formatCpfDisplay(draftGuardianDocumentDigits)}
+                onChange={(e) => setDraftGuardianDocumentDigits(digitsOnlyCpf(e.target.value))}
+                disabled={saving}
+                className="w-full min-w-0 tabular-nums"
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="guardian-phone">{t("guardianPhone")}</FieldLabel>
+              <Input
+                id="guardian-phone"
+                type="tel"
+                inputMode="tel"
+                value={formatPhoneBrDisplay(draftGuardianPhoneDigits)}
+                onChange={(e) => setDraftGuardianPhoneDigits(digitsOnlyPhone(e.target.value))}
+                disabled={saving}
+                className="w-full min-w-0 tabular-nums"
+              />
+            </Field>
+          </div>
+        ) : null}
+
+        {showGuardianReadonly ? (
+          <div className="bg-muted/35 space-y-2 rounded-lg border p-4 text-sm">
+            <p className="font-medium">{t("guardianSectionReadonly")}</p>
+            <p>
+              <span className="text-muted-foreground">{t("guardianName")}: </span>
+              {client.guardianName ?? "—"}
+            </p>
+            <p>
+              <span className="text-muted-foreground">{t("guardianDocumentId")}: </span>
+              {client.guardianDocumentId ? formatCpfDisplay(client.guardianDocumentId) : "—"}
+            </p>
+            <p>
+              <span className="text-muted-foreground">{t("guardianPhone")}: </span>
+              {client.guardianPhone ? formatPhoneBrDisplay(client.guardianPhone) : "—"}
+            </p>
+          </div>
+        ) : null}
+
+        <div className="space-y-3">
+          <p className="text-sm font-medium">{t("addressSection")}</p>
+          <Field>
+            <FieldLabel htmlFor="addr-cep">{t("postalCode")}</FieldLabel>
+            <FieldDescription>{t("postalCodeHint")}</FieldDescription>
+            <Input
+              id="addr-cep"
+              inputMode="numeric"
+              value={formatCepDisplay(draftPostalCode)}
+              onChange={(e) => setDraftPostalCode(digitsOnlyCep(e.target.value))}
+              disabled={saving}
+              className="w-full min-w-0 tabular-nums"
+            />
+          </Field>
+          <Field>
+            <FieldLabel htmlFor="addr-line">{t("addressLine")}</FieldLabel>
+            <Input
+              id="addr-line"
+              value={draftAddressLine}
+              onChange={(e) => setDraftAddressLine(e.target.value)}
+              disabled={saving}
+              className="w-full min-w-0"
+            />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="addr-num">{t("addressNumber")}</FieldLabel>
+              <Input
+                id="addr-num"
+                value={draftAddressNumber}
+                onChange={(e) => setDraftAddressNumber(e.target.value)}
+                disabled={saving}
+                className="w-full min-w-0"
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="addr-comp">{t("addressComp")}</FieldLabel>
+              <Input
+                id="addr-comp"
+                value={draftAddressComp}
+                onChange={(e) => setDraftAddressComp(e.target.value)}
+                disabled={saving}
+                className="w-full min-w-0"
+              />
+            </Field>
+          </div>
+          <Field>
+            <FieldLabel htmlFor="addr-neigh">{t("neighborhood")}</FieldLabel>
+            <Input
+              id="addr-neigh"
+              value={draftNeighborhood}
+              onChange={(e) => setDraftNeighborhood(e.target.value)}
+              disabled={saving}
+              className="w-full min-w-0"
+            />
+          </Field>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="addr-city">{t("city")}</FieldLabel>
+              <Input
+                id="addr-city"
+                value={draftCity}
+                onChange={(e) => setDraftCity(e.target.value)}
+                disabled={saving}
+                className="w-full min-w-0"
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="addr-state">{t("state")}</FieldLabel>
+              <Input
+                id="addr-state"
+                maxLength={2}
+                className="w-full min-w-0 uppercase"
+                value={draftState}
+                onChange={(e) => setDraftState(e.target.value.toUpperCase())}
+                disabled={saving}
+              />
+            </Field>
+          </div>
+        </div>
+
         {!isPatient ? (
           <>
             <Field>

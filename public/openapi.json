@@ -339,13 +339,27 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["name", "phone", "documentId"],
+                "required": ["name", "phone", "email"],
                 "properties": {
                   "name": { "type": "string" },
                   "phone": { "type": "string", "description": "Obrigatório. DDD + número (10 ou 11 dígitos)." },
-                  "email": { "type": "string", "format": "email", "description": "Opcional." },
+                  "email": { "type": "string", "format": "email", "description": "Obrigatório." },
                   "caseDescription": { "type": "string" },
-                  "documentId": { "type": "string", "description": "Obrigatório. CPF: exatamente 11 dígitos (apenas números)." },
+                  "documentId": {
+                    "type": "string",
+                    "description": "CPF (11 dígitos). Com `isMinor: false`, obrigatório na prática. Com `isMinor: true`, opcional (menor sem CPF)."
+                  },
+                  "isMinor": { "type": "boolean", "default": false },
+                  "guardianName": { "type": "string" },
+                  "guardianDocumentId": { "type": "string", "description": "CPF do responsável (11 dígitos) quando `isMinor: true`." },
+                  "guardianPhone": { "type": "string" },
+                  "postalCode": { "type": "string", "description": "CEP: 8 dígitos." },
+                  "addressLine": { "type": "string" },
+                  "addressNumber": { "type": "string" },
+                  "addressComp": { "type": "string" },
+                  "neighborhood": { "type": "string" },
+                  "city": { "type": "string" },
+                  "state": { "type": "string", "description": "UF: 2 letras." },
                   "assignedToUserId": { "type": "string" },
                   "opmeSupplierId": { "type": "string" }
                 }
@@ -390,10 +404,40 @@
         }
       },
       "patch": {
-        "summary": "Atualiza paciente (inclui e-mail, responsável e OPME)",
+        "summary": "Atualiza paciente (inclui e-mail, endereço, menor/responsável, responsável interno e OPME)",
         "tags": ["Clients"],
         "security": [{ "cookieAuth": [] }],
         "parameters": [{ "name": "clientId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "phone": { "type": "string" },
+                  "email": { "type": ["string", "null"], "format": "email" },
+                  "caseDescription": { "type": ["string", "null"] },
+                  "documentId": { "type": ["string", "null"] },
+                  "isMinor": { "type": "boolean" },
+                  "guardianName": { "type": ["string", "null"] },
+                  "guardianDocumentId": { "type": ["string", "null"] },
+                  "guardianPhone": { "type": ["string", "null"] },
+                  "postalCode": { "type": ["string", "null"] },
+                  "addressLine": { "type": ["string", "null"] },
+                  "addressNumber": { "type": ["string", "null"] },
+                  "addressComp": { "type": ["string", "null"] },
+                  "neighborhood": { "type": ["string", "null"] },
+                  "city": { "type": ["string", "null"] },
+                  "state": { "type": ["string", "null"] },
+                  "assignedToUserId": { "type": ["string", "null"] },
+                  "opmeSupplierId": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "`client` completo (`ClientDto`, incluindo P1 + `patientPathwayId`)"
@@ -1540,7 +1584,7 @@
     },
     "/api/v1/patient/profile": {
       "patch": {
-        "summary": "Atualiza só dados pessoais do paciente (nome, telefone, e-mail, CPF)",
+        "summary": "Atualiza dados pessoais do paciente no portal (nome, telefone, e-mail, CPF, endereço)",
         "tags": ["Patient portal"],
         "parameters": [
           {
@@ -1560,7 +1604,17 @@
                   "name": { "type": "string", "minLength": 1, "maxLength": 200 },
                   "phone": { "type": "string", "minLength": 1, "maxLength": 40 },
                   "email": { "type": "string", "format": "email" },
-                  "documentId": { "type": "string", "description": "CPF (com ou sem máscara; 11 dígitos)" }
+                  "documentId": {
+                    "type": "string",
+                    "description": "CPF (11 dígitos). Para cadastro marcado como menor na clínica, pode ser omitido ou vazio para limpar."
+                  },
+                  "postalCode": { "type": ["string", "null"], "description": "CEP: 8 dígitos ou null para limpar" },
+                  "addressLine": { "type": ["string", "null"] },
+                  "addressNumber": { "type": ["string", "null"] },
+                  "addressComp": { "type": ["string", "null"] },
+                  "neighborhood": { "type": ["string", "null"] },
+                  "city": { "type": ["string", "null"] },
+                  "state": { "type": ["string", "null"] }
                 }
               }
             }

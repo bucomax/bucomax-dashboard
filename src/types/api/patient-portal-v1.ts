@@ -15,6 +15,17 @@ export type PatientPortalProfilePatchResponseData = {
     phone: string;
     email: string | null;
     documentId: string | null;
+    postalCode: string | null;
+    addressLine: string | null;
+    addressNumber: string | null;
+    addressComp: string | null;
+    neighborhood: string | null;
+    city: string | null;
+    state: string | null;
+    isMinor: boolean;
+    guardianName: string | null;
+    guardianDocumentId: string | null;
+    guardianPhone: string | null;
     updatedAt: string;
   };
 };

@@ -1,8 +1,6 @@
-import { AuthLayout } from "@/shared/components/layout/auth-layout";
-
 /**
- * Rotas públicas de autenticação: login, forgot/reset/invite — layout centralizado compartilhado.
+ * Grupo `(auth)`: cada rota define seu próprio `AuthLayout` (largura default vs wide).
  */
 export default function AuthGroupLayout({ children }: { children: React.ReactNode }) {
-  return <AuthLayout>{children}</AuthLayout>;
+  return children;
 }

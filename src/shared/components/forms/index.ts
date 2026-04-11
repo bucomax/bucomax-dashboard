@@ -1,4 +1,6 @@
+export { FieldLabelWithHint } from "./field-label-with-hint";
 export { Form } from "./form";
+export { FormCep, type FormCepProps } from "./form-cep";
 export { FormCpf, type FormCpfProps } from "./form-cpf";
 export { FormInput, type FormInputProps } from "./form-input";
 export { FormPassword, type FormPasswordProps } from "./form-password";

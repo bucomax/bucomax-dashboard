@@ -513,7 +513,7 @@ O **núcleo já implementado** é: **jornada + versão + etapas + checklist/docu
 
 | Modelo | Campos-chave | Observação |
 |--------|--------------|------------|
-| `Client` | `tenantId`, `name`, `phone`, `documentId`, `email?`, `assignedToUserId?`, `opmeSupplierId?` | Ficha base do paciente no tenant. |
+| `Client` | `tenantId`, `name`, `phone`, `documentId?`, `email?`, endereço (`postalCode?`, `addressLine?`, `addressNumber?`, `addressComp?`, `neighborhood?`, `city?`, `state?`), `isMinor` (default false), `guardianName?`, `guardianDocumentId?`, `guardianPhone?`, `assignedToUserId?`, `opmeSupplierId?` | Ficha base do paciente no tenant. Coluna `email` nullable no BD; **`POST /api/v1/clients` e auto-cadastro público exigem e-mail** (validação). Com `isMinor`, CPF do paciente pode ser nulo; responsável obrigatório na validação de API ao marcar menor. |
 | `PatientPathway` | `tenantId`, `clientId`, **`pathwayId`**, `pathwayVersionId`, **`currentStageId`** → `PathwayStage`, `enteredStageAt`, `createdAt` | **Qual fluxo** o paciente segue. **UX:** ao criar, se o tenant tiver **um** fluxo publicado, preencher `pathwayId` automaticamente; se **vários**, exigir escolha na UI antes de persistir. |
 | `PatientPathwayChecklistItem` | `patientPathwayId`, `checklistItemId`, `completedAt?`, `completedByUserId?` | Progresso por paciente; update permitido só para item da etapa atual. |
 | `PatientNote` | `tenantId`, `clientId`, `authorUserId`, `content`, `createdAt` | Histórico dedicado de anotações clínicas/operacionais do paciente. |

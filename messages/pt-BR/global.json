@@ -14,5 +14,8 @@
     "ariaLabel": "Idioma",
     "ptBR": "Português (Brasil)",
     "en": "English"
+  },
+  "forms": {
+    "fieldHintAria": "Ver dica sobre este campo"
   }
 }

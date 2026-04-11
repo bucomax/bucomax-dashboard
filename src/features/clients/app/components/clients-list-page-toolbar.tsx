@@ -4,33 +4,19 @@ import { PatientSelfRegisterQrDialog } from "@/features/clients/app/components/p
 import { ClientDetailCardTitle } from "@/features/clients/app/components/client-detail-card-title";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader } from "@/shared/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/shared/components/ui/card";
 import { InfoTooltip } from "@/shared/components/ui/info-tooltip";
-import { QrCode, UserPlus, Users } from "lucide-react";
+import { QrCode, UserPlus } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 /**
- * Três boxes alinhados à ficha do paciente: contexto da lista, cadastro público, cadastro pela equipe.
- * Textos longos ficam no tooltip do ícone (i).
+ * Dois boxes: cadastro público (QR/link) e cadastro pela equipe. Textos extras no tooltip (i).
  */
 export function ClientsListPageToolbar() {
   const t = useTranslations("clients.list");
 
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 lg:items-start">
-      <Card className="border-border min-w-0 gap-2 shadow-sm">
-        <CardHeader className="space-y-2 pb-0">
-          <div className="flex items-start justify-between gap-2">
-            <h1 className="text-foreground flex min-w-0 flex-1 items-center gap-2 text-xl font-semibold tracking-tight md:text-2xl">
-              <Users className="text-muted-foreground size-5 shrink-0" aria-hidden />
-              {t("title")}
-            </h1>
-            <InfoTooltip ariaLabel={t("contextInfoAria")}>{t("contextHint")}</InfoTooltip>
-          </div>
-          <CardDescription className="text-sm leading-snug">{t("description")}</CardDescription>
-        </CardHeader>
-      </Card>
-
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:items-start">
       <Card className="border-border min-w-0 gap-2 shadow-sm">
         <CardHeader className="pb-0">
           <div className="flex items-start justify-between gap-2">
@@ -48,7 +34,7 @@ export function ClientsListPageToolbar() {
         </CardContent>
       </Card>
 
-      <Card className="border-border min-w-0 gap-2 shadow-sm md:col-span-2 lg:col-span-1">
+      <Card className="border-border min-w-0 gap-2 shadow-sm">
         <CardHeader className="pb-0">
           <div className="flex items-start justify-between gap-2">
             <ClientDetailCardTitle icon={UserPlus} className="min-w-0 flex-1">

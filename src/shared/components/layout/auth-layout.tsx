@@ -1,15 +1,21 @@
 import { LocaleSwitcher } from "@/shared/components/layout/locale-switcher";
+import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
 
 type AuthLayoutProps = {
   children: ReactNode;
+  /**
+   * `wide` — formulários com várias colunas (ex.: auto-cadastro público).
+   * `default` — login / convites (~max-w-md).
+   */
+  variant?: "default" | "wide";
 };
 
 /**
  * Layout compartilhado das rotas públicas de autenticação (`(auth)`):
  * fundo com gradiente leve, troca de idioma fixa no canto, coluna central.
  */
-export function AuthLayout({ children }: AuthLayoutProps) {
+export function AuthLayout({ children, variant = "default" }: AuthLayoutProps) {
   return (
     <div className="relative flex min-h-dvh flex-col overflow-hidden bg-gradient-to-b from-muted/50 via-background to-background dark:from-zinc-950/80 dark:via-background dark:to-zinc-950">
       <div
@@ -28,7 +34,14 @@ export function AuthLayout({ children }: AuthLayoutProps) {
         }}
       />
       <LocaleSwitcher variant="floating" />
-      <main className="relative z-0 mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-16 sm:px-6">
+      <main
+        className={cn(
+          "relative z-0 mx-auto flex w-full flex-1 flex-col justify-center px-4 py-16 sm:px-6",
+          variant === "wide"
+            ? "max-w-lg sm:max-w-xl md:max-w-2xl lg:max-w-4xl xl:max-w-5xl"
+            : "max-w-md",
+        )}
+      >
         {children}
       </main>
     </div>

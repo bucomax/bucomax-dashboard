@@ -14,5 +14,8 @@
     "ariaLabel": "Language",
     "ptBR": "Portuguese (Brazil)",
     "en": "English"
+  },
+  "forms": {
+    "fieldHintAria": "Show hint for this field"
   }
 }

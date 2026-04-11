@@ -18,6 +18,7 @@ import { validateClientOptionalRefs } from "@/lib/clients/validate-client-option
 import {
   CLIENT_LIST_INCLUDE,
   buildClientsListBaseWhere,
+  mapPrismaClientRowToClientDto,
   serializeClientListItem,
 } from "@/lib/clients/clients-list-shared";
 import { postClientBodySchema } from "@/lib/validators/client";
@@ -159,16 +160,28 @@ export async function POST(request: Request) {
   );
   if (refErr) return refErr;
 
+  const d = parsed.data;
   const row = await prisma.client.create({
     data: {
       tenantId,
-      name: parsed.data.name.trim(),
-      phone: parsed.data.phone.trim(),
-      email: parsed.data.email ?? null,
-      caseDescription: parsed.data.caseDescription?.trim() || null,
-      documentId: parsed.data.documentId,
-      assignedToUserId: parsed.data.assignedToUserId ?? null,
-      opmeSupplierId: parsed.data.opmeSupplierId ?? null,
+      name: d.name,
+      phone: d.phone,
+      email: d.email,
+      caseDescription: d.caseDescription,
+      documentId: d.documentId,
+      postalCode: d.postalCode,
+      addressLine: d.addressLine,
+      addressNumber: d.addressNumber,
+      addressComp: d.addressComp,
+      neighborhood: d.neighborhood,
+      city: d.city,
+      state: d.state,
+      isMinor: d.isMinor,
+      guardianName: d.guardianName,
+      guardianDocumentId: d.guardianDocumentId,
+      guardianPhone: d.guardianPhone,
+      assignedToUserId: d.assignedToUserId,
+      opmeSupplierId: d.opmeSupplierId,
     },
     select: {
       id: true,
@@ -177,6 +190,17 @@ export async function POST(request: Request) {
       email: true,
       caseDescription: true,
       documentId: true,
+      postalCode: true,
+      addressLine: true,
+      addressNumber: true,
+      addressComp: true,
+      neighborhood: true,
+      city: true,
+      state: true,
+      isMinor: true,
+      guardianName: true,
+      guardianDocumentId: true,
+      guardianPhone: true,
       assignedToUserId: true,
       opmeSupplierId: true,
       createdAt: true,
@@ -191,23 +215,7 @@ export async function POST(request: Request) {
 
   return jsonSuccess(
     {
-      client: {
-        id: row.id,
-        name: row.name,
-        phone: row.phone,
-        email: row.email,
-        caseDescription: row.caseDescription,
-        documentId: row.documentId,
-        assignedToUserId: row.assignedToUserId,
-        opmeSupplierId: row.opmeSupplierId,
-        assignedTo: row.assignedTo
-          ? { id: row.assignedTo.id, name: row.assignedTo.name, email: row.assignedTo.email }
-          : null,
-        opmeSupplier: row.opmeSupplier ? { id: row.opmeSupplier.id, name: row.opmeSupplier.name } : null,
-        patientPathwayId: row.patientPathways?.[0]?.id ?? null,
-        createdAt: row.createdAt.toISOString(),
-        updatedAt: row.updatedAt.toISOString(),
-      },
+      client: mapPrismaClientRowToClientDto(row),
     },
     { status: 201 },
   );

@@ -29,6 +29,17 @@ export async function GET(request: Request) {
           email: true,
           documentId: true,
           caseDescription: true,
+          postalCode: true,
+          addressLine: true,
+          addressNumber: true,
+          addressComp: true,
+          neighborhood: true,
+          city: true,
+          state: true,
+          isMinor: true,
+          guardianName: true,
+          guardianDocumentId: true,
+          guardianPhone: true,
           deletedAt: true,
         },
       },
@@ -62,6 +73,17 @@ export async function GET(request: Request) {
           email: row.client.email,
           documentId: row.client.documentId,
           caseDescription: row.client.caseDescription,
+          postalCode: row.client.postalCode,
+          addressLine: row.client.addressLine,
+          addressNumber: row.client.addressNumber,
+          addressComp: row.client.addressComp,
+          neighborhood: row.client.neighborhood,
+          city: row.client.city,
+          state: row.client.state,
+          isMinor: row.client.isMinor,
+          guardianName: row.client.guardianName,
+          guardianDocumentId: row.client.guardianDocumentId,
+          guardianPhone: row.client.guardianPhone,
         }
       : undefined;
 
@@ -134,14 +156,26 @@ export async function POST(request: Request) {
             return null;
           }
 
+          const cf = clientFields;
           const updated = await tx.client.update({
             where: { id: existing.id },
             data: {
-              name: clientFields.name.trim(),
-              phone: clientFields.phone.trim(),
-              email: clientFields.email ?? null,
-              caseDescription: clientFields.caseDescription?.trim() || null,
-              documentId: clientFields.documentId,
+              name: cf.name,
+              phone: cf.phone,
+              email: cf.email,
+              caseDescription: cf.caseDescription,
+              documentId: cf.documentId,
+              postalCode: cf.postalCode,
+              addressLine: cf.addressLine,
+              addressNumber: cf.addressNumber,
+              addressComp: cf.addressComp,
+              neighborhood: cf.neighborhood,
+              city: cf.city,
+              state: cf.state,
+              isMinor: cf.isMinor,
+              guardianName: cf.guardianName,
+              guardianDocumentId: cf.guardianDocumentId,
+              guardianPhone: cf.guardianPhone,
             },
             select: { id: true, name: true },
           });
@@ -161,14 +195,26 @@ export async function POST(request: Request) {
           };
         }
 
+        const cf = clientFields;
         const client = await tx.client.create({
           data: {
             tenantId: inv.tenantId,
-            name: clientFields.name.trim(),
-            phone: clientFields.phone.trim(),
-            email: clientFields.email ?? null,
-            caseDescription: clientFields.caseDescription?.trim() || null,
-            documentId: clientFields.documentId,
+            name: cf.name,
+            phone: cf.phone,
+            email: cf.email,
+            caseDescription: cf.caseDescription,
+            documentId: cf.documentId,
+            postalCode: cf.postalCode,
+            addressLine: cf.addressLine,
+            addressNumber: cf.addressNumber,
+            addressComp: cf.addressComp,
+            neighborhood: cf.neighborhood,
+            city: cf.city,
+            state: cf.state,
+            isMinor: cf.isMinor,
+            guardianName: cf.guardianName,
+            guardianDocumentId: cf.guardianDocumentId,
+            guardianPhone: cf.guardianPhone,
           },
           select: { id: true, name: true },
         });
