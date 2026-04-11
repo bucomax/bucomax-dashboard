@@ -161,7 +161,11 @@
     "submit": "Enviar cadastro",
     "submitting": "Enviando…",
     "successTitle": "Obrigado!",
-    "successBody": "Seus dados foram enviados. A equipe da clínica foi avisada e dará continuidade."
+    "successBody": "Seu cadastro foi concluído com sucesso.",
+    "successContactHint": "Não enviamos e-mail automático de confirmação para você. A clínica entrará em contato pelo telefone ou WhatsApp que você informou para alinhar os próximos passos da sua jornada de tratamento.",
+    "submitFailedTitle": "Não foi possível enviar o cadastro",
+    "fixFieldsHint": "Revise os campos destacados no formulário.",
+    "submitNetworkError": "Sem conexão ou servidor indisponível. Verifique a internet e tente de novo."
   },
   "detail": {
     "pageTitle": "Paciente",

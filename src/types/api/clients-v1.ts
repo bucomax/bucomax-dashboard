@@ -371,11 +371,8 @@ export type PublicPatientSelfRegisterValidateResponseData = {
   formPrefill?: PublicPatientSelfRegisterFormPrefillDto;
 };
 
-/** Corpo `POST /api/v1/public/patient-self-register` (campos do paciente + token). */
-export type PublicPatientSelfRegisterRequestBody = Omit<
-  z.infer<typeof publicPatientSelfRegisterBodySchema>,
-  "assignedToUserId" | "opmeSupplierId"
->;
+/** Corpo `POST /api/v1/public/patient-self-register` (campos do paciente + token) — entrada antes do `transform` do schema. */
+export type PublicPatientSelfRegisterRequestBody = z.input<typeof publicPatientSelfRegisterBodySchema>;
 
 /** `POST /api/v1/public/patient-self-register` — sucesso. */
 export type PublicPatientSelfRegisterSubmitResponseData = {

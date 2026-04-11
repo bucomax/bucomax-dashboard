@@ -161,7 +161,11 @@
     "submit": "Submit registration",
     "submitting": "Submitting…",
     "successTitle": "Thank you!",
-    "successBody": "Your details were sent. The clinic team has been notified and will follow up."
+    "successBody": "Your registration was completed successfully.",
+    "successContactHint": "We do not send an automatic confirmation email to you. The clinic will reach out using the phone number or WhatsApp you provided to guide you through the next steps of your care pathway.",
+    "submitFailedTitle": "Could not submit your registration",
+    "fixFieldsHint": "Please review the highlighted fields in the form.",
+    "submitNetworkError": "No connection or server unavailable. Check your network and try again."
   },
   "detail": {
     "pageTitle": "Patient",

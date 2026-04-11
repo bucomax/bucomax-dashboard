@@ -73,7 +73,8 @@ const guardianFieldsCreate = {
   guardianPhone: z.preprocess(
     (v) => {
       if (v === undefined || v === null) return undefined;
-      return digitsOnlyPhone(String(v));
+      const d = digitsOnlyPhone(String(v));
+      return d === "" ? undefined : d;
     },
     z.union([z.undefined(), phoneDigitsSchema]),
   ),
