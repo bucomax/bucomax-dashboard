@@ -1,0 +1,41 @@
+import { getApiT } from "@/lib/api/i18n";
+import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { findClientForPortalLogin } from "@/lib/patient-portal/find-client-by-portal-login";
+import { parsePortalLoginInput } from "@/lib/patient-portal/login-identifier";
+import { findActiveTenantBySlug } from "@/lib/tenants/resolve-public-tenant";
+import { postPatientPortalLoginOptionsBodySchema } from "@/lib/validators/patient-portal";
+
+export const dynamic = "force-dynamic";
+
+type RouteCtx = { params: Promise<{ tenantSlug: string }> };
+
+export async function POST(request: Request, ctx: RouteCtx) {
+  const apiT = await getApiT(request);
+  const { tenantSlug: rawSlug } = await ctx.params;
+  const tenantSlug = rawSlug.trim().toLowerCase();
+  const tenant = await findActiveTenantBySlug(tenantSlug);
+  if (!tenant) {
+    return jsonSuccess({ hasPassword: false });
+  }
+
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
+  }
+
+  const parsed = postPatientPortalLoginOptionsBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
+  }
+
+  const identifier = parsePortalLoginInput(parsed.data.login);
+  if (!identifier) {
+    return jsonError("VALIDATION_ERROR", apiT("errors.patientPortalLoginInvalid"), 422);
+  }
+
+  const client = await findClientForPortalLogin(tenant.id, identifier);
+
+  return jsonSuccess({ hasPassword: Boolean(client?.portalPasswordHash) });
+}

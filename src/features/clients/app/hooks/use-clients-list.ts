@@ -95,22 +95,26 @@ export function useClientsList() {
     };
   }, [pathwayFilter, t]);
 
-  const fetchListPage = useCallback(async () => {
-    return listClients({
-      limit: PAGE_SIZE,
-      page,
-      q: debouncedQ || undefined,
-      pathwayId: pathwayFilter === "all" ? undefined : pathwayFilter,
-      stageId: stageFilter === "all" ? undefined : stageFilter,
-      status: statusFilter === "all" ? undefined : (statusFilter as ClientListStatusFilter),
-    });
-  }, [debouncedQ, page, pathwayFilter, stageFilter, statusFilter]);
+  const fetchListPage = useCallback(
+    async (opts?: { fresh?: boolean }) => {
+      return listClients({
+        limit: PAGE_SIZE,
+        page,
+        q: debouncedQ || undefined,
+        pathwayId: pathwayFilter === "all" ? undefined : pathwayFilter,
+        stageId: stageFilter === "all" ? undefined : stageFilter,
+        status: statusFilter === "all" ? undefined : (statusFilter as ClientListStatusFilter),
+        fresh: opts?.fresh === true,
+      });
+    },
+    [debouncedQ, page, pathwayFilter, stageFilter, statusFilter],
+  );
 
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const payload = await fetchListPage();
+        const payload = await fetchListPage(undefined);
         if (!cancelled) {
           setRows(payload.data);
           setPagination(payload.pagination);
@@ -139,7 +143,7 @@ export function useClientsList() {
   const reloadList = useCallback(() => {
     void (async () => {
       try {
-        const payload = await fetchListPage();
+        const payload = await fetchListPage({ fresh: true });
         setRows(payload.data);
         setPagination(payload.pagination);
         setStatusFilterCapped(payload.statusFilterCapped);

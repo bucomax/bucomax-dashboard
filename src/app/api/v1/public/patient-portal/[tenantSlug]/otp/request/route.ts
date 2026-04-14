@@ -9,12 +9,13 @@ import { prisma } from "@/infrastructure/database/prisma";
 import { getPatientPortalOtpHtml } from "@/infrastructure/email/email-templates";
 import { isEmailConfigured, sendEmail } from "@/infrastructure/email/resend.client";
 import { notifyPatientPortalOtpByWebhook } from "@/infrastructure/notifications/patient-portal-otp-wpp";
+import { findClientForPortalLogin } from "@/lib/patient-portal/find-client-by-portal-login";
+import { parsePortalLoginInput } from "@/lib/patient-portal/login-identifier";
 import { findActiveTenantBySlug } from "@/lib/tenants/resolve-public-tenant";
 import {
   generatePatientPortalOtpCode,
   hashPatientPortalOtpCode,
 } from "@/lib/utils/patient-portal-otp";
-import { digitsOnlyCpf } from "@/lib/validators/cpf";
 import { postPatientPortalOtpRequestBodySchema } from "@/lib/validators/patient-portal";
 
 export const dynamic = "force-dynamic";
@@ -46,15 +47,12 @@ export async function POST(request: Request, ctx: RouteCtx) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const cpf = digitsOnlyCpf(parsed.data.documentId);
-  if (cpf.length !== 11) {
-    return jsonError("VALIDATION_ERROR", apiT("errors.validationCpf11Digits"), 422);
+  const identifier = parsePortalLoginInput(parsed.data.login);
+  if (!identifier) {
+    return jsonError("VALIDATION_ERROR", apiT("errors.patientPortalLoginInvalid"), 422);
   }
 
-  const client = await prisma.client.findFirst({
-    where: { tenantId: tenant.id, documentId: cpf, deletedAt: null },
-    select: { id: true, email: true, phone: true, name: true },
-  });
+  const client = await findClientForPortalLogin(tenant.id, identifier);
 
   if (!client) {
     return jsonSuccessOpaque();

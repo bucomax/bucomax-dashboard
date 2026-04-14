@@ -15,6 +15,7 @@ async function loadMessages(locale: string) {
         pathways: (await import("../../messages/pt-BR/pathways.json")).default,
         notifications: (await import("../../messages/pt-BR/notifications.json")).default,
         patientPortal: (await import("../../messages/pt-BR/patientPortal.json")).default,
+        legal: (await import("../../messages/pt-BR/legal.json")).default,
       };
     case "en":
       return {
@@ -28,6 +29,7 @@ async function loadMessages(locale: string) {
         pathways: (await import("../../messages/en/pathways.json")).default,
         notifications: (await import("../../messages/en/notifications.json")).default,
         patientPortal: (await import("../../messages/en/patientPortal.json")).default,
+        legal: (await import("../../messages/en/legal.json")).default,
       };
     default:
       return {
@@ -41,6 +43,7 @@ async function loadMessages(locale: string) {
         pathways: (await import("../../messages/pt-BR/pathways.json")).default,
         notifications: (await import("../../messages/pt-BR/notifications.json")).default,
         patientPortal: (await import("../../messages/pt-BR/patientPortal.json")).default,
+        legal: (await import("../../messages/pt-BR/legal.json")).default,
       };
   }
 }

@@ -18,13 +18,19 @@ export async function GET(request: Request) {
   const parsedQ = clientTimelineQuerySchema.safeParse({
     page: url.searchParams.get("page") ?? undefined,
     limit: url.searchParams.get("limit") ?? undefined,
+    categories: url.searchParams.get("categories") ?? undefined,
   });
   if (!parsedQ.success) {
     return jsonError("VALIDATION_ERROR", parsedQ.error.flatten().formErrors.join("; "), 422);
   }
 
-  const { page, limit } = parsedQ.data;
+  const { page, limit, categories } = parsedQ.data;
 
-  const raw = await buildClientTimelinePage(prisma, portal.tenantId, portal.clientId, page, limit);
+  const categoryFilter =
+    categories != null && categories.length > 0 ? new Set(categories) : null;
+
+  const raw = await buildClientTimelinePage(prisma, portal.tenantId, portal.clientId, page, limit, {
+    categoryFilter,
+  });
   return jsonSuccess(mapClientTimelineForPatientPortal(raw));
 }

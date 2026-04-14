@@ -5,14 +5,16 @@
     "markAllRead": "Marcar todas como lidas",
     "markAllReadSuccess": "Todas as notificações foram marcadas como lidas.",
     "markAllReadError": "Não foi possível marcar todas como lidas. Tente novamente.",
-    "loadMore": "Carregar mais"
+    "loadMore": "Carregar mais",
+    "openPatient": "Abrir ficha do paciente"
   },
   "types": {
     "sla_critical": "Alerta crítico",
     "sla_warning": "Atenção",
     "stage_transition": "Transição de etapa",
     "new_patient": "Novo paciente",
-    "checklist_complete": "Checklist completo"
+    "checklist_complete": "Checklist completo",
+    "patient_portal_file_pending": "Envio pelo portal"
   },
   "time": {
     "justNow": "Agora",

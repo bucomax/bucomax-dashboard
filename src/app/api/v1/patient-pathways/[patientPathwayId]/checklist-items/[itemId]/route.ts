@@ -1,3 +1,4 @@
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { prisma } from "@/infrastructure/database/prisma";
 import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
 import { resolvePathwayNotificationTargetUserIds } from "@/lib/notifications/resolve-pathway-notification-targets";
@@ -41,7 +42,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
 
   const patientPathway = await prisma.patientPathway.findFirst({
     where: { id: patientPathwayId, tenantId: tenantCtx.tenantId },
-    select: { id: true, currentStageId: true, pathwayVersionId: true },
+    select: { id: true, clientId: true, currentStageId: true, pathwayVersionId: true },
   });
   if (!patientPathway) {
     return jsonError("NOT_FOUND", apiT("errors.patientPathwayNotFound"), 404);
@@ -135,6 +136,19 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
       }
     }
   }
+
+  await recordAuditEvent(prisma, {
+    tenantId: tenantCtx.tenantId,
+    clientId: patientPathway.clientId,
+    patientPathwayId: patientPathway.id,
+    actorUserId: auth.session!.user.id,
+    type: AuditEventType.CHECKLIST_ITEM_TOGGLED,
+    payload: {
+      itemId: checklistItem.id,
+      checked: parsed.data.completed,
+      userId: auth.session!.user.id,
+    },
+  });
 
   return jsonSuccess({
     item: {

@@ -1,7 +1,12 @@
 import { AuditEventType, PatientPortalFileReviewStatus } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
 import { recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { keyBelongsToTenant, publicUrlForKey } from "@/infrastructure/storage/gcs-storage";
+import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
+import {
+  computeSha256HexForGcsObjectKey,
+  keyMatchesFileRegisterIntent,
+  publicUrlForKey,
+} from "@/infrastructure/storage/gcs-storage";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -52,6 +57,7 @@ export async function GET(request: Request) {
         fileName: true,
         mimeType: true,
         sizeBytes: true,
+        sha256Hash: true,
         createdAt: true,
         patientPortalReviewStatus: true,
       },
@@ -64,6 +70,7 @@ export async function GET(request: Request) {
       fileName: r.fileName,
       mimeType: r.mimeType,
       sizeBytes: r.sizeBytes,
+      sha256Hash: r.sha256Hash,
       createdAt: r.createdAt.toISOString(),
       patientPortalReviewStatus: r.patientPortalReviewStatus,
     })),
@@ -72,15 +79,15 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const apiT = await getApiT(request);
-  const portalCtx = await requireActivePatientPortalClient(request, apiT);
+  const trans = await getApiT(request);
+  const portalCtx = await requireActivePatientPortalClient(request, trans);
   if (!portalCtx.ok) return portalCtx.response;
 
   let body: unknown;
   try {
     body = await request.json();
   } catch {
-    return jsonError("INVALID_JSON", apiT("errors.invalidJson"), 400);
+    return jsonError("INVALID_JSON", trans("errors.invalidJson"), 400);
   }
 
   const parsed = patientPortalFileRegisterBodySchema.safeParse(body);
@@ -90,8 +97,8 @@ export async function POST(request: Request) {
 
   const { tenantId, clientId } = portalCtx.data.portal;
 
-  if (!keyBelongsToTenant(parsed.data.key, tenantId)) {
-    return jsonError("FORBIDDEN", apiT("errors.invalidObjectKey"), 403);
+  if (!keyMatchesFileRegisterIntent(parsed.data.key, tenantId, clientId)) {
+    return jsonError("FORBIDDEN", trans("errors.invalidObjectKey"), 403);
   }
 
   const existingKey = await prisma.fileAsset.findUnique({
@@ -99,8 +106,10 @@ export async function POST(request: Request) {
     select: { id: true },
   });
   if (existingKey) {
-    return jsonError("CONFLICT", apiT("errors.fileAlreadyRegistered"), 409);
+    return jsonError("CONFLICT", trans("errors.fileAlreadyRegistered"), 409);
   }
+
+  const sha256Hash = await computeSha256HexForGcsObjectKey(parsed.data.key);
 
   const asset = await prisma.fileAsset.create({
     data: {
@@ -112,6 +121,7 @@ export async function POST(request: Request) {
       uploadedById: null,
       clientId,
       patientPortalReviewStatus: PatientPortalFileReviewStatus.PENDING,
+      sha256Hash,
     },
     select: {
       id: true,
@@ -119,6 +129,7 @@ export async function POST(request: Request) {
       fileName: true,
       mimeType: true,
       sizeBytes: true,
+      sha256Hash: true,
       clientId: true,
       patientPortalReviewStatus: true,
       createdAt: true,
@@ -134,6 +145,26 @@ export async function POST(request: Request) {
     payload: { fileAssetId: asset.id, mimeType: asset.mimeType },
   });
 
+  const clientRow = await prisma.client.findFirst({
+    where: { id: clientId, tenantId },
+    select: { name: true },
+  });
+  const patientLabel = clientRow?.name?.trim() || trans("notifications.patientPortalFallbackPatientName");
+
+  notificationEmitter
+    .emit({
+      tenantId,
+      type: "patient_portal_file_pending",
+      title: trans("notifications.patientPortalFileTitle"),
+      body: trans("notifications.patientPortalFileBody", {
+        patientName: patientLabel,
+        fileName: asset.fileName,
+      }),
+      metadata: { clientId, fileAssetId: asset.id },
+      correlationId: asset.id,
+    })
+    .catch((err) => console.error("[patient/files] notification emit failed:", err));
+
   return jsonSuccess(
     {
       file: {
@@ -141,6 +172,7 @@ export async function POST(request: Request) {
         fileName: asset.fileName,
         mimeType: asset.mimeType,
         sizeBytes: asset.sizeBytes,
+        sha256Hash: asset.sha256Hash,
         patientPortalReviewStatus: asset.patientPortalReviewStatus,
         publicUrl: publicUrlForKey(asset.r2Key),
         createdAt: asset.createdAt.toISOString(),

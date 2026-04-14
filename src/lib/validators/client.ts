@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { zodApiMsg } from "@/lib/api/zod-i18n";
+import { portalPasswordSchema } from "@/lib/validators/patient-portal-auth";
 import { digitsOnlyCep } from "@/lib/validators/cep";
 import { digitsOnlyCpf } from "@/lib/validators/cpf";
 import { digitsOnlyPhone, phoneDigitsSchema } from "@/lib/validators/phone";
@@ -204,23 +205,70 @@ const publicPatientSelfRegisterObject = clientCreateObject
   .omit({ assignedToUserId: true, opmeSupplierId: true })
   .extend({
     token: z.string().min(1).max(128),
+    password: portalPasswordSchema,
+    acceptTerms: z.boolean().refine((v) => v === true, {
+      message: zodApiMsg("errors.validationConsentTermsRequired"),
+    }),
+    acceptPrivacy: z.boolean().refine((v) => v === true, {
+      message: zodApiMsg("errors.validationConsentPrivacyRequired"),
+    }),
   });
 
 /** Formulário público (sem `token`; validação alinhada ao POST com token). */
 export const patientSelfRegisterFormSchema = clientCreateObject
   .omit({ assignedToUserId: true, opmeSupplierId: true })
-  .superRefine((data, ctx) => refineMinorGuardianCpf(data, ctx));
+  .extend({
+    password: z.string(),
+    confirmPassword: z.string(),
+    acceptTerms: z.boolean(),
+    acceptPrivacy: z.boolean(),
+  })
+  .superRefine((data, ctx) => {
+    refineMinorGuardianCpf(data, ctx);
+    const pw = portalPasswordSchema.safeParse(data.password);
+    if (!pw.success) {
+      for (const issue of pw.error.issues) {
+        ctx.addIssue({ ...issue, path: ["password"] });
+      }
+    }
+    if (data.password !== data.confirmPassword) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirmPassword"],
+        message: zodApiMsg("errors.validationPortalPasswordMismatch"),
+      });
+    }
+    if (data.acceptTerms !== true) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["acceptTerms"],
+        message: zodApiMsg("errors.validationConsentTermsRequired"),
+      });
+    }
+    if (data.acceptPrivacy !== true) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["acceptPrivacy"],
+        message: zodApiMsg("errors.validationConsentPrivacyRequired"),
+      });
+    }
+  });
 
 /** Cadastro público via link/QR (sem responsável nem OPME). */
 export const publicPatientSelfRegisterBodySchema = publicPatientSelfRegisterObject
   .superRefine((data, ctx) => {
-    const { token: _token, ...rest } = data;
+    const { token: _token, password: _pw, acceptTerms: _at, acceptPrivacy: _ap, ...rest } = data;
     void _token;
+    void _pw;
+    void _at;
+    void _ap;
     refineMinorGuardianCpf(rest, ctx);
   })
   .transform((data) => {
-    const { token, ...rest } = data;
-    return { ...normalizeClientCreatePayload(rest), token };
+    const { token, password, acceptTerms: _acceptTerms, acceptPrivacy: _acceptPrivacy, ...rest } = data;
+    void _acceptTerms;
+    void _acceptPrivacy;
+    return { ...normalizeClientCreatePayload(rest), token, password };
   });
 
 /** Corpo opcional de `POST /api/v1/clients/self-register-invites` (convite genérico ou ligado a um paciente). */

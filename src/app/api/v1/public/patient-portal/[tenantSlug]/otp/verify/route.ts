@@ -4,15 +4,18 @@ import { jsonError } from "@/lib/api-response";
 import {
   appendPatientPortalSessionCookie,
   type PatientPortalSessionPayload,
+  portalPasswordVersionMs,
 } from "@/lib/auth/patient-portal-session";
 import {
   PATIENT_PORTAL_OTP_MAX_ATTEMPTS,
   PATIENT_PORTAL_SESSION_MAX_AGE_SEC,
 } from "@/lib/constants/patient-portal";
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { prisma } from "@/infrastructure/database/prisma";
+import { findClientForPortalLogin } from "@/lib/patient-portal/find-client-by-portal-login";
+import { parsePortalLoginInput } from "@/lib/patient-portal/login-identifier";
 import { findActiveTenantBySlug } from "@/lib/tenants/resolve-public-tenant";
 import { hashPatientPortalOtpCode } from "@/lib/utils/patient-portal-otp";
-import { digitsOnlyCpf } from "@/lib/validators/cpf";
 import { postPatientPortalOtpVerifyBodySchema } from "@/lib/validators/patient-portal";
 import { NextResponse } from "next/server";
 
@@ -41,15 +44,12 @@ export async function POST(request: Request, ctx: RouteCtx) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const cpf = digitsOnlyCpf(parsed.data.documentId);
-  if (cpf.length !== 11) {
-    return jsonError("VALIDATION_ERROR", apiT("errors.validationCpf11Digits"), 422);
+  const identifier = parsePortalLoginInput(parsed.data.login);
+  if (!identifier) {
+    return jsonError("VALIDATION_ERROR", apiT("errors.patientPortalLoginInvalid"), 422);
   }
 
-  const client = await prisma.client.findFirst({
-    where: { tenantId: tenant.id, documentId: cpf, deletedAt: null },
-    select: { id: true },
-  });
+  const client = await findClientForPortalLogin(tenant.id, identifier);
   if (!client) {
     return jsonError("UNAUTHORIZED", apiT("errors.patientPortalOtpInvalid"), 401);
   }
@@ -92,6 +92,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
     tenantId: tenant.id,
     tenantSlug: tenant.slug,
     exp,
+    pwdv: portalPasswordVersionMs(client.portalPasswordChangedAt),
   };
 
   try {
@@ -101,6 +102,14 @@ export async function POST(request: Request, ctx: RouteCtx) {
       meta: createApiMeta(),
     });
     appendPatientPortalSessionCookie(res, sessionPayload);
+    await recordAuditEvent(prisma, {
+      tenantId: tenant.id,
+      clientId: client.id,
+      patientPathwayId: null,
+      actorUserId: null,
+      type: AuditEventType.PATIENT_PORTAL_SESSION_CREATED,
+      payload: { clientId: client.id, method: "otp" },
+    });
     return res;
   } catch (e) {
     console.error("[patient-portal] OTP session cookie signing failed:", e);

@@ -28,13 +28,14 @@ export async function GET(request: Request, ctx: RouteCtx) {
   const parsedQ = clientTimelineQuerySchema.safeParse({
     page: url.searchParams.get("page") ?? undefined,
     limit: url.searchParams.get("limit") ?? undefined,
+    categories: url.searchParams.get("categories") ?? undefined,
   });
   if (!parsedQ.success) {
     return jsonError("VALIDATION_ERROR", parsedQ.error.flatten().formErrors.join("; "), 422);
   }
 
   const { clientId } = await ctx.params;
-  const { page, limit } = parsedQ.data;
+  const { page, limit, categories } = parsedQ.data;
 
   const client = await findTenantClientVisibleToSession(auth.session!, tenantCtx.tenantId, clientId, {
     id: true,
@@ -43,6 +44,11 @@ export async function GET(request: Request, ctx: RouteCtx) {
     return jsonError("NOT_FOUND", apiT("errors.patientNotFoundInTenant"), 404);
   }
 
-  const data = await buildClientTimelinePage(prisma, tenantCtx.tenantId, clientId, page, limit);
+  const categoryFilter =
+    categories != null && categories.length > 0 ? new Set(categories) : null;
+
+  const data = await buildClientTimelinePage(prisma, tenantCtx.tenantId, clientId, page, limit, {
+    categoryFilter,
+  });
   return jsonSuccess(data);
 }

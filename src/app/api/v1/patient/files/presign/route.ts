@@ -1,5 +1,5 @@
 import {
-  buildTenantUploadKey,
+  buildUploadObjectKey,
   isGcsConfigured,
   presignPutObject,
   publicUrlForKey,
@@ -32,8 +32,12 @@ export async function POST(request: Request) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const { tenantId } = portalCtx.data.portal;
-  const key = buildTenantUploadKey(tenantId, parsed.data.fileName);
+  const { tenantId, clientId } = portalCtx.data.portal;
+  const key = buildUploadObjectKey({
+    tenantId,
+    originalFileName: parsed.data.fileName,
+    clientId,
+  });
   const uploadUrl = await presignPutObject(key, parsed.data.mimeType);
 
   return jsonSuccess({

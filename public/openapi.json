@@ -321,7 +321,13 @@
           { "name": "q", "in": "query", "schema": { "type": "string" } },
           { "name": "pathwayId", "in": "query", "schema": { "type": "string" } },
           { "name": "stageId", "in": "query", "schema": { "type": "string" } },
-          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["ok", "warning", "danger", "completed"] } }
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["ok", "warning", "danger", "completed"] } },
+          {
+            "name": "fresh",
+            "in": "query",
+            "description": "`1` ou `true`: ignora cache incremental da listagem e consulta o banco (útil após criar/editar/excluir paciente).",
+            "schema": { "type": "string", "enum": ["1", "true"] }
+          }
         ],
         "responses": {
           "200": { "description": "`data[]` (jornada = instância mais recente; `journeyCompletedAt` + `currentStageName`/`currentStageId` nulos quando concluída) + `pagination` + `statusFilterCapped` opcional" },
@@ -504,6 +510,12 @@
             "name": "limit",
             "in": "query",
             "schema": { "type": "integer", "minimum": 1, "maximum": 50, "default": 20 }
+          },
+          {
+            "name": "categories",
+            "in": "query",
+            "description": "Filtro opcional por categoria de evento (lista separada por vírgula): security, clinical, documents, administrative, compliance",
+            "schema": { "type": "string" }
           }
         ],
         "responses": {
@@ -512,6 +524,54 @@
           },
           "404": { "description": "Paciente não encontrado" },
           "422": { "description": "Query inválida" }
+        }
+      }
+    },
+    "/api/v1/clients/{clientId}/audit-export": {
+      "get": {
+        "summary": "Exporta linha do tempo (auditoria) em CSV",
+        "description": "Requer `tenant_admin` ou `super_admin`. Gera `AUDIT_EXPORT_GENERATED` no histórico. Janela padrão: últimos 730 dias quando `from`/`to` omitidos; intervalo máximo 730 dias.",
+        "tags": ["Clients"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          { "name": "clientId", "in": "path", "required": true, "schema": { "type": "string" } },
+          {
+            "name": "format",
+            "in": "query",
+            "schema": { "type": "string", "enum": ["csv"], "default": "csv" }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "ISO 8601 com offset (opcional; padrão: `to` − 730 dias ou agora − 730 dias)",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "ISO 8601 com offset (opcional; padrão: agora)",
+            "schema": { "type": "string", "format": "date-time" }
+          },
+          {
+            "name": "categories",
+            "in": "query",
+            "description": "Mesmo filtro da timeline (lista separada por vírgula)",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Arquivo CSV (`text/csv; charset=utf-8`), BOM UTF-8",
+            "content": {
+              "text/csv": {
+                "schema": { "type": "string", "format": "binary" }
+              }
+            }
+          },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Sem permissão de administrador do tenant" },
+          "404": { "description": "Paciente não encontrado ou fora do escopo" },
+          "422": { "description": "Query inválida ou intervalo inválido" }
         }
       }
     },
@@ -534,7 +594,9 @@
           }
         ],
         "responses": {
-          "200": { "description": "`data` (metadados, `patientPortalReviewStatus`, `uploadedBy` opcional) + `pagination`" },
+          "200": {
+            "description": "`data[]`: id, fileName, mimeType, sizeBytes, createdAt, `sha256Hash` (hex ou null), patientPortalReviewStatus, uploadedBy opcional; + `pagination`"
+          },
           "404": { "description": "Paciente não encontrado" },
           "422": { "description": "Query inválida" }
         }
@@ -692,7 +754,9 @@
           }
         },
         "responses": {
-          "201": { "description": "Registrado" },
+          "201": {
+            "description": "`file`: metadados + `publicUrl`; `sha256Hash` hex ou null (integridade no GCS)"
+          },
           "403": { "description": "Chave inválida" },
           "409": { "description": "Já registrado" },
           "401": { "description": "Não autenticado" }
@@ -1468,7 +1532,7 @@
     },
     "/api/v1/public/patient-portal/{tenantSlug}/otp/request": {
       "post": {
-        "summary": "Solicita código OTP por CPF (e-mail e/ou webhook WhatsApp se configurados). Resposta uniforme por LGPD.",
+        "summary": "Solicita código OTP por CPF ou e-mail (entrega por e-mail e/ou webhook WhatsApp se configurados). Resposta uniforme por LGPD.",
         "tags": ["Patient portal"],
         "parameters": [
           {
@@ -1484,8 +1548,13 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["documentId"],
-                "properties": { "documentId": { "type": "string", "description": "CPF (com ou sem máscara)" } }
+                "required": ["login"],
+                "properties": {
+                  "login": {
+                    "type": "string",
+                    "description": "CPF (11 dígitos, com ou sem máscara) ou e-mail cadastrado na clínica"
+                  }
+                }
               }
             }
           }
@@ -1515,9 +1584,12 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["documentId", "code"],
+                "required": ["login", "code"],
                 "properties": {
-                  "documentId": { "type": "string" },
+                  "login": {
+                    "type": "string",
+                    "description": "Mesmo CPF ou e-mail usado ao solicitar o código"
+                  },
                   "code": { "type": "string", "pattern": "^\\d{6}$" }
                 }
               }
@@ -1527,6 +1599,79 @@
         "responses": {
           "200": { "description": "Sessão criada (Set-Cookie)" },
           "401": { "description": "Código inválido ou expirado" },
+          "503": { "description": "Segredo ausente" }
+        }
+      }
+    },
+    "/api/v1/public/patient-portal/{tenantSlug}/login/options": {
+      "post": {
+        "summary": "Indica se o paciente identificado por CPF ou e-mail possui senha de portal (fluxo senha vs OTP)",
+        "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "tenantSlug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["login"],
+                "properties": {
+                  "login": {
+                    "type": "string",
+                    "description": "CPF (11 dígitos) ou e-mail cadastrado"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "`{ hasPassword: boolean }` — se clínica inexistente, retorna `hasPassword: false`"
+          },
+          "422": { "description": "Formato de login inválido" }
+        }
+      }
+    },
+    "/api/v1/public/patient-portal/{tenantSlug}/password/verify": {
+      "post": {
+        "summary": "Login com CPF ou e-mail + senha (Set-Cookie `patient_portal_session`)",
+        "tags": ["Patient portal"],
+        "parameters": [
+          {
+            "name": "tenantSlug",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["login", "password"],
+                "properties": {
+                  "login": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Sessão criada (Set-Cookie)" },
+          "401": { "description": "Credenciais inválidas ou senha não definida" },
+          "422": { "description": "Validação" },
+          "429": { "description": "Muitas tentativas" },
           "503": { "description": "Segredo ausente" }
         }
       }
@@ -1682,7 +1827,9 @@
           }
         ],
         "responses": {
-          "200": { "description": "`data` + `pagination`" },
+          "200": {
+            "description": "`data[]`: metadados + `sha256Hash` (hex ou null) + `pagination`"
+          },
           "401": { "description": "Sem sessão do portal ou header do slug" },
           "403": { "description": "Slug não corresponde à sessão" },
           "404": { "description": "Paciente inexistente ou removido" }
@@ -1717,7 +1864,9 @@
           }
         },
         "responses": {
-          "201": { "description": "`file` registrado" },
+          "201": {
+            "description": "`file` registrado com `publicUrl` e `sha256Hash` (hex ou null)"
+          },
           "401": { "description": "Sem sessão do portal" },
           "403": { "description": "Chave inválida para o tenant" },
           "404": { "description": "Paciente inexistente ou removido" },

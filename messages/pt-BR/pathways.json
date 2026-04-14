@@ -74,9 +74,12 @@
     "patientMessage": "Mensagem ao paciente",
     "patientMessageHint": "Usada nas integrações quando o paciente entra nesta etapa (ex.: WhatsApp).",
     "stageDocumentsTitle": "Documentos para o paciente nesta etapa",
-    "stageDocumentsDescription": "PDFs e imagens da biblioteca da clínica entram no pacote quando o paciente chega nesta etapa. O envio automático depende da integração ativa (ex.: WhatsApp). Publique a versão da jornada para valer para os pacientes.",
+    "stageDocumentsDescription": "PDFs e imagens da biblioteca entram no pacote desta etapa quando o paciente a alcançar na jornada. Publique a versão para aplicar; a equipe combina os próximos passos diretamente com o paciente.",
     "addStageDocument": "Adicionar arquivo",
     "stageDocumentsEmpty": "Nenhum documento nesta etapa.",
+    "uploadingStageDocument": "Enviando…",
+    "openStageDocumentAria": "Abrir arquivo em nova aba",
+    "stageDocumentsOpenError": "Não foi possível abrir o arquivo.",
     "removeStageDocumentAria": "Remover documento da etapa",
     "stageDocumentsUploadError": "Não foi possível enviar o arquivo.",
     "stageDocumentsUploadSuccess": "{count, plural, =1 {1 arquivo adicionado à etapa.} other {{count} arquivos adicionados à etapa.}}"

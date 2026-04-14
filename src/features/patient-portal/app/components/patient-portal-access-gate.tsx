@@ -11,7 +11,7 @@ type PatientPortalAccessGateProps = {
   tenantSlug: string;
 };
 
-/** Tela inicial quando o paciente ainda não tem sessão — alinhada visualmente ao fluxo de login (CPF). */
+/** Tela inicial quando o paciente ainda não tem sessão — alinhada ao fluxo de login (e-mail ou CPF). */
 export function PatientPortalAccessGate({ tenantSlug }: PatientPortalAccessGateProps) {
   const t = useTranslations("patientPortal");
 
@@ -67,12 +67,6 @@ export function PatientPortalAccessGate({ tenantSlug }: PatientPortalAccessGateP
           </Link>
         </CardContent>
       </Card>
-
-      <p className="text-muted-foreground text-center text-xs leading-relaxed">
-        <Link href="/login" className="underline underline-offset-4 hover:text-foreground">
-          {t("home.staffLogin")}
-        </Link>
-      </p>
     </div>
   );
 }

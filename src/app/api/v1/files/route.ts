@@ -1,6 +1,10 @@
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { keyBelongsToTenant, publicUrlForKey } from "@/infrastructure/storage/gcs-storage";
+import {
+  computeSha256HexForGcsObjectKey,
+  keyMatchesFileRegisterIntent,
+  publicUrlForKey,
+} from "@/infrastructure/storage/gcs-storage";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
@@ -40,7 +44,7 @@ export async function POST(request: Request) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  if (!keyBelongsToTenant(parsed.data.key, tenantId)) {
+  if (!keyMatchesFileRegisterIntent(parsed.data.key, tenantId, parsed.data.clientId ?? null)) {
     return jsonError("FORBIDDEN", apiT("errors.invalidObjectKey"), 403);
   }
 
@@ -61,6 +65,8 @@ export async function POST(request: Request) {
     }
   }
 
+  const sha256Hash = await computeSha256HexForGcsObjectKey(parsed.data.key);
+
   const asset = await prisma.fileAsset.create({
     data: {
       tenantId,
@@ -70,6 +76,7 @@ export async function POST(request: Request) {
       sizeBytes: parsed.data.sizeBytes,
       uploadedById: userId,
       clientId: parsed.data.clientId ?? null,
+      sha256Hash,
     },
     select: {
       id: true,
@@ -77,6 +84,7 @@ export async function POST(request: Request) {
       fileName: true,
       mimeType: true,
       sizeBytes: true,
+      sha256Hash: true,
       clientId: true,
       createdAt: true,
     },

@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { AuthTokenPurpose } from "@prisma/client";
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -64,6 +65,25 @@ export async function POST(request: Request) {
       data: { usedAt: new Date() },
     }),
   ]);
+
+  let auditTenantId = row.tenantId;
+  if (!auditTenantId) {
+    const m = await prisma.tenantMembership.findFirst({
+      where: { userId: row.userId },
+      select: { tenantId: true },
+    });
+    auditTenantId = m?.tenantId ?? null;
+  }
+  if (auditTenantId) {
+    await recordAuditEvent(prisma, {
+      tenantId: auditTenantId,
+      clientId: null,
+      patientPathwayId: null,
+      actorUserId: row.userId,
+      type: AuditEventType.STAFF_PASSWORD_RESET,
+      payload: { userId: row.userId },
+    });
+  }
 
   return jsonSuccess({
     message: apiT("success.passwordResetDone"),

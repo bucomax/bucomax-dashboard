@@ -98,6 +98,8 @@ export type ListClientsQueryParams = {
   pathwayId?: string;
   stageId?: string;
   status?: ClientListStatusFilter;
+  /** Quando true, a API consulta o banco sem cache incremental (útil após mutações). */
+  fresh?: boolean;
 };
 
 /** Corpo `POST /api/v1/clients` após validação Zod (`documentId` = 11 dígitos ou null). */
@@ -210,6 +212,14 @@ export type ClientDetailTransitionDto = {
   createdAt: string;
 };
 
+/** Categoria de UI para ícone/cor na linha do tempo (derivada do tipo de audit ou transição legada). */
+export type ClientTimelineEventCategory =
+  | "security"
+  | "clinical"
+  | "documents"
+  | "administrative"
+  | "compliance";
+
 /** Valores de `AuditEvent.type` expostos na API (espelho do enum Prisma). */
 export type ClientTimelineAuditEventType =
   | "STAGE_TRANSITION"
@@ -217,7 +227,26 @@ export type ClientTimelineAuditEventType =
   | "SELF_REGISTER_COMPLETED"
   | "PATIENT_PORTAL_FILE_SUBMITTED"
   | "PATIENT_PORTAL_FILE_APPROVED"
-  | "PATIENT_PORTAL_FILE_REJECTED";
+  | "PATIENT_PORTAL_FILE_REJECTED"
+  | "PATIENT_PORTAL_PASSWORD_SET"
+  | "STAFF_LOGIN_SUCCESS"
+  | "STAFF_LOGIN_FAILED"
+  | "STAFF_PASSWORD_CHANGED"
+  | "STAFF_PASSWORD_RESET"
+  | "PATIENT_PORTAL_SESSION_CREATED"
+  | "PATIENT_PORTAL_LINK_GENERATED"
+  | "PATIENT_CREATED"
+  | "PATIENT_UPDATED"
+  | "PATIENT_DELETED"
+  | "PATIENT_PATHWAY_STARTED"
+  | "PATIENT_PATHWAY_COMPLETED"
+  | "FILE_DOWNLOADED_BY_STAFF"
+  | "FILE_DOWNLOADED_BY_PATIENT"
+  | "CHECKLIST_ITEM_TOGGLED"
+  | "FILE_DELETED"
+  | "PATIENT_PORTAL_LOGIN_FAILED"
+  | "PATIENT_CONSENT_GIVEN"
+  | "AUDIT_EXPORT_GENERATED";
 
 /** Transição legada na timeline (inclui instância da jornada). */
 export type ClientTimelineLegacyTransitionDto = ClientDetailTransitionDto & {
@@ -228,6 +257,8 @@ export type ClientTimelineAuditItemDto = {
   kind: "audit";
   id: string;
   type: ClientTimelineAuditEventType;
+  /** Categoria para filtro e indicador visual na UI. */
+  category: ClientTimelineEventCategory;
   createdAt: string;
   actor: { id: string; name: string | null; email: string } | null;
   patientPathwayId: string | null;
@@ -237,6 +268,7 @@ export type ClientTimelineAuditItemDto = {
 
 export type ClientTimelineLegacyItemDto = ClientTimelineLegacyTransitionDto & {
   kind: "legacy_transition";
+  category: ClientTimelineEventCategory;
 };
 
 export type ClientTimelineItemDto = ClientTimelineAuditItemDto | ClientTimelineLegacyItemDto;
@@ -252,6 +284,8 @@ export type ClientTimelineResponseData = {
 export type ClientTimelineQueryParams = {
   page?: number;
   limit?: number;
+  /** Filtro por categoria (`security`, `clinical`, …). Omitir = todas. */
+  categories?: string;
 };
 
 /** Próximas etapas na ordem publicada (`sortOrder`), com responsável padrão do template. */
@@ -367,6 +401,8 @@ export type PublicPatientSelfRegisterFormPrefillDto = {
 export type PublicPatientSelfRegisterValidateResponseData = {
   valid: boolean;
   tenantName?: string;
+  /** CNPJ / identificador fiscal da clínica (quando cadastrado). */
+  tenantTaxId?: string | null;
   expiresAt?: string;
   formPrefill?: PublicPatientSelfRegisterFormPrefillDto;
 };

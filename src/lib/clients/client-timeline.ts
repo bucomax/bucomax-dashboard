@@ -1,6 +1,8 @@
 import { AuditEventType, type Prisma, type PrismaClient } from "@prisma/client";
 import { buildPagination } from "@/lib/api/pagination";
+import { auditEventTypeToCategory } from "@/lib/clients/timeline-event-categories";
 import type {
+  ClientTimelineEventCategory,
   ClientTimelineItemDto,
   ClientTimelineLegacyTransitionDto,
   ClientTimelineResponseData,
@@ -62,12 +64,18 @@ function transitionIdFromAuditPayload(payload: unknown): string | null {
   return typeof tid === "string" && tid.length > 0 ? tid : null;
 }
 
+export type BuildClientTimelineOptions = {
+  /** Se definido e não vazio, só mantém itens dessas categorias. */
+  categoryFilter?: Set<ClientTimelineEventCategory> | null;
+};
+
 export async function buildClientTimelinePage(
   db: PrismaClient,
   tenantId: string,
   clientId: string,
   page: number,
   limit: number,
+  options?: BuildClientTimelineOptions,
 ): Promise<ClientTimelineResponseData> {
   const [audits, pathways] = await Promise.all([
     db.auditEvent.findMany({
@@ -111,6 +119,7 @@ export async function buildClientTimelinePage(
       kind: "audit",
       id: a.id,
       type: a.type,
+      category: auditEventTypeToCategory(a.type),
       createdAt: a.createdAt.toISOString(),
       actor: a.actor
         ? { id: a.actor.id, name: a.actor.name, email: a.actor.email }
@@ -127,13 +136,23 @@ export async function buildClientTimelinePage(
   for (const tr of legacyRows) {
     merged.push({
       sortAt: tr.createdAt,
-      item: { kind: "legacy_transition", ...serializeLegacyTransition(tr) },
+      item: {
+        kind: "legacy_transition",
+        category: "clinical",
+        ...serializeLegacyTransition(tr),
+      },
     });
   }
 
   merged.sort((x, y) => y.sortAt.getTime() - x.sortAt.getTime());
 
-  const window = merged.slice(0, MERGE_CAP).map((m) => m.item);
+  const categoryFilter = options?.categoryFilter;
+  const mergedFiltered =
+    categoryFilter != null && categoryFilter.size > 0
+      ? merged.filter((m) => categoryFilter.has(m.item.category))
+      : merged;
+
+  const window = mergedFiltered.slice(0, MERGE_CAP).map((m) => m.item);
 
   const timelineCapped = audits.length >= FETCH_CAP || transitions.length >= FETCH_CAP || merged.length > MERGE_CAP;
 

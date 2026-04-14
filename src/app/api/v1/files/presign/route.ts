@@ -1,5 +1,5 @@
 import {
-  buildTenantUploadKey,
+  buildUploadObjectKey,
   isGcsConfigured,
   presignPutObject,
   publicUrlForKey,
@@ -52,7 +52,11 @@ export async function POST(request: Request) {
     }
   }
 
-  const key = buildTenantUploadKey(tenantId, parsed.data.fileName);
+  const key = buildUploadObjectKey({
+    tenantId,
+    originalFileName: parsed.data.fileName,
+    clientId: parsed.data.clientId,
+  });
   const uploadUrl = await presignPutObject(key, parsed.data.mimeType);
 
   return jsonSuccess({

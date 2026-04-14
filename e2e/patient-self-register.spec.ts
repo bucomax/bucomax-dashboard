@@ -70,6 +70,15 @@ test.describe("Auto-cadastro público (patient-self-register)", () => {
     await regForm.locator('input[name="documentId"]').click();
     await regForm.locator('input[name="documentId"]').pressSequentially(TEST_CPF_DIGITS, { delay });
 
+    const strongPassword = "E2eTest1!";
+    await regForm.locator('input[name="password"]').click();
+    await regForm.locator('input[name="password"]').pressSequentially(strongPassword, { delay });
+    await regForm.locator('input[name="confirmPassword"]').click();
+    await regForm.locator('input[name="confirmPassword"]').pressSequentially(strongPassword, { delay });
+
+    await regForm.locator('input[name="acceptTerms"]').check();
+    await regForm.locator('input[name="acceptPrivacy"]').check();
+
     await expect(regForm.locator('[data-slot="field-error"]')).toHaveCount(0);
 
     await expect(regForm).toHaveAttribute("data-e2e-token-ready", "true");
@@ -144,6 +153,9 @@ test.describe("Auto-cadastro público (patient-self-register)", () => {
         email: `e2e.api.${suffix}@example.com`,
         documentId: TEST_CPF_DIGITS,
         isMinor: false,
+        password: "ApiE2eTest1!",
+        acceptTerms: true,
+        acceptPrivacy: true,
       },
     });
 

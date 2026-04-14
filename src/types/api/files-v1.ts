@@ -14,6 +14,8 @@ export type ClientFileListItemDto = {
   mimeType: string;
   sizeBytes: number;
   createdAt: string;
+  /** Hex SHA-256 do objeto no GCS após upload; null se não calculado (ex.: storage indisponível). */
+  sha256Hash: string | null;
   patientPortalReviewStatus: PatientPortalFileReviewStatusDto;
   uploadedBy: { id: string; name: string | null; email: string } | null;
 };

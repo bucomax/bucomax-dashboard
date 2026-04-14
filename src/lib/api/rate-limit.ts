@@ -8,6 +8,8 @@ type RateLimitConfig = {
 
 const PRESETS = {
   auth: { max: 5, windowSec: 60 } satisfies RateLimitConfig,
+  /** Login por senha no portal do paciente (por tenant + CPF). */
+  patientPortalPassword: { max: 5, windowSec: 15 * 60 } satisfies RateLimitConfig,
   api: { max: 120, windowSec: 60 } satisfies RateLimitConfig,
   sse: { max: 3, windowSec: 10 } satisfies RateLimitConfig,
 } as const;

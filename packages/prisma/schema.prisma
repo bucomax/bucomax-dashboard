@@ -30,6 +30,7 @@ enum NotificationType {
   stage_transition
   new_patient
   checklist_complete
+  patient_portal_file_pending
 }
 
 /** Eventos de auditoria agregados na linha do tempo do paciente (LGPD: payload sem conteúdo clínico). */
@@ -40,6 +41,25 @@ enum AuditEventType {
   PATIENT_PORTAL_FILE_SUBMITTED
   PATIENT_PORTAL_FILE_APPROVED
   PATIENT_PORTAL_FILE_REJECTED
+  PATIENT_PORTAL_PASSWORD_SET
+  STAFF_LOGIN_SUCCESS
+  STAFF_LOGIN_FAILED
+  STAFF_PASSWORD_CHANGED
+  STAFF_PASSWORD_RESET
+  PATIENT_PORTAL_SESSION_CREATED
+  PATIENT_PORTAL_LINK_GENERATED
+  PATIENT_CREATED
+  PATIENT_UPDATED
+  PATIENT_DELETED
+  PATIENT_PATHWAY_STARTED
+  PATIENT_PATHWAY_COMPLETED
+  FILE_DOWNLOADED_BY_STAFF
+  FILE_DOWNLOADED_BY_PATIENT
+  CHECKLIST_ITEM_TOGGLED
+  FILE_DELETED
+  PATIENT_PORTAL_LOGIN_FAILED
+  PATIENT_CONSENT_GIVEN
+  AUDIT_EXPORT_GENERATED
 }
 
 /** Validação na ficha quando o paciente envia arquivo pelo portal. */
@@ -195,6 +215,9 @@ model Client {
   guardianName       String?
   guardianDocumentId String?          // CPF do responsável (11 dígitos)
   guardianPhone      String?
+  portalPasswordHash String?
+  /// Última vez que a senha do portal foi definida ou alterada (invalida cookies com `pwdv` desatualizado).
+  portalPasswordChangedAt DateTime?
   assignedToUserId String?
   assignedTo       User?            @relation("ClientAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
   opmeSupplierId   String?
@@ -220,11 +243,6 @@ model Client {
   @@index([deletedByUserId])
 }
 
-/**
- * Magic link para o paciente acessar o portal (Fase 8).
- * `singleUse`: se true, após exchange válido marca `usedAt` (ex.: link por e-mail).
- * Se false, o mesmo token pode trocar por sessão até expirar (ex.: QR / cópia de URL).
- */
 model PatientPortalLinkToken {
   id        String    @id @default(cuid())
   clientId  String
@@ -521,8 +539,9 @@ model AuditEvent {
   id               String           @id @default(cuid())
   tenantId         String
   tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  clientId         String
-  client           Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  /** Null em eventos só de tenant/equipe (ex.: login staff) sem paciente associado. */
+  clientId         String?
+  client           Client?          @relation(fields: [clientId], references: [id], onDelete: Cascade)
   patientPathwayId String?
   patientPathway   PatientPathway?    @relation(fields: [patientPathwayId], references: [id], onDelete: SetNull)
   actorUserId      String?
@@ -551,6 +570,8 @@ model FileAsset {
   clientId                    String?
   client                      Client?                      @relation(fields: [clientId], references: [id], onDelete: SetNull)
   patientPortalReviewStatus   PatientPortalFileReviewStatus @default(NOT_APPLICABLE)
+  /** SHA-256 do objeto no bucket após upload (integridade; null se GCS indisponível ou falha ao ler). */
+  sha256Hash                  String?
   createdAt                   DateTime                     @default(now())
   stageDocuments              StageDocument[]
 

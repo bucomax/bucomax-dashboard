@@ -2,6 +2,7 @@
 
 import { ClientListDeleteDialog } from "@/features/clients/app/components/client-list-delete-dialog";
 import { useClientsList } from "@/features/clients/app/hooks/use-clients-list";
+import { useCopyPortalLink } from "@/features/clients/app/hooks/use-copy-portal-link";
 import { Link } from "@/i18n/navigation";
 import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
 import { formatListUpdatedAt } from "@/lib/utils/format-list-updated-at";
@@ -23,7 +24,7 @@ import { Field, FieldLabel } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
-import { GitBranch, Pencil, RefreshCw, Siren, Trash2, UserRound } from "lucide-react";
+import { GitBranch, Link2, Pencil, RefreshCw, Siren, Trash2, UserRound } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useLocale, useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
@@ -87,6 +88,7 @@ export function ClientsList() {
   const locale = useLocale();
   const { data: session } = useSession();
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
+  const { copyPortalLink, busyClientId } = useCopyPortalLink();
 
   const canDeletePatient =
     session?.user?.tenantRole === "tenant_admin" || session?.user?.globalRole === "super_admin";
@@ -322,6 +324,29 @@ export function ClientsList() {
                     </TooltipContent>
                   </Tooltip>
                   <span className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <span className="inline-flex">
+                            <Button
+                              type="button"
+                              size="icon-sm"
+                              variant="outline"
+                              aria-label={t("actions.portalLinkAria")}
+                              disabled={busyClientId !== null}
+                              onClick={() => void copyPortalLink(c.id)}
+                            >
+                              {busyClientId === c.id ? (
+                                <RefreshCw className="size-4 animate-spin" aria-hidden />
+                              ) : (
+                                <Link2 className="size-4" aria-hidden />
+                              )}
+                            </Button>
+                          </span>
+                        }
+                      />
+                      <TooltipContent side="top">{t("actions.portalLink")}</TooltipContent>
+                    </Tooltip>
                     <Tooltip>
                       <TooltipTrigger
                         render={

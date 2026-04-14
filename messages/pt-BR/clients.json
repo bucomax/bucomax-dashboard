@@ -120,6 +120,10 @@
     "actions": {
       "edit": "Editar",
       "editAria": "Abrir ficha do paciente",
+      "portalLink": "Copiar link do portal do paciente",
+      "portalLinkAria": "Gerar e copiar link de acesso ao portal deste paciente",
+      "portalLinkCopied": "Link do portal copiado.",
+      "portalLinkError": "Não foi possível gerar o link. Tente novamente.",
       "delete": "Excluir",
       "deleteAria": "Excluir paciente da lista"
     },
@@ -151,7 +155,8 @@
     "copyLink": "Copiar link",
     "copied": "Link copiado.",
     "linkLabel": "Link de cadastro",
-    "registeringAs": "Você está se cadastrando em {clinic}",
+    "registeringAsIntro": "Você está se cadastrando em",
+    "registeringAsTaxLabel": "CNPJ",
     "pageTitle": "Cadastro de paciente",
     "validating": "Verificando link…",
     "pageDescription": "Preencha seus dados. A clínica escolherá o tipo de tratamento em seguida.",
@@ -162,10 +167,32 @@
     "submitting": "Enviando…",
     "successTitle": "Obrigado!",
     "successBody": "Seu cadastro foi concluído com sucesso.",
-    "successContactHint": "Não enviamos e-mail automático de confirmação para você. A clínica entrará em contato pelo telefone ou WhatsApp que você informou para alinhar os próximos passos da sua jornada de tratamento.",
+    "successContactHint": "Enviamos um e-mail de confirmação e boas-vindas para o endereço que você cadastrou (confira também a pasta de spam). Em breve a clínica entra em contato pelo telefone ou WhatsApp informados para alinhar os próximos passos do seu tratamento.",
     "submitFailedTitle": "Não foi possível enviar o cadastro",
     "fixFieldsHint": "Revise os campos destacados no formulário.",
-    "submitNetworkError": "Sem conexão ou servidor indisponível. Verifique a internet e tente de novo."
+    "submitNetworkError": "Sem conexão ou servidor indisponível. Verifique a internet e tente de novo.",
+    "passwordStrength": {
+      "requirementsTitle": "Critérios da senha",
+      "passwordLabel": "Senha do portal",
+      "passwordHint": "Use uma senha forte para acessar o acompanhamento com e-mail ou CPF e senha.",
+      "confirmLabel": "Confirmar senha",
+      "minLength": "Mínimo 8 caracteres",
+      "uppercase": "Letra maiúscula",
+      "lowercase": "Letra minúscula",
+      "digit": "Número",
+      "special": "Caractere especial (!@#$…)",
+      "match": "Senhas coincidem"
+    },
+    "consent": {
+      "sectionTitle": "Termos e privacidade",
+      "sectionDescription": "As duas declarações abaixo são obrigatórias para enviar o cadastro. Ao abrir um documento, ele será exibido em uma nova aba do navegador.",
+      "requiredShort": "Obrigatório",
+      "termsShortTitle": "Termos de uso",
+      "privacyShortTitle": "Privacidade e dados (LGPD)",
+      "openDocumentHint": "Abre em nova aba",
+      "termsRich": "Declaro que li e aceito os <terms>termos de uso do serviço</terms>.",
+      "privacyRich": "Declaro que li e aceito o <privacy>aviso de privacidade</privacy> e o tratamento dos meus dados pessoais conforme a LGPD."
+    }
   },
   "detail": {
     "pageTitle": "Paciente",
@@ -272,7 +299,10 @@
       "reviewRejectSuccess": "Documento recusado.",
       "range": "Mostrando {from}–{to} de {total}",
       "prev": "Anterior",
-      "next": "Próxima"
+      "next": "Próxima",
+      "sha256Integrity": "SHA-256",
+      "copySha256": "Copiar hash SHA-256 completo",
+      "sha256Copied": "Hash copiado."
     },
     "sla": {
       "ok": "No prazo",
@@ -309,7 +339,6 @@
       "title": "Tratamentos concluídos",
       "description": "Jornadas já encerradas, separadas da jornada ativa. Abra cada item para ver etapas, checklist e histórico de transições.",
       "summaryDates": "Início {start} · Conclusão {end}",
-      "download": "Baixar",
       "finalStage": "Etapa ao concluir",
       "assigneeTitle": "Responsável no cadastro",
       "assigneeHint": "Valor atual do paciente; pode ter mudado após este tratamento.",
@@ -379,7 +408,9 @@
       "summaryTo": "Para:",
       "notePreview": "Observação: {text}",
       "stageDocumentsTitle": "Documentos da etapa de destino (pacote)",
-      "stageDocumentsEmpty": "Nenhum documento vinculado a esta etapa. Peça a um administrador do tenant para associar arquivos da biblioteca à etapa."
+      "stageDocumentsEmpty": "Nenhum documento vinculado a esta etapa. Peça a um administrador do tenant para associar arquivos da biblioteca à etapa.",
+      "openStageDocumentAria": "Abrir documento em nova aba",
+      "openStageDocumentError": "Não foi possível abrir o documento."
     },
     "profile": {
       "title": "Contato e gestão",
@@ -434,6 +465,17 @@
     },
     "timeline": {
       "title": "Linha do tempo",
+      "filtersLabel": "Filtrar por categoria",
+      "filtersHint": "Toque nos chips para mostrar ou ocultar tipos de evento. Pelo menos uma categoria fica sempre ativa.",
+      "filtersShowAll": "Mostrar todas",
+      "filtersKeepOneHint": "Mantenha pelo menos uma categoria selecionada.",
+      "categories": {
+        "security": "Segurança e portal",
+        "clinical": "Jornada e etapas",
+        "documents": "Documentos",
+        "administrative": "Cadastro e equipe",
+        "compliance": "LGPD e consentimento"
+      },
       "description": "Transições, arquivos vinculados e cadastro pelo link do paciente.",
       "cappedHint": "Só os eventos mais recentes entram nesta visão; o total pode estar incompleto.",
       "range": "Mostrando {from}–{to} de {total}",
@@ -442,6 +484,8 @@
       "loadError": "Erro ao carregar a linha do tempo.",
       "prev": "Anterior",
       "next": "Próxima",
+      "exportCsv": "Exportar auditoria (CSV)",
+      "exportError": "Não foi possível exportar a auditoria.",
       "actorPublic": "Cadastro público",
       "forcedNoReason": "Transição com override (sem justificativa no evento)",
       "audit": {
@@ -452,7 +496,41 @@
         "portalFileRejected": "Documento do portal recusado pela clínica",
         "selfRegister": "Cadastro concluído pelo link",
         "selfRegisterUpdate": "Cadastro atualizado pelo link",
-        "fileMeta": "Arquivo {id} · {mime}"
+        "portalPasswordSet": "Senha do portal definida",
+        "fileMeta": "Arquivo {id}",
+        "portalSessionCreated": "Sessão do portal iniciada",
+        "portalSessionMethod": {
+          "magic_link": "Magic link",
+          "otp": "Código por e-mail (OTP)",
+          "password": "CPF e senha"
+        },
+        "portalLinkGenerated": "Link do portal gerado",
+        "portalLinkSingleUse": "Uso único",
+        "portalLinkMultiUse": "Várias entradas até expirar",
+        "patientCreated": "Paciente cadastrado pela equipe",
+        "patientUpdated": "Dados do paciente atualizados",
+        "changedFields": "Campos: {fields}",
+        "patientDeleted": "Paciente removido da lista (exclusão lógica)",
+        "pathwayStarted": "Jornada iniciada",
+        "pathwayCompleted": "Jornada concluída",
+        "fileDownloadedStaff": "Download de arquivo (equipe)",
+        "fileDownloadedPatient": "Download de arquivo (portal do paciente)",
+        "checklistItemToggled": "Checklist da etapa",
+        "checklistChecked": "marcado",
+        "checklistUnchecked": "desmarcado",
+        "fileDeleted": "Arquivo excluído",
+        "portalLoginFailed": "Tentativa de login no portal com senha",
+        "portalLoginFailedReason": {
+          "invalidPassword": "Senha incorreta",
+          "passwordNotSet": "Senha ainda não definida"
+        },
+        "consentGiven": "Consentimento registrado",
+        "consentKind": {
+          "terms": "Termos de uso",
+          "lgpd": "Privacidade / LGPD"
+        },
+        "auditExportGenerated": "Exportação de auditoria (CSV)",
+        "auditExportMeta": "{count} linhas"
       }
     }
   }

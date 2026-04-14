@@ -12,7 +12,17 @@ export type PatientPortalSessionPayload = {
   /** Slug público da clínica (`Tenant.slug`), alinhado à URL `/[slug]/patient`. */
   tenantSlug: string;
   exp: number;
+  /**
+   * `Client.portalPasswordChangedAt.getTime()` no momento da emissão do cookie.
+   * Se a senha mudar depois, a sessão deixa de ser aceita.
+   */
+  pwdv: number;
 };
+
+/** Valor de `pwdv` no cookie a partir do campo do banco (0 = nunca alterada ou legado). */
+export function portalPasswordVersionMs(at: Date | null | undefined): number {
+  return at?.getTime() ?? 0;
+}
 
 function portalSecret(): string {
   const s =
@@ -57,13 +67,16 @@ export function verifyPatientPortalSessionCookieValue(
   const tenantId = o.tenantId;
   const tenantSlug = o.tenantSlug;
   const exp = o.exp;
+  const pwdvRaw = o.pwdv;
+  const pwdv =
+    typeof pwdvRaw === "number" && Number.isFinite(pwdvRaw) ? pwdvRaw : 0;
   if (typeof clientId !== "string" || clientId.length === 0) return null;
   if (typeof tenantId !== "string" || tenantId.length === 0) return null;
   if (typeof tenantSlug !== "string" || tenantSlug.length === 0) return null;
   if (typeof exp !== "number" || !Number.isFinite(exp)) return null;
   if (exp < Math.floor(Date.now() / 1000)) return null;
 
-  return { clientId, tenantId, tenantSlug, exp };
+  return { clientId, tenantId, tenantSlug, exp, pwdv };
 }
 
 export async function getPatientPortalSessionFromCookies(): Promise<PatientPortalSessionPayload | null> {

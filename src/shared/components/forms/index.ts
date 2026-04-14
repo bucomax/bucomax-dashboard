@@ -8,6 +8,7 @@ export { FormPhoneNumber, type FormPhoneNumberProps } from "./form-phone-number"
 export { FormSelect, type FormSelectProps, type FormSelectOption } from "./form-select";
 export { LabeledSelect, type LabeledSelectProps, type LabeledSelectOption } from "./labeled-select";
 export { FormTextarea, type FormTextareaProps } from "./form-textarea";
+export { PasswordStrengthIndicator } from "./password-strength-indicator";
 export {
   LabeledNonNegativeIntegerUnitField,
   type LabeledNonNegativeIntegerUnitFieldProps,

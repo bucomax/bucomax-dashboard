@@ -6,6 +6,9 @@
     "pathwayOrVersionNotFound": "Jornada ou versão não encontrada.",
     "patientNotFound": "Paciente não encontrado.",
     "patientNotFoundInTenant": "Paciente não encontrado neste tenant.",
+    "auditExportFromAfterTo": "A data inicial não pode ser posterior à data final.",
+    "auditExportRangeTooLarge": "O intervalo máximo permitido para exportação é de 730 dias.",
+    "auditExportPermissionDenied": "Apenas administradores do tenant podem exportar a auditoria.",
     "patientPathwayInstanceNotFound": "Instância de jornada não encontrada.",
     "patientPathwayNotFound": "Jornada do paciente não encontrada.",
     "checklistItemNotFound": "Item de checklist não encontrado nesta jornada.",
@@ -87,7 +90,19 @@
     "validationPhoneBrDigits": "Telefone inválido (use DDD + número, 10 ou 11 dígitos).",
     "validationEmailRequired": "Informe o e-mail.",
     "validationEmailInvalid": "E-mail inválido.",
-    "patientSelfRegisterInvalidOrExpired": "Link inválido, expirado ou já utilizado. Peça um novo QR code na clínica."
+    "patientSelfRegisterInvalidOrExpired": "Link inválido, expirado ou já utilizado. Peça um novo QR code na clínica.",
+    "validationPortalPasswordMin": "A senha deve ter pelo menos 8 caracteres.",
+    "validationPortalPasswordUppercase": "Inclua pelo menos uma letra maiúscula.",
+    "validationPortalPasswordLowercase": "Inclua pelo menos uma letra minúscula.",
+    "validationPortalPasswordDigit": "Inclua pelo menos um número.",
+    "validationPortalPasswordSpecial": "Inclua pelo menos um caractere especial (!@#$%^&*…).",
+    "validationPortalPasswordMismatch": "As senhas não coincidem.",
+    "validationConsentTermsRequired": "Aceite os termos de uso para continuar.",
+    "validationConsentPrivacyRequired": "Aceite o aviso de privacidade (LGPD) para continuar.",
+    "patientPortalLoginInvalid": "Informe um CPF com 11 dígitos ou um e-mail válido.",
+    "patientPortalPasswordInvalid": "E-mail/CPF ou senha incorretos.",
+    "patientPortalPasswordCurrentRequired": "Informe a senha atual.",
+    "patientPortalPasswordCurrentWrong": "Senha atual incorreta."
   },
   "success": {
     "pathwayDeleted": "Jornada removida.",
@@ -101,5 +116,10 @@
     "passwordUpdated": "Senha atualizada.",
     "passwordResetDone": "Senha definida com sucesso. Você já pode entrar.",
     "patientSelfRegistered": "Cadastro enviado. A equipe da clínica foi avisada."
+  },
+  "notifications": {
+    "patientPortalFileTitle": "Documento do portal aguardando validação",
+    "patientPortalFileBody": "{patientName} enviou «{fileName}» para análise da equipe.",
+    "patientPortalFallbackPatientName": "Paciente"
   }
 }

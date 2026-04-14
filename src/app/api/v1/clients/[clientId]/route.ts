@@ -1,4 +1,5 @@
 import { revalidateTenantClientsList, revalidateTenantOpmeSuppliersList } from "@/infrastructure/cache/revalidate-tenant-lists";
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { prisma } from "@/infrastructure/database/prisma";
 import { TenantRole, type Prisma } from "@prisma/client";
 import { getApiT } from "@/lib/api/i18n";
@@ -197,6 +198,16 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     revalidateTenantOpmeSuppliersList(tenantCtx.tenantId);
   }
 
+  const changedFields = Object.keys(data).filter((k) => k !== "updatedAt");
+  await recordAuditEvent(prisma, {
+    tenantId: tenantCtx.tenantId,
+    clientId: existing.id,
+    patientPathwayId: null,
+    actorUserId: auth.session!.user.id,
+    type: AuditEventType.PATIENT_UPDATED,
+    payload: { clientId: existing.id, changedFields },
+  });
+
   return jsonSuccess({
     client: mapPrismaClientRowToClientDto(row),
   });
@@ -240,6 +251,15 @@ export async function DELETE(request: Request, ctx: RouteCtx) {
 
   revalidateTenantClientsList(tenantCtx.tenantId);
   revalidateTenantOpmeSuppliersList(tenantCtx.tenantId);
+
+  await recordAuditEvent(prisma, {
+    tenantId: tenantCtx.tenantId,
+    clientId: existing.id,
+    patientPathwayId: null,
+    actorUserId: auth.session!.user.id,
+    type: AuditEventType.PATIENT_DELETED,
+    payload: { clientId: existing.id, deletedByUserId: auth.session!.user.id },
+  });
 
   return jsonSuccess({ message: apiT("success.clientRemoved") });
 }

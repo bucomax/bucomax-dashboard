@@ -1,3 +1,4 @@
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { prisma } from "@/infrastructure/database/prisma";
 import {
   deleteObjectFromBucket,
@@ -54,6 +55,15 @@ export async function DELETE(request: Request, ctx: RouteCtx) {
   }
 
   await prisma.fileAsset.delete({ where: { id: asset.id } });
+
+  await recordAuditEvent(prisma, {
+    tenantId,
+    clientId,
+    patientPathwayId: null,
+    actorUserId: auth.session!.user.id,
+    type: AuditEventType.FILE_DELETED,
+    payload: { fileAssetId: asset.id, userId: auth.session!.user.id },
+  });
 
   return jsonSuccess({ message: apiT("success.clientFileDeleted") });
 }

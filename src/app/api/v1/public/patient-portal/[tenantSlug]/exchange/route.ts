@@ -4,8 +4,10 @@ import { jsonError } from "@/lib/api-response";
 import {
   appendPatientPortalSessionCookie,
   type PatientPortalSessionPayload,
+  portalPasswordVersionMs,
 } from "@/lib/auth/patient-portal-session";
 import { PATIENT_PORTAL_SESSION_MAX_AGE_SEC } from "@/lib/constants/patient-portal";
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { prisma } from "@/infrastructure/database/prisma";
 import { findActiveTenantBySlug } from "@/lib/tenants/resolve-public-tenant";
 import { postPatientPortalExchangeBodySchema } from "@/lib/validators/patient-portal";
@@ -39,7 +41,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
   const row = await prisma.patientPortalLinkToken.findUnique({
     where: { token: parsed.data.token },
     include: {
-      client: { select: { id: true, tenantId: true, deletedAt: true } },
+      client: { select: { id: true, tenantId: true, deletedAt: true, portalPasswordChangedAt: true } },
     },
   });
 
@@ -70,6 +72,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
     tenantId: row.client.tenantId,
     tenantSlug: tenant.slug,
     exp,
+    pwdv: portalPasswordVersionMs(row.client.portalPasswordChangedAt),
   };
 
   try {
@@ -79,6 +82,14 @@ export async function POST(request: Request, ctx: RouteCtx) {
       meta: createApiMeta(),
     });
     appendPatientPortalSessionCookie(res, sessionPayload);
+    await recordAuditEvent(prisma, {
+      tenantId: row.client.tenantId,
+      clientId: row.clientId,
+      patientPathwayId: null,
+      actorUserId: null,
+      type: AuditEventType.PATIENT_PORTAL_SESSION_CREATED,
+      payload: { clientId: row.clientId, method: "magic_link" },
+    });
     return res;
   } catch (e) {
     console.error("[patient-portal] session cookie signing failed:", e);

@@ -8,10 +8,12 @@ import {
   PatientPortalUnauthorizedError,
 } from "@/lib/api/patient-portal-client";
 import { formatFileSize } from "@/lib/utils/format-bytes";
+import { cn } from "@/lib/utils";
+import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
-import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Upload } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Info, Loader2, Upload } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PatientPortalFilesListResponseData } from "@/types/api/patient-portal-v1";
@@ -28,7 +30,7 @@ export function PatientPortalFilesSection({ formatDateTime, onAfterUpload }: Pro
   const [data, setData] = useState<PatientPortalFilesListResponseData | null>(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const [uploadState, setUploadState] = useState<{ name: string; progress: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [downloadId, setDownloadId] = useState<string | null>(null);
   const limit = 20;
@@ -62,17 +64,19 @@ export function PatientPortalFilesSection({ formatDateTime, onAfterUpload }: Pro
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    setUploading(true);
+    setUploadState({ name: file.name, progress: 0 });
     setError(null);
     try {
-      await uploadPatientPortalFile(tenantSlug, file);
+      await uploadPatientPortalFile(tenantSlug, file, (pct) => {
+        setUploadState((s) => (s ? { ...s, progress: pct } : null));
+      });
       onAfterUpload?.();
       load(page);
     } catch (err: unknown) {
       if (err instanceof PatientPortalUnauthorizedError) return;
       setError(err instanceof Error ? err.message : t("files.uploadError"));
     } finally {
-      setUploading(false);
+      setUploadState(null);
     }
   }
 
@@ -108,17 +112,42 @@ export function PatientPortalFilesSection({ formatDateTime, onAfterUpload }: Pro
           />
           <Button
             type="button"
-            variant="outline"
+            variant="default"
             size="sm"
-            disabled={uploading || loading}
-            className="gap-1.5"
+            disabled={uploadState !== null || loading}
+            className="gap-1.5 shadow-sm"
             onClick={() => inputRef.current?.click()}
           >
-            {uploading ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+            {uploadState ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Upload className="size-4" aria-hidden />}
             {t("files.chooseFile")}
           </Button>
-          {uploading ? <span className="text-muted-foreground text-xs">{t("files.uploading")}</span> : null}
         </div>
+
+        {uploadState ? (
+          <div
+            className={cn(
+              "border-primary/25 from-primary/[0.06] shadow-primary/5 overflow-hidden rounded-xl border bg-gradient-to-br to-transparent p-4 shadow-sm ring-1 ring-primary/10",
+            )}
+          >
+            <div className="flex items-start gap-3">
+              <div className="bg-primary/15 text-primary flex h-11 w-11 shrink-0 items-center justify-center rounded-xl">
+                <Loader2 className="size-5 animate-spin" aria-hidden />
+              </div>
+              <div className="min-w-0 flex-1 space-y-3 pt-0.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium leading-tight">{uploadState.name}</p>
+                  <p className="text-muted-foreground mt-0.5 text-xs">{t("files.uploading")}</p>
+                </div>
+                <div className="bg-muted/80 h-2 w-full overflow-hidden rounded-full">
+                  <div
+                    className="from-primary h-full rounded-full bg-gradient-to-r to-primary/75 transition-[width] duration-200 ease-out"
+                    style={{ width: `${Math.max(uploadState.progress, 4)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
@@ -126,44 +155,58 @@ export function PatientPortalFilesSection({ formatDateTime, onAfterUpload }: Pro
           <p className="text-muted-foreground text-sm">{t("home.loading")}</p>
         ) : null}
 
-        {data && data.data.length === 0 && !loading ? (
-          <p className="text-muted-foreground text-sm">{t("files.empty")}</p>
+        {data && data.data.length === 0 && !loading && !uploadState ? (
+          <Alert variant="info" className="border-border/60 bg-muted/25">
+            <Info className="size-4 shrink-0" aria-hidden />
+            <AlertDescription className="text-muted-foreground text-sm leading-snug">{t("files.empty")}</AlertDescription>
+          </Alert>
         ) : null}
 
         {data && data.data.length > 0 ? (
-          <ul className="divide-border divide-y text-sm">
+          <ul className="space-y-2.5">
             {data.data.map((f) => {
               const pending = f.patientPortalReviewStatus === "PENDING";
               const canDownload =
                 f.patientPortalReviewStatus === "NOT_APPLICABLE" ||
                 f.patientPortalReviewStatus === "APPROVED";
               return (
-                <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{f.fileName}</p>
-                    <p className="text-muted-foreground text-xs tabular-nums">
-                      {formatFileSize(f.sizeBytes)} · {f.mimeType} · {formatDateTime(f.createdAt)}
-                    </p>
-                    {pending ? (
-                      <p className="text-amber-600 dark:text-amber-500 text-xs">{t("files.statusPending")}</p>
-                    ) : null}
+                <li
+                  key={f.id}
+                  className="border-border/80 bg-card/60 flex flex-col gap-2 rounded-xl border px-3 py-2.5 shadow-sm transition-colors hover:border-primary/25 hover:bg-muted/30"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{f.fileName}</p>
+                      <p className="text-muted-foreground text-xs tabular-nums">
+                        {formatFileSize(f.sizeBytes)} · {formatDateTime(f.createdAt)}
+                      </p>
+                    </div>
+                    <div className="shrink-0">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-sm"
+                        className="h-8 w-8 shrink-0"
+                        disabled={!canDownload || downloadId === f.id}
+                        aria-label={t("files.download")}
+                        onClick={() => void openDownload(f.id)}
+                      >
+                        {downloadId === f.id ? (
+                          <Loader2 className="size-4 animate-spin" aria-hidden />
+                        ) : (
+                          <ExternalLink className="size-4" aria-hidden />
+                        )}
+                      </Button>
+                    </div>
                   </div>
-                  <div className="shrink-0">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      disabled={!canDownload || downloadId === f.id}
-                      aria-label={t("files.download")}
-                      onClick={() => void openDownload(f.id)}
-                    >
-                      {downloadId === f.id ? (
-                        <Loader2 className="size-4 animate-spin" />
-                      ) : (
-                        <ExternalLink className="size-4" />
-                      )}
-                    </Button>
-                  </div>
+                  {pending ? (
+                    <Alert variant="info" className="border-border/60 bg-muted/25">
+                      <Info className="size-4 shrink-0" aria-hidden />
+                      <AlertDescription className="text-muted-foreground text-sm leading-snug">
+                        {t("files.statusPending")}
+                      </AlertDescription>
+                    </Alert>
+                  ) : null}
                 </li>
               );
             })}

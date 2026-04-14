@@ -12,6 +12,7 @@ import {
 import { PatientPortalAccessDialog } from "@/features/clients/app/components/patient-portal-access-dialog";
 import { PatientSelfRegisterQrDialog } from "@/features/clients/app/components/patient-self-register-qr-dialog";
 import { ClientCompletedTreatmentsSection } from "@/features/clients/app/components/client-completed-treatments-section";
+import { useClientFileDownload } from "@/features/clients/app/hooks/use-client-file-download";
 import { ClientDetailCardTitle } from "@/features/clients/app/components/client-detail-card-title";
 import { ClientDetailFilesCard } from "@/features/clients/app/components/client-detail-files-card";
 import { ClientDetailNotesCard } from "@/features/clients/app/components/client-detail-notes-card";
@@ -89,6 +90,8 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
   const [draftCaseDescription, setDraftCaseDescription] = useState("");
   const [timelineRefresh, setTimelineRefresh] = useState(0);
   const [portalLinkBusy, setPortalLinkBusy] = useState<"email" | "copy" | null>(null);
+  const { downloadingId: stageDocDownloadingId, openDownload: openStageDocumentDownload } =
+    useClientFileDownload();
 
   useEffect(() => {
     const c = data?.client;
@@ -142,6 +145,14 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
         return;
       }
       /* erro: toast global no apiClient */
+    }
+  }
+
+  async function handleOpenTransitionStageDoc(fileId: string) {
+    try {
+      await openStageDocumentDownload(fileId);
+    } catch {
+      toast.error(t("transition.openStageDocumentError"));
     }
   }
 
@@ -592,11 +603,30 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
                       {t("transition.stageDocumentsEmpty")}
                     </p>
                   ) : (
-                    <ul className="mt-2 list-inside list-disc space-y-0.5 text-xs">
+                    <ul className="mt-2 space-y-2">
                       {targetStageDocuments.map((d) => (
-                        <li key={d.id}>
-                          {d.file.fileName}
-                          <span className="text-muted-foreground"> · {d.file.mimeType}</span>
+                        <li
+                          key={d.id}
+                          className="border-border/70 bg-muted/25 flex items-center justify-between gap-2 rounded-lg border px-2.5 py-2"
+                        >
+                          <span className="text-foreground min-w-0 flex-1 truncate text-xs font-medium">
+                            {d.file.fileName}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon-sm"
+                            className="h-7 w-7 shrink-0"
+                            disabled={stageDocDownloadingId === d.file.id}
+                            onClick={() => void handleOpenTransitionStageDoc(d.file.id)}
+                            aria-label={t("transition.openStageDocumentAria")}
+                          >
+                            {stageDocDownloadingId === d.file.id ? (
+                              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                            ) : (
+                              <ExternalLink className="size-3.5" aria-hidden />
+                            )}
+                          </Button>
                         </li>
                       ))}
                     </ul>

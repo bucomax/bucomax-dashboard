@@ -10,13 +10,14 @@ import {
 
 const TYPE_TO_TENANT_FLAG: Record<NotificationType, keyof Pick<
   Prisma.TenantSelect,
-  "notifyCriticalAlerts" | "notifyNewPatients"
+  "notifyCriticalAlerts" | "notifyNewPatients" | "notifyDocumentDelivery"
 > | null> = {
   sla_critical: "notifyCriticalAlerts",
   sla_warning: "notifyCriticalAlerts",
   stage_transition: null,
   new_patient: "notifyNewPatients",
   checklist_complete: null,
+  patient_portal_file_pending: "notifyDocumentDelivery",
 };
 
 async function isTenantFlagEnabled(tenantId: string, flag: string): Promise<boolean> {
@@ -25,6 +26,7 @@ async function isTenantFlagEnabled(tenantId: string, flag: string): Promise<bool
     select: {
       notifyCriticalAlerts: true,
       notifyNewPatients: true,
+      notifyDocumentDelivery: true,
     },
   });
   if (!tenant) return false;
@@ -60,9 +62,13 @@ async function emitInline(input: EmitNotificationInput, userIds: string[]): Prom
   });
 }
 
-/** Queue mode: publish job to BullMQ → worker persists + pub/sub SSE. */
-async function emitViaQueue(input: EmitNotificationInput, userIds: string[]): Promise<void> {
+/** Tenta publicar na fila BullMQ; falhas reais de rede continuam lançando (tratadas em `emit`). */
+async function tryEnqueueNotification(input: EmitNotificationInput, userIds: string[]): Promise<boolean> {
   const { getNotificationQueue } = await import("@/infrastructure/queue/notification-queue");
+  const queue = getNotificationQueue();
+  if (!queue) {
+    return false;
+  }
 
   const payload: NotificationJobPayload = {
     tenantId: input.tenantId,
@@ -77,7 +83,8 @@ async function emitViaQueue(input: EmitNotificationInput, userIds: string[]): Pr
   const rawJobId = `${input.tenantId}|${input.type}|${deduplicationKey}`;
   const jobId = rawJobId.replace(/:/g, "_");
 
-  await getNotificationQueue().add("emit", payload, { jobId });
+  await queue.add("emit", payload, { jobId });
+  return true;
 }
 
 export const notificationEmitter: INotificationEmitter = {
@@ -100,14 +107,15 @@ export const notificationEmitter: INotificationEmitter = {
 
     if (isRedisEnabled()) {
       try {
-        await emitViaQueue(input, userIds);
+        const enqueued = await tryEnqueueNotification(input, userIds);
+        if (enqueued) {
+          return;
+        }
       } catch (e) {
         console.warn("[notifications] Fila Redis indisponível; gravando notificações inline.", e);
         tripRedisCircuit();
-        await emitInline(input, userIds);
       }
-    } else {
-      await emitInline(input, userIds);
     }
+    await emitInline(input, userIds);
   },
 };

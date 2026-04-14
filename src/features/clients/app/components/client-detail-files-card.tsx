@@ -5,7 +5,9 @@ import { useClientFileDownload } from "@/features/clients/app/hooks/use-client-f
 import { useClientFiles } from "@/features/clients/app/hooks/use-client-files";
 import { deleteClientFile, reviewPatientPortalClientFile } from "@/features/clients/app/services/clients.service";
 import { toast } from "@/lib/toast";
+import { displayFileBaseName } from "@/lib/utils/filename-display";
 import { formatFileSize } from "@/lib/utils/format-bytes";
+import { formatSha256Short } from "@/lib/utils/format-hash";
 import { formatListUpdatedAt } from "@/lib/utils/format-list-updated-at";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
@@ -17,6 +19,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Copy,
   ExternalLink,
   FolderOpen,
   Info,
@@ -143,10 +146,24 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
         </CardHeader>
         <CardContent className="space-y-2">
           <p className="text-destructive text-sm">{error ?? t("loadError")}</p>
-          <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
-            <RefreshCw className="size-4" />
-            {t("retry")}
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <span className="inline-flex">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    aria-label={t("retry")}
+                    onClick={() => void reload()}
+                  >
+                    <RefreshCw className="size-4" aria-hidden />
+                  </Button>
+                </span>
+              }
+            />
+            <TooltipContent side="top">{t("retry")}</TooltipContent>
+          </Tooltip>
         </CardContent>
       </Card>
     );
@@ -164,19 +181,26 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
       </CardHeader>
       <CardContent className="space-y-4">
         {data.data.length === 0 ? (
-          <Alert variant="info">
+          <Alert variant="info" className="border-border/60 bg-muted/25">
             <Info className="size-4 shrink-0" aria-hidden />
-            <AlertDescription className="text-sm leading-snug">{t("empty")}</AlertDescription>
+            <AlertDescription className="text-muted-foreground text-sm leading-snug">{t("empty")}</AlertDescription>
           </Alert>
         ) : (
-          <ul className="divide-border divide-y text-sm">
+          <ul className="space-y-2.5">
             {data.data.map((f) => (
-              <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{f.fileName}</p>
+              <li
+                key={f.id}
+                className={cn(
+                  "border-border/80 bg-card/50 flex flex-col gap-3 rounded-xl border px-3.5 py-3 shadow-sm backdrop-blur-sm transition-colors sm:flex-row sm:items-start sm:justify-between",
+                  "hover:border-primary/20 hover:bg-muted/25",
+                )}
+              >
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <p className="text-foreground truncate text-sm font-semibold leading-tight">
+                    {displayFileBaseName(f.fileName)}
+                  </p>
                   <p className="text-muted-foreground text-xs tabular-nums">
-                    {formatFileSize(f.sizeBytes)} · {f.mimeType} ·{" "}
-                    {formatListUpdatedAt(f.createdAt, locale)}
+                    {formatFileSize(f.sizeBytes)} · {formatListUpdatedAt(f.createdAt, locale)}
                   </p>
                   <p className="text-muted-foreground text-xs">
                     {f.uploadedBy
@@ -184,41 +208,82 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
                       : t("uploadedByPortal")}
                   </p>
                   {f.patientPortalReviewStatus === "PENDING" ? (
-                    <p className="text-amber-600 dark:text-amber-500 text-xs font-medium">{t("statusPending")}</p>
+                    <p className="text-amber-600 dark:text-amber-400 text-xs font-medium">{t("statusPending")}</p>
                   ) : null}
                   {f.patientPortalReviewStatus === "REJECTED" ? (
                     <p className="text-muted-foreground text-xs">{t("statusRejected")}</p>
                   ) : null}
+                  {f.sha256Hash ? (
+                    <div className="border-border/50 bg-muted/30 flex max-w-full flex-wrap items-center gap-1.5 rounded-md border px-2 py-1.5">
+                      <span className="text-muted-foreground shrink-0 text-[11px] font-medium uppercase tracking-wide">
+                        {t("sha256Integrity")}
+                      </span>
+                      <code className="font-mono text-muted-foreground max-w-[min(100%,16rem)] truncate text-[11px]">
+                        {formatSha256Short(f.sha256Hash)}
+                      </code>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="size-7 shrink-0"
+                        aria-label={t("copySha256")}
+                        onClick={() => {
+                          void navigator.clipboard.writeText(f.sha256Hash!);
+                          toast.success(t("sha256Copied"));
+                        }}
+                      >
+                        <Copy className="size-3.5" />
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+                <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
                   {f.patientPortalReviewStatus === "PENDING" ? (
                     <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-1"
-                        disabled={reviewingId !== null || deletingId !== null || downloadingId === f.id}
-                        onClick={() => void handleApprove(f.id)}
-                      >
-                        {reviewingId === f.id ? (
-                          <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                          <Check className="size-4" />
-                        )}
-                        {t("approve")}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-1"
-                        disabled={reviewingId !== null || deletingId !== null || downloadingId === f.id}
-                        onClick={() => setRejectTarget({ id: f.id, fileName: f.fileName })}
-                      >
-                        <XCircle className="size-4 shrink-0" aria-hidden />
-                        {t("reject")}
-                      </Button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <span className="inline-flex">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon-sm"
+                                className="border-emerald-500/35 text-emerald-600 hover:bg-emerald-500/10 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
+                                disabled={reviewingId !== null || deletingId !== null || downloadingId === f.id}
+                                aria-label={t("approve")}
+                                onClick={() => void handleApprove(f.id)}
+                              >
+                                {reviewingId === f.id ? (
+                                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                                ) : (
+                                  <Check className="size-4" aria-hidden />
+                                )}
+                              </Button>
+                            </span>
+                          }
+                        />
+                        <TooltipContent side="top">{t("approve")}</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <span className="inline-flex">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon-sm"
+                                className="border-amber-500/40 text-amber-700 hover:bg-amber-500/10 dark:text-amber-500"
+                                disabled={reviewingId !== null || deletingId !== null || downloadingId === f.id}
+                                aria-label={t("reject")}
+                                onClick={() => setRejectTarget({ id: f.id, fileName: f.fileName })}
+                              >
+                                <XCircle className="size-4" aria-hidden />
+                              </Button>
+                            </span>
+                          }
+                        />
+                        <TooltipContent side="top">{t("reject")}</TooltipContent>
+                      </Tooltip>
                     </>
                   ) : null}
                   <Tooltip>
@@ -234,9 +299,9 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
                             onClick={() => void handleOpenDownload(f.id)}
                           >
                             {downloadingId === f.id ? (
-                              <Loader2 className="size-4 animate-spin" />
+                              <Loader2 className="size-4 animate-spin" aria-hidden />
                             ) : (
-                              <ExternalLink className="size-4" />
+                              <ExternalLink className="size-4" aria-hidden />
                             )}
                           </Button>
                         </span>
@@ -258,9 +323,9 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
                             onClick={() => setPendingDelete({ id: f.id, fileName: f.fileName })}
                           >
                             {deletingId === f.id ? (
-                              <Loader2 className="size-4 animate-spin" />
+                              <Loader2 className="size-4 animate-spin" aria-hidden />
                             ) : (
-                              <Trash2 className="size-4" />
+                              <Trash2 className="size-4" aria-hidden />
                             )}
                           </Button>
                         </span>
@@ -279,27 +344,45 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
           </p>
         ) : null}
         {pag.totalPages > 1 ? (
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!pag.hasPreviousPage}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              <ChevronLeft className="size-4" />
-              {t("prev")}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={!pag.hasNextPage}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              {t("next")}
-              <ChevronRight className="size-4" />
-            </Button>
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span className="inline-flex">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      disabled={!pag.hasPreviousPage}
+                      aria-label={t("prev")}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    >
+                      <ChevronLeft className="size-4" aria-hidden />
+                    </Button>
+                  </span>
+                }
+              />
+              <TooltipContent side="top">{t("prev")}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <span className="inline-flex">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      disabled={!pag.hasNextPage}
+                      aria-label={t("next")}
+                      onClick={() => setPage((p) => p + 1)}
+                    >
+                      <ChevronRight className="size-4" aria-hidden />
+                    </Button>
+                  </span>
+                }
+              />
+              <TooltipContent side="top">{t("next")}</TooltipContent>
+            </Tooltip>
           </div>
         ) : null}
       </CardContent>

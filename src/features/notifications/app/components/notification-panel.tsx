@@ -76,7 +76,12 @@ export function NotificationPanel({
           )}
           <div className="divide-y">
             {items.map((n) => (
-              <NotificationItem key={n.id} notification={n} onMarkRead={onMarkRead} />
+              <NotificationItem
+                key={n.id}
+                notification={n}
+                onMarkRead={onMarkRead}
+                onPanelClose={onClose}
+              />
             ))}
           </div>
           {loading && (

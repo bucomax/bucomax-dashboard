@@ -1,11 +1,17 @@
+import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
+import { notifyPatientSelfRegisterWelcome } from "@/infrastructure/email/notify-patient-self-register-welcome";
 import { notifyStaffPatientSelfRegistered } from "@/infrastructure/email/notify-patient-self-registered";
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import {
+  PUBLIC_SELF_REGISTER_PRIVACY_VERSION,
+  PUBLIC_SELF_REGISTER_TERMS_VERSION,
+} from "@/lib/constants/public-registration-consent";
 import { validatePublicInviteTenantSlug } from "@/lib/tenants/validate-public-invite-tenant-slug";
 import { publicPatientSelfRegisterBodySchema } from "@/lib/validators/client";
 
@@ -21,7 +27,7 @@ export async function GET(request: Request) {
   const row = await prisma.patientSelfRegisterInvite.findUnique({
     where: { token },
     include: {
-      tenant: { select: { name: true, isActive: true } },
+      tenant: { select: { name: true, taxId: true, isActive: true } },
       client: {
         select: {
           name: true,
@@ -90,6 +96,7 @@ export async function GET(request: Request) {
   return jsonSuccess({
     valid: true,
     tenantName: row.tenant.name,
+    tenantTaxId: row.tenant.taxId,
     expiresAt: row.expiresAt.toISOString(),
     ...(formPrefill ? { formPrefill } : {}),
   });
@@ -118,19 +125,23 @@ export async function POST(request: Request) {
     );
   }
 
-  const { token, ...clientFields } = parsed.data;
+  const { token, password, ...clientFields } = parsed.data;
+  const patientEmail = clientFields.email.trim();
+  const portalPasswordHash = await bcrypt.hash(password, 12);
+  const portalPasswordChangedAt = new Date();
 
   let clientId = "";
   let patientName = "";
   let clinicName = "";
   let tenantId = "";
+  let tenantSlug = "";
 
   try {
     const result = await prisma.$transaction(
       async (tx) => {
         const inv = await tx.patientSelfRegisterInvite.findUnique({
           where: { token },
-          include: { tenant: { select: { id: true, name: true, isActive: true } } },
+          include: { tenant: { select: { id: true, name: true, slug: true, isActive: true } } },
         });
 
         const now = new Date();
@@ -176,6 +187,8 @@ export async function POST(request: Request) {
               guardianName: cf.guardianName,
               guardianDocumentId: cf.guardianDocumentId,
               guardianPhone: cf.guardianPhone,
+              portalPasswordHash,
+              portalPasswordChangedAt,
             },
             select: { id: true, name: true },
           });
@@ -189,6 +202,7 @@ export async function POST(request: Request) {
             clientId: updated.id,
             patientName: updated.name,
             clinicName: inv.tenant.name,
+            tenantSlug: inv.tenant.slug,
             tenantId: inv.tenantId,
             inviteId: inv.id,
             mode: "update" as const,
@@ -215,6 +229,8 @@ export async function POST(request: Request) {
             guardianName: cf.guardianName,
             guardianDocumentId: cf.guardianDocumentId,
             guardianPhone: cf.guardianPhone,
+            portalPasswordHash,
+            portalPasswordChangedAt,
           },
           select: { id: true, name: true },
         });
@@ -228,6 +244,7 @@ export async function POST(request: Request) {
           clientId: client.id,
           patientName: client.name,
           clinicName: inv.tenant.name,
+          tenantSlug: inv.tenant.slug,
           tenantId: inv.tenantId,
           inviteId: inv.id,
           mode: "create" as const,
@@ -248,6 +265,7 @@ export async function POST(request: Request) {
     patientName = result.patientName;
     clinicName = result.clinicName;
     tenantId = result.tenantId;
+    tenantSlug = result.tenantSlug;
 
     await recordAuditEvent(prisma, {
       tenantId: result.tenantId,
@@ -256,6 +274,30 @@ export async function POST(request: Request) {
       actorUserId: null,
       type: AuditEventType.SELF_REGISTER_COMPLETED,
       payload: { inviteId: result.inviteId, mode: result.mode },
+    });
+    await recordAuditEvent(prisma, {
+      tenantId: result.tenantId,
+      clientId: result.clientId,
+      patientPathwayId: null,
+      actorUserId: null,
+      type: AuditEventType.PATIENT_PORTAL_PASSWORD_SET,
+      payload: { clientId: result.clientId },
+    });
+    await recordAuditEvent(prisma, {
+      tenantId: result.tenantId,
+      clientId: result.clientId,
+      patientPathwayId: null,
+      actorUserId: null,
+      type: AuditEventType.PATIENT_CONSENT_GIVEN,
+      payload: { consentType: "terms", version: PUBLIC_SELF_REGISTER_TERMS_VERSION },
+    });
+    await recordAuditEvent(prisma, {
+      tenantId: result.tenantId,
+      clientId: result.clientId,
+      patientPathwayId: null,
+      actorUserId: null,
+      type: AuditEventType.PATIENT_CONSENT_GIVEN,
+      payload: { consentType: "lgpd", version: PUBLIC_SELF_REGISTER_PRIVACY_VERSION },
     });
   } catch (err) {
     if (err instanceof PrismaClientKnownRequestError && err.code === "P2034") {
@@ -274,6 +316,13 @@ export async function POST(request: Request) {
     patientName,
     clinicName,
   }).catch((err) => console.error("[patient-self-register] notify failed:", err));
+
+  notifyPatientSelfRegisterWelcome({
+    patientEmail,
+    patientName,
+    clinicName,
+    tenantSlug,
+  }).catch((err) => console.error("[patient-self-register] welcome email failed:", err));
 
   return jsonSuccess({
     message: apiT("success.patientSelfRegistered"),

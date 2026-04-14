@@ -58,6 +58,7 @@ export async function GET(request: Request, ctx: RouteCtx) {
         fileName: true,
         mimeType: true,
         sizeBytes: true,
+        sha256Hash: true,
         createdAt: true,
         patientPortalReviewStatus: true,
         uploadedBy: { select: { id: true, name: true, email: true } },
@@ -71,6 +72,7 @@ export async function GET(request: Request, ctx: RouteCtx) {
       fileName: r.fileName,
       mimeType: r.mimeType,
       sizeBytes: r.sizeBytes,
+      sha256Hash: r.sha256Hash,
       createdAt: r.createdAt.toISOString(),
       patientPortalReviewStatus: r.patientPortalReviewStatus,
       uploadedBy: r.uploadedBy

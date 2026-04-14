@@ -1,10 +1,16 @@
 import type { ApiPagination } from "@/lib/api/pagination";
-import type { ClientDetailResponseData, ClientTimelineAuditEventType } from "@/types/api/clients-v1";
+import type {
+  ClientDetailResponseData,
+  ClientTimelineAuditEventType,
+  ClientTimelineEventCategory,
+} from "@/types/api/clients-v1";
 import type { PatientPortalFileReviewStatusDto } from "@/types/api/files-v1";
 
 /** `GET /api/v1/patient/detail` — mesma forma que a ficha interna; campos operacionais da equipe vêm nulos + contexto da clínica. */
 export type PatientPortalDetailResponseData = ClientDetailResponseData & {
   tenant: { name: string };
+  /** Indica se já existe senha local do portal (sem expor hash). */
+  hasPortalPassword: boolean;
 };
 
 /** Resposta de `PATCH /api/v1/patient/profile`. */
@@ -59,6 +65,7 @@ export type PatientPortalTimelineAuditItemDto = {
   kind: "audit";
   id: string;
   type: ClientTimelineAuditEventType;
+  category: ClientTimelineEventCategory;
   createdAt: string;
   actorName: string | null;
   payload: Record<string, unknown>;
@@ -68,6 +75,7 @@ export type PatientPortalTimelineAuditItemDto = {
 export type PatientPortalTimelineLegacyItemDto = {
   kind: "legacy_transition";
   id: string;
+  category: ClientTimelineEventCategory;
   createdAt: string;
   fromStage: { name: string } | null;
   toStage: { name: string };
@@ -91,6 +99,8 @@ export type PatientPortalFileItemDto = {
   mimeType: string;
   sizeBytes: number;
   createdAt: string;
+  /** Hex SHA-256 do objeto no GCS; null se não calculado. */
+  sha256Hash: string | null;
   patientPortalReviewStatus: PatientPortalFileReviewStatusDto;
 };
 

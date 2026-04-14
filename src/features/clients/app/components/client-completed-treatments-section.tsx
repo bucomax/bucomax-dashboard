@@ -13,7 +13,7 @@ import {
   Archive,
   ChevronDown,
   CircleDot,
-  Download,
+  ExternalLink,
   FileText,
   GitBranch,
   History,
@@ -174,25 +174,24 @@ export function ClientCompletedTreatmentsSection({
                                   key={d.id}
                                   className="flex flex-wrap items-center justify-between gap-2 border-border/60 border-b pb-2 last:border-0 last:pb-0"
                                 >
-                                  <span className="min-w-0 flex-1">
+                                  <span className="min-w-0 flex-1 truncate">
                                     <span className="font-medium">{d.file.fileName}</span>
-                                    <span className="text-muted-foreground text-xs"> · {d.file.mimeType}</span>
                                   </span>
                                   {enableFileDownload ? (
                                     <Button
                                       type="button"
                                       variant="outline"
-                                      size="sm"
-                                      className="shrink-0"
+                                      size="icon-sm"
+                                      className="h-8 w-8 shrink-0"
                                       disabled={downloadingId === d.file.id}
+                                      aria-label={tFiles("openAria")}
                                       onClick={() => void handleDownloadFile(d.file.id)}
                                     >
                                       {downloadingId === d.file.id ? (
                                         <Loader2 className="size-4 animate-spin" aria-hidden />
                                       ) : (
-                                        <Download className="size-4" aria-hidden />
+                                        <ExternalLink className="size-4" aria-hidden />
                                       )}
-                                      {t("download")}
                                     </Button>
                                   ) : null}
                                 </li>

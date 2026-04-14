@@ -1,4 +1,5 @@
 import { randomBytes } from "crypto";
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
@@ -67,12 +68,26 @@ export async function POST(request: Request, ctx: RouteCtx) {
 
   const singleUse = sendEmailFlag;
 
-  await prisma.patientPortalLinkToken.create({
+  const tokenRow = await prisma.patientPortalLinkToken.create({
     data: {
       clientId: client.id,
       token,
       expiresAt,
       singleUse,
+    },
+    select: { id: true },
+  });
+
+  await recordAuditEvent(prisma, {
+    tenantId,
+    clientId: client.id,
+    patientPathwayId: null,
+    actorUserId: auth.session!.user.id,
+    type: AuditEventType.PATIENT_PORTAL_LINK_GENERATED,
+    payload: {
+      tokenId: tokenRow.id,
+      singleUse,
+      ttlMs: PATIENT_PORTAL_LINK_TTL_MS,
     },
   });
 

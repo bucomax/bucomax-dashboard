@@ -172,6 +172,47 @@ export function getInviteSetPasswordHtml(params: { name: string | null; setPassw
   return baseLayout(content, `Defina sua senha — convite Bucomax`);
 }
 
+/**
+ * Paciente: cadastro público concluído — confirmação + boas-vindas (mesmo layout escuro Bucomax).
+ */
+export function getPatientSelfRegisterWelcomeHtml(params: {
+  patientName: string;
+  clinicName: string;
+  portalLoginUrl: string;
+}): string {
+  const first = params.patientName.trim().split(/\s+/)[0] || params.patientName.trim();
+  const greeting = escapeHtmlText(first);
+  const clinic = escapeHtmlText(params.clinicName);
+  const content = `
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND.text}; line-height: 1.3;">
+      Tudo certo — cadastro recebido
+    </h1>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      Olá, ${greeting}!
+    </p>
+    <p style="margin: 0 0 8px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      Recebemos seus dados com sucesso. A equipe da <strong>${clinic}</strong> já pode acompanhar seu cadastro por aqui — seja bem-vindo(a) à jornada com a gente.
+    </p>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      Em breve alguém da clínica entra em contato pelo <strong>telefone</strong> ou <strong>WhatsApp</strong> que você informou para alinhar os próximos passos do seu tratamento.
+    </p>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.textMuted}; line-height: 1.6;">
+      Quando quiser, você pode acessar o <strong style="color: ${BRAND.text};">portal do paciente</strong> com o e-mail ou CPF e a senha que você criou:
+    </p>
+    ${ctaButton(params.portalLoginUrl, "Abrir portal do paciente")}
+    <p style="margin: 16px 0 0; font-size: 13px; color: ${BRAND.textMuted}; line-height: 1.5;">
+      Ou copie o link:
+    </p>
+    <p style="margin: 4px 0 0; font-size: 12px; color: ${BRAND.textMuted}; word-break: break-all;">
+      <a href="${params.portalLoginUrl}" style="color: ${BRAND.link}; text-decoration: underline;">${params.portalLoginUrl}</a>
+    </p>
+    <p style="margin: 24px 0 0; padding-top: 20px; border-top: 1px solid ${BRAND.border}; font-size: 12px; color: ${BRAND.textMuted}; line-height: 1.5;">
+      Se você não realizou este cadastro, ignore este e-mail ou entre em contato com a clínica.
+    </p>
+  `;
+  return baseLayout(content, `Cadastro recebido — ${escapeHtmlText(params.clinicName)}`);
+}
+
 /** Equipe da clínica: paciente concluiu auto-cadastro pelo link/QR (mesmo padrão visual dos demais e-mails transacionais). */
 export function getPatientSelfRegisteredStaffHtml(params: {
   staffName: string | null;

@@ -5,14 +5,16 @@
     "markAllRead": "Mark all as read",
     "markAllReadSuccess": "All notifications marked as read.",
     "markAllReadError": "Could not mark all as read. Please try again.",
-    "loadMore": "Load more"
+    "loadMore": "Load more",
+    "openPatient": "Open patient record"
   },
   "types": {
     "sla_critical": "Critical alert",
     "sla_warning": "Warning",
     "stage_transition": "Stage transition",
     "new_patient": "New patient",
-    "checklist_complete": "Checklist complete"
+    "checklist_complete": "Checklist complete",
+    "patient_portal_file_pending": "Portal upload"
   },
   "time": {
     "justNow": "Just now",

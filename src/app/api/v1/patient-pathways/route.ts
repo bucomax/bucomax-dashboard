@@ -1,5 +1,6 @@
 import { getCachedPatientPathwaysList } from "@/infrastructure/cache/cached-patient-pathways-list";
 import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-tenant-lists";
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { prisma } from "@/infrastructure/database/prisma";
 import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
 import { getApiT } from "@/lib/api/i18n";
@@ -178,6 +179,15 @@ export async function POST(request: Request) {
   }).catch((err) => console.error("[notification] new_patient emit failed:", err));
 
   revalidateTenantClientsList(tenantId);
+
+  await recordAuditEvent(prisma, {
+    tenantId,
+    clientId: result.clientId,
+    patientPathwayId: result.id,
+    actorUserId,
+    type: AuditEventType.PATIENT_PATHWAY_STARTED,
+    payload: { patientPathwayId: result.id, pathwayId },
+  });
 
   return jsonSuccess(
     {

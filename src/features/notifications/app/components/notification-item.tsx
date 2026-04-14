@@ -6,12 +6,14 @@ import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
   Bell,
-  CheckCircle2,
   ClipboardCheck,
+  ExternalLink,
+  FileUp,
   UserPlus,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
+import { buttonVariants } from "@/shared/components/ui/button";
 
 const TYPE_ICONS: Record<string, typeof Bell> = {
   sla_critical: AlertTriangle,
@@ -19,6 +21,7 @@ const TYPE_ICONS: Record<string, typeof Bell> = {
   stage_transition: Bell,
   new_patient: UserPlus,
   checklist_complete: ClipboardCheck,
+  patient_portal_file_pending: FileUp,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -27,6 +30,7 @@ const TYPE_COLORS: Record<string, string> = {
   stage_transition: "text-blue-500",
   new_patient: "text-green-500",
   checklist_complete: "text-emerald-500",
+  patient_portal_file_pending: "text-cyan-500",
 };
 
 function useRelativeTime(dateStr: string) {
@@ -48,17 +52,22 @@ function useRelativeTime(dateStr: string) {
 type NotificationItemProps = {
   notification: NotificationDto;
   onMarkRead: (id: string) => void;
+  onPanelClose?: () => void;
 };
 
-export function NotificationItem({ notification, onMarkRead }: NotificationItemProps) {
+export function NotificationItem({ notification, onMarkRead, onPanelClose }: NotificationItemProps) {
+  const t = useTranslations("notifications");
   const isUnread = !notification.readAt;
   const Icon = TYPE_ICONS[notification.type] ?? Bell;
   const iconColor = TYPE_COLORS[notification.type] ?? "text-muted-foreground";
   const relativeTime = useRelativeTime(notification.createdAt);
   const metadata = notification.metadata as Record<string, unknown> | null;
   const clientId = metadata?.clientId as string | undefined;
+  const isNewPatient = notification.type === "new_patient";
+  const showNewPatientLinkButton = isNewPatient && Boolean(clientId);
+  const wrapFullRowInClientLink = Boolean(clientId) && !isNewPatient;
 
-  const handleClick = () => {
+  const handleMarkRead = () => {
     if (isUnread) onMarkRead(notification.id);
   };
 
@@ -69,10 +78,12 @@ export function NotificationItem({ notification, onMarkRead }: NotificationItemP
         isUnread ? "bg-accent/50" : "bg-transparent",
         "hover:bg-accent cursor-pointer",
       )}
-      onClick={handleClick}
-      onKeyDown={(e) => e.key === "Enter" && handleClick()}
-      role="button"
-      tabIndex={0}
+      onClick={handleMarkRead}
+      onKeyDown={
+        showNewPatientLinkButton ? undefined : (e) => e.key === "Enter" && handleMarkRead()
+      }
+      role={showNewPatientLinkButton ? undefined : "button"}
+      tabIndex={showNewPatientLinkButton ? undefined : 0}
     >
       <div className={cn("mt-0.5 shrink-0", iconColor)}>
         <Icon className="h-4 w-4" />
@@ -88,15 +99,32 @@ export function NotificationItem({ notification, onMarkRead }: NotificationItemP
         )}
         <p className="text-muted-foreground mt-1 text-[11px]">{relativeTime}</p>
       </div>
+      {showNewPatientLinkButton && clientId ? (
+        <Link
+          href={`/dashboard/clients/${clientId}`}
+          aria-label={t("bell.openPatient")}
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "icon" }),
+            "text-muted-foreground hover:text-foreground mt-0.5 shrink-0",
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            onPanelClose?.();
+            if (isUnread) onMarkRead(notification.id);
+          }}
+        >
+          <ExternalLink className="size-4" aria-hidden />
+        </Link>
+      ) : null}
       {isUnread && (
         <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
       )}
     </div>
   );
 
-  if (clientId) {
+  if (wrapFullRowInClientLink && clientId) {
     return (
-      <Link href={`/dashboard/clients/${clientId}`} className="block" onClick={handleClick}>
+      <Link href={`/dashboard/clients/${clientId}`} className="block" onClick={handleMarkRead}>
         {content}
       </Link>
     );

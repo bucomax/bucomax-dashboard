@@ -1,4 +1,5 @@
 import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-tenant-lists";
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -26,7 +27,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
 
   const pp = await prisma.patientPathway.findFirst({
     where: { id: patientPathwayId, tenantId: tenantCtx.tenantId },
-    select: { id: true, completedAt: true },
+    select: { id: true, completedAt: true, clientId: true },
   });
   if (!pp) {
     return jsonError("NOT_FOUND", apiT("errors.patientPathwayInstanceNotFound"), 404);
@@ -46,6 +47,15 @@ export async function POST(request: Request, ctx: RouteCtx) {
   });
 
   revalidateTenantClientsList(tenantCtx.tenantId);
+
+  await recordAuditEvent(prisma, {
+    tenantId: tenantCtx.tenantId,
+    clientId: pp.clientId,
+    patientPathwayId: updated.id,
+    actorUserId: auth.session!.user.id,
+    type: AuditEventType.PATIENT_PATHWAY_COMPLETED,
+    payload: { patientPathwayId: updated.id },
+  });
 
   return jsonSuccess({
     patientPathway: {

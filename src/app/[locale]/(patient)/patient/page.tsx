@@ -1,4 +1,3 @@
-import { Link } from "@/i18n/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
@@ -14,11 +13,6 @@ export default async function PatientPortalLandingPage() {
       <div className="max-w-lg space-y-4 text-center">
         <h1 className="text-2xl font-semibold tracking-tight">{t("landing.title")}</h1>
         <p className="text-muted-foreground text-sm leading-relaxed">{t("landing.body")}</p>
-        <p className="text-muted-foreground text-sm">
-          <Link href="/login" className="text-foreground underline underline-offset-2">
-            {t("home.staffLogin")}
-          </Link>
-        </p>
       </div>
     </div>
   );

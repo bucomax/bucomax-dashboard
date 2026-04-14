@@ -1,4 +1,5 @@
 import { PATIENT_PORTAL_TENANT_SLUG_HEADER } from "@/lib/constants/patient-portal";
+import { putFileWithUploadProgress } from "@/lib/utils/upload-put-xhr";
 import type { PatchPatientPortalProfileBody } from "@/lib/validators/patient-portal-profile";
 import type {
   PatientPortalDetailResponseData,
@@ -56,12 +57,12 @@ export async function exchangePatientPortalToken(tenantSlug: string, token: stri
 }
 
 /** Solicita código OTP (e-mail / webhook WhatsApp se configurado). */
-export async function requestPatientPortalOtp(tenantSlug: string, documentId: string): Promise<void> {
+export async function requestPatientPortalOtp(tenantSlug: string, login: string): Promise<void> {
   const res = await fetch(`/api/v1/public/patient-portal/${encodeURIComponent(tenantSlug)}/otp/request`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ documentId }),
+    body: JSON.stringify({ login }),
   });
   const body = (await parseJson(res)) as SuccessEnvelope<{ ok: boolean }> | ErrorEnvelope | null;
   if (!res.ok || !body || body.success !== true) {
@@ -76,14 +77,14 @@ export async function requestPatientPortalOtp(tenantSlug: string, documentId: st
 /** Confirma OTP e abre sessão do portal. */
 export async function verifyPatientPortalOtp(
   tenantSlug: string,
-  documentId: string,
+  login: string,
   code: string,
 ): Promise<void> {
   const res = await fetch(`/api/v1/public/patient-portal/${encodeURIComponent(tenantSlug)}/otp/verify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ documentId, code }),
+    body: JSON.stringify({ login, code }),
   });
   const body = (await parseJson(res)) as SuccessEnvelope<{ ok: boolean }> | ErrorEnvelope | null;
   if (!res.ok || !body || body.success !== true) {
@@ -91,6 +92,88 @@ export async function verifyPatientPortalOtp(
       body && "error" in body && body.error?.message
         ? body.error.message
         : "Código inválido ou expirado.";
+    throw new Error(msg);
+  }
+}
+
+/** Indica se o paciente (CPF ou e-mail) tem senha de portal cadastrada (senha vs OTP). */
+export async function fetchPatientPortalLoginOptions(
+  tenantSlug: string,
+  login: string,
+): Promise<{ hasPassword: boolean }> {
+  const res = await fetch(
+    `/api/v1/public/patient-portal/${encodeURIComponent(tenantSlug)}/login/options`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ login }),
+    },
+  );
+  const body = (await parseJson(res)) as SuccessEnvelope<{ hasPassword: boolean }> | ErrorEnvelope | null;
+  if (!res.ok || !body || body.success !== true) {
+    const msg =
+      body && "error" in body && body.error?.message
+        ? body.error.message
+        : "Não foi possível continuar.";
+    throw new Error(msg);
+  }
+  return body.data;
+}
+
+/** Login com CPF ou e-mail + senha (cookie de sessão). */
+export async function verifyPatientPortalPassword(
+  tenantSlug: string,
+  login: string,
+  password: string,
+): Promise<void> {
+  const res = await fetch(
+    `/api/v1/public/patient-portal/${encodeURIComponent(tenantSlug)}/password/verify`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ login, password }),
+    },
+  );
+  const body = (await parseJson(res)) as SuccessEnvelope<{ ok: boolean }> | ErrorEnvelope | null;
+  if (!res.ok || !body || body.success !== true) {
+    const msg =
+      body && "error" in body && body.error?.message
+        ? body.error.message
+        : "E-mail/CPF ou senha incorretos.";
+    throw new Error(msg);
+  }
+}
+
+export type PatientPortalPasswordUpdateBody = {
+  newPassword: string;
+  confirmNewPassword: string;
+  currentPassword?: string;
+};
+
+/** Define ou altera a senha do portal (sessão autenticada). */
+export async function updatePatientPortalPassword(
+  tenantSlug: string,
+  body: PatientPortalPasswordUpdateBody,
+): Promise<void> {
+  const res = await fetch(
+    "/api/v1/patient/password",
+    withPortalTenant(tenantSlug, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }),
+  );
+  const parsed = (await parseJson(res)) as SuccessEnvelope<{ ok: boolean }> | ErrorEnvelope | null;
+  if (res.status === 401) {
+    throw new PatientPortalUnauthorizedError();
+  }
+  if (!res.ok || !parsed || parsed.success !== true) {
+    const msg =
+      parsed && "error" in parsed && parsed.error?.message
+        ? parsed.error.message
+        : "Não foi possível atualizar a senha.";
     throw new Error(msg);
   }
 }
@@ -222,11 +305,20 @@ type PresignPutResponse = {
   mimeType: string;
 };
 
+export type PatientPortalUploadProgress = (percent: number) => void;
+
 /**
  * Pré-assina, envia o blob ao storage e registra metadados (fila de validação na clínica).
+ * `onUploadProgress` opcional: 0–100 (upload + registro).
  */
-export async function uploadPatientPortalFile(tenantSlug: string, file: File): Promise<PatientPortalFileRegisteredResponse> {
+export async function uploadPatientPortalFile(
+  tenantSlug: string,
+  file: File,
+  onUploadProgress?: PatientPortalUploadProgress,
+): Promise<PatientPortalFileRegisteredResponse> {
   const mimeType = file.type?.trim() || "application/octet-stream";
+  const bump = (pct: number) => onUploadProgress?.(Math.min(100, Math.max(0, Math.round(pct))));
+
   const presignRes = await fetch(
     "/api/v1/patient/files/presign",
     withPortalTenant(tenantSlug, {
@@ -247,14 +339,13 @@ export async function uploadPatientPortalFile(tenantSlug: string, file: File): P
     throw new Error(msg);
   }
   const { key, uploadUrl } = presignBody.data;
-  const putRes = await fetch(uploadUrl, {
-    method: "PUT",
-    body: file,
-    headers: { "Content-Type": mimeType },
+
+  bump(2);
+  await putFileWithUploadProgress(uploadUrl, file, mimeType, (raw) => {
+    bump(2 + raw * 0.78);
   });
-  if (!putRes.ok) {
-    throw new Error(`Upload falhou (${putRes.status})`);
-  }
+  bump(82);
+
   const regRes = await fetch(
     "/api/v1/patient/files",
     withPortalTenant(tenantSlug, {
@@ -268,6 +359,7 @@ export async function uploadPatientPortalFile(tenantSlug: string, file: File): P
       }),
     }),
   );
+  bump(96);
   const regBody = (await parseJson(regRes)) as
     | SuccessEnvelope<PatientPortalFileRegisteredResponse>
     | ErrorEnvelope
@@ -282,6 +374,7 @@ export async function uploadPatientPortalFile(tenantSlug: string, file: File): P
         : "Falha ao registrar arquivo.";
     throw new Error(msg);
   }
+  bump(100);
   return regBody.data;
 }
 

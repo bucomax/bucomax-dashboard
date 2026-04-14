@@ -74,9 +74,12 @@
     "patientMessage": "Patient message",
     "patientMessageHint": "Used by integrations when the patient enters this stage (e.g. WhatsApp).",
     "stageDocumentsTitle": "Documents for the patient in this stage",
-    "stageDocumentsDescription": "PDFs and images from the clinic library are added to the bundle when the patient reaches this stage. Automatic delivery depends on your active integration (e.g. WhatsApp). Publish the pathway version for changes to take effect for patients.",
+    "stageDocumentsDescription": "PDFs and images from your library join this stage’s bundle when the patient reaches it. Publish the version to apply changes; your team coordinates next steps directly with the patient.",
     "addStageDocument": "Add file",
     "stageDocumentsEmpty": "No documents on this stage.",
+    "uploadingStageDocument": "Uploading…",
+    "openStageDocumentAria": "Open file in a new tab",
+    "stageDocumentsOpenError": "Could not open the file.",
     "removeStageDocumentAria": "Remove document from stage",
     "stageDocumentsUploadError": "Could not upload the file.",
     "stageDocumentsUploadSuccess": "{count, plural, =1 {1 file added to the stage.} other {{count} files added to the stage.}}"

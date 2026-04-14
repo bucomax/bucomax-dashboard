@@ -1,5 +1,8 @@
 import { prisma } from "@/infrastructure/database/prisma";
-import { getCachedClientsListPage } from "@/infrastructure/cache/cached-clients-list";
+import {
+  getCachedClientsListPage,
+  getClientsListPageWithoutCache,
+} from "@/infrastructure/cache/cached-clients-list";
 import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-tenant-lists";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
@@ -21,6 +24,7 @@ import {
   mapPrismaClientRowToClientDto,
   serializeClientListItem,
 } from "@/lib/clients/clients-list-shared";
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { postClientBodySchema } from "@/lib/validators/client";
 import { clientsListQuerySchema } from "@/lib/validators/clients-list-query";
 export const dynamic = "force-dynamic";
@@ -53,12 +57,13 @@ export async function GET(request: Request) {
     pathwayId: url.searchParams.get("pathwayId") ?? undefined,
     stageId: url.searchParams.get("stageId") ?? undefined,
     status: url.searchParams.get("status") || undefined,
+    fresh: url.searchParams.get("fresh") ?? undefined,
   });
   if (!parsed.success) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const { limit, page, q, pathwayId, stageId, status: statusFilter } = parsed.data;
+  const { limit, page, q, pathwayId, stageId, status: statusFilter, fresh: freshList } = parsed.data;
   const offset = (page - 1) * limit;
   const now = new Date();
 
@@ -104,7 +109,7 @@ export async function GET(request: Request) {
     });
   }
 
-  const { items, total } = await getCachedClientsListPage({
+  const listArgs = {
     tenantId,
     viewerUserId: auth.session!.user.id,
     globalRole: auth.session!.user.globalRole,
@@ -114,7 +119,11 @@ export async function GET(request: Request) {
     q,
     pathwayId,
     stageId,
-  });
+  };
+
+  const { items, total } = freshList
+    ? await getClientsListPageWithoutCache(listArgs)
+    : await getCachedClientsListPage(listArgs);
 
   return jsonSuccess({
     data: items.map((c) => serializeClientListItem(c, now)),
@@ -212,6 +221,15 @@ export async function POST(request: Request) {
   });
 
   revalidateTenantClientsList(tenantId);
+
+  await recordAuditEvent(prisma, {
+    tenantId,
+    clientId: row.id,
+    patientPathwayId: null,
+    actorUserId: auth.session!.user.id,
+    type: AuditEventType.PATIENT_CREATED,
+    payload: { clientId: row.id },
+  });
 
   return jsonSuccess(
     {

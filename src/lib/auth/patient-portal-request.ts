@@ -43,10 +43,17 @@ export async function requireActivePatientPortalClient(
   }
   const client = await prisma.client.findFirst({
     where: { id: portal.clientId, tenantId: portal.tenantId, deletedAt: null },
-    select: { id: true },
+    select: { id: true, portalPasswordChangedAt: true },
   });
   if (!client) {
     return { ok: false, response: jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404) };
+  }
+  const expectedPwdv = client.portalPasswordChangedAt?.getTime() ?? 0;
+  if (portal.pwdv !== expectedPwdv) {
+    return {
+      ok: false,
+      response: jsonError("UNAUTHORIZED", apiT("errors.patientPortalSessionRequired"), 401),
+    };
   }
   return { ok: true, data: { portal } };
 }

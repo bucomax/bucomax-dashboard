@@ -6,6 +6,9 @@
     "pathwayOrVersionNotFound": "Care pathway or version not found.",
     "patientNotFound": "Patient not found.",
     "patientNotFoundInTenant": "Patient not found in this tenant.",
+    "auditExportFromAfterTo": "Start date cannot be after end date.",
+    "auditExportRangeTooLarge": "The maximum export window is 730 days.",
+    "auditExportPermissionDenied": "Only tenant administrators can export the audit trail.",
     "patientPathwayInstanceNotFound": "Patient journey instance not found.",
     "patientPathwayNotFound": "Patient journey not found.",
     "checklistItemNotFound": "Checklist item not found on this journey.",
@@ -87,7 +90,19 @@
     "validationPhoneBrDigits": "Invalid phone (use area code + number, 10 or 11 digits).",
     "validationEmailRequired": "Email is required.",
     "validationEmailInvalid": "Invalid email address.",
-    "patientSelfRegisterInvalidOrExpired": "This link is invalid, expired, or already used. Ask the clinic for a new QR code."
+    "patientSelfRegisterInvalidOrExpired": "This link is invalid, expired, or already used. Ask the clinic for a new QR code.",
+    "validationPortalPasswordMin": "Password must be at least 8 characters.",
+    "validationPortalPasswordUppercase": "Include at least one uppercase letter.",
+    "validationPortalPasswordLowercase": "Include at least one lowercase letter.",
+    "validationPortalPasswordDigit": "Include at least one number.",
+    "validationPortalPasswordSpecial": "Include at least one special character (!@#$%^&*…).",
+    "validationPortalPasswordMismatch": "Passwords do not match.",
+    "validationConsentTermsRequired": "You must accept the terms of use to continue.",
+    "validationConsentPrivacyRequired": "You must accept the privacy notice to continue.",
+    "patientPortalLoginInvalid": "Enter an 11-digit CPF or a valid email address.",
+    "patientPortalPasswordInvalid": "Invalid email/CPF or password.",
+    "patientPortalPasswordCurrentRequired": "Current password is required.",
+    "patientPortalPasswordCurrentWrong": "Current password is incorrect."
   },
   "success": {
     "pathwayDeleted": "Pathway removed.",
@@ -101,5 +116,10 @@
     "passwordUpdated": "Password updated.",
     "passwordResetDone": "Password set successfully. You can sign in now.",
     "patientSelfRegistered": "Registration submitted. The clinic team has been notified."
+  },
+  "notifications": {
+    "patientPortalFileTitle": "Portal upload pending review",
+    "patientPortalFileBody": "{patientName} uploaded «{fileName}» for your team to review.",
+    "patientPortalFallbackPatientName": "Patient"
   }
 }

@@ -493,7 +493,7 @@ Esta secção fixa **como** o produto se materializa em **PostgreSQL/Prisma** e 
 - **`PatientPathwayChecklistItem`**: progresso do checklist por paciente na etapa/versionamento atual.
 - **`PatientNote`**: nota clínica/operacional dedicada do paciente, com autor e histórico.
 - **`StageTransition`**: histórico da mudança de etapa + `dispatchStub` com snapshot do bundle; campos de override de checklist (`ruleOverrideReason`, `forcedByUserId`) quando a transição força conclusão incompleta.
-- **`AuditEvent`**: eventos de linha do tempo por paciente (`tenantId`, `clientId`, `patientPathwayId?`, `actorUserId?`, `type`, `payload` Json, `createdAt`). Tipos atuais: transição de etapa, arquivo vinculado ao paciente (staff), cadastro público concluído, envio/aprovação/recusa de arquivo pelo **portal do paciente** (`PATIENT_PORTAL_FILE_*`). **LGPD:** `payload` com IDs e metadados mínimos — sem duplicar texto clínico.
+- **`AuditEvent`**: eventos de linha do tempo (`tenantId`, **`clientId?`** — ausente em alguns eventos só de staff/plataforma, ex. login no painel —, `patientPathwayId?`, `actorUserId?`, `type`, `payload` Json, `createdAt`). Inclui transição de etapa, arquivos, cadastro público, portal (`PATIENT_PORTAL_*`), CRUD de paciente, downloads, checklist, sessão do portal, consentimento (`PATIENT_CONSENT_GIVEN` com `consentType` + `version`), exportação de auditoria (`AUDIT_EXPORT_GENERATED`), etc. **LGPD:** `payload` com IDs e metadados mínimos — sem duplicar texto clínico.
 
 O **núcleo já implementado** é: **jornada + versão + etapas + checklist/documentos por etapa + paciente na jornada + notas dedicadas + transição + auditoria de timeline + notificações in-app**. `ChannelDispatch`, `AiJob` e dispatch HTTP real continuam como evolução.
 - **`Notification`**: notificação in-app persistida por usuário (`tenantId`, `userId`, `type`, `title`, `body?`, `metadata` Json, `readAt?`). Tipos: `sla_critical`, `sla_warning`, `stage_transition`, `new_patient`, `checklist_complete`. Ver §7.4.
@@ -513,7 +513,7 @@ O **núcleo já implementado** é: **jornada + versão + etapas + checklist/docu
 
 | Modelo | Campos-chave | Observação |
 |--------|--------------|------------|
-| `Client` | `tenantId`, `name`, `phone`, `documentId?`, `email?`, endereço (`postalCode?`, `addressLine?`, `addressNumber?`, `addressComp?`, `neighborhood?`, `city?`, `state?`), `isMinor` (default false), `guardianName?`, `guardianDocumentId?`, `guardianPhone?`, `assignedToUserId?`, `opmeSupplierId?` | Ficha base do paciente no tenant. Coluna `email` nullable no BD; **`POST /api/v1/clients` e auto-cadastro público exigem e-mail** (validação). Com `isMinor`, CPF do paciente pode ser nulo; responsável obrigatório na validação de API ao marcar menor. |
+| `Client` | `tenantId`, `name`, `phone`, `documentId?`, `email?`, endereço (`postalCode?`, …, `state?`), `isMinor` (default false), `guardianName?`, `guardianDocumentId?`, `guardianPhone?`, `assignedToUserId?`, `opmeSupplierId?`, **`portalPasswordHash?`** (bcrypt; null = sem senha no portal), **`portalPasswordChangedAt?`** (alinha com `pwdv` no cookie da sessão do portal; troca de senha invalida sessões antigas) | Ficha base do paciente no tenant. Coluna `email` nullable no BD; **`POST /api/v1/clients` e auto-cadastro público exigem e-mail** (validação). Com `isMinor`, CPF do paciente pode ser nulo; responsável obrigatório na validação de API ao marcar menor. Auto-cadastro público grava senha do portal em `portalPasswordHash`. |
 | `PatientPathway` | `tenantId`, `clientId`, **`pathwayId`**, `pathwayVersionId`, **`currentStageId`** → `PathwayStage`, `enteredStageAt`, `createdAt` | **Qual fluxo** o paciente segue. **UX:** ao criar, se o tenant tiver **um** fluxo publicado, preencher `pathwayId` automaticamente; se **vários**, exigir escolha na UI antes de persistir. |
 | `PatientPathwayChecklistItem` | `patientPathwayId`, `checklistItemId`, `completedAt?`, `completedByUserId?` | Progresso por paciente; update permitido só para item da etapa atual. |
 | `PatientNote` | `tenantId`, `clientId`, `authorUserId`, `content`, `createdAt` | Histórico dedicado de anotações clínicas/operacionais do paciente. |
@@ -523,12 +523,12 @@ O **núcleo já implementado** é: **jornada + versão + etapas + checklist/docu
 | Modelo | Campos-chave | Observação |
 |--------|--------------|------------|
 | `StageTransition` | `patientPathwayId`, `fromStageId?`, `toStageId`, `actorUserId`, `note?`, `ruleOverrideReason?`, `forcedByUserId?`, `dispatchStub`, `createdAt` | Histórico; `dispatchStub.correlationId` amarra o snapshot do bundle. |
-| `AuditEvent` | `tenantId`, `clientId`, `patientPathwayId?`, `actorUserId?`, `type` (enum), `payload` Json, `createdAt` | Linha do tempo unificada; índice `(tenantId, clientId, createdAt)`. Escrita via `recordAuditEvent` (infra) a partir de transição, registro de arquivo com `clientId`, cadastro público, ciclo de arquivo do portal (submissão e revisão na ficha). |
+| `AuditEvent` | `tenantId`, `clientId?`, `patientPathwayId?`, `actorUserId?`, `type` (enum), `payload` Json, `createdAt` | Linha do tempo unificada na ficha quando há `clientId`; índice `(tenantId, clientId, createdAt)`. Escrita via `recordAuditEvent` (infra). Eventos sem `clientId` não aparecem na timeline do paciente. |
 | `ChannelDispatch` | Futuro | Evolução para persistência dedicada de dispatch/status/erro. |
 
 | Modelo | Observação |
 |--------|------------|
-| `FileAsset` | `tenantId`, `r2Key`, `mimeType`, `sizeBytes`, `clientId?`, `uploadedById?` (null se envio pelo portal), `patientPortalReviewStatus` (`NOT_APPLICABLE` / `PENDING` / `APPROVED` / `REJECTED`); upload na biblioteca **não** dispara WhatsApp sozinho. |
+| `FileAsset` | `tenantId`, `r2Key`, `mimeType`, `sizeBytes`, `sha256Hash?` (hex do objeto no GCS após upload, para integridade), `clientId?`, `uploadedById?` (null se envio pelo portal), `patientPortalReviewStatus` (`NOT_APPLICABLE` / `PENDING` / `APPROVED` / `REJECTED`); upload na biblioteca **não** dispara WhatsApp sozinho. |
 | `OpmeSupplier` | Catálogo por tenant para relacionamento opcional em `Client`. |
 | `AiJob` | Futuro | Evolução para integração assíncrona com IA. |
 
@@ -538,7 +538,7 @@ Auth/plataforma (`User.globalRole`, `TenantMembership`, `UserAuthToken`, …) pe
 
 1. **Payload WhatsApp ao mover etapa:** `StageDocument` ⋈ `FileAsset` filtrando `pathwayStageId = toStageId`, `ORDER BY sortOrder`; hoje o snapshot fica em `dispatchStub`, e URLs assinadas são geradas sob demanda.  
 2. **Pacientes “na etapa X”:** `PatientPathway` com `currentStageId` nas etapas de ordem desejada.  
-3. **Ficha / linha do tempo:** `GET /api/v1/clients/:id/timeline` agrega `AuditEvent` (ordenado) com `StageTransition` legado **deduplicado** quando o audit já referencia o mesmo `transitionId` no `payload`. Há teto de janela no merge; resposta inclui `timelineCapped` quando aplicável. `ChannelDispatch` / `AiJob` entram depois como fontes adicionais.
+3. **Ficha / linha do tempo:** `GET /api/v1/clients/:id/timeline` agrega `AuditEvent` (ordenado) com `StageTransition` legado **deduplicado** quando o audit já referencia o mesmo `transitionId` no `payload`. Há teto de janela no merge; resposta inclui `timelineCapped` quando aplicável. **Exportação CSV (auditoria/perícia):** `GET /api/v1/clients/:id/audit-export` — `tenant_admin` ou `super_admin`, janela opcional (máx. 730 dias), gera `AUDIT_EXPORT_GENERATED`. `ChannelDispatch` / `AiJob` entram depois como fontes adicionais.
 4. **Checklist da etapa atual:** `PathwayStageChecklistItem` + `PatientPathwayChecklistItem` filtrando a etapa atual do paciente.
 
 ### 8.4 Impacto no código (camadas)
@@ -581,7 +581,7 @@ Eventos de domínio (opcional): após `TransitionPatientStage`, worker assíncro
 |---------|---------------------|
 | Bucket | Um bucket; isolamento por **prefixo** `tenants/{tenantId}/...` |
 | Upload | URL assinada (v4) para upload direto do browser (`PUT`) **ou** `POST` multipart para API que grava no bucket |
-| Metadados | Tabela `FileAsset`: `tenantId`, `clientId` opcional, `r2Key` (chave do objeto no GCS), `mimeType`, `sizeBytes`, `createdAt` |
+| Metadados | Tabela `FileAsset`: `tenantId`, `clientId` opcional, `r2Key` (chave do objeto no GCS), `mimeType`, `sizeBytes`, `sha256Hash?` (hex após upload), `createdAt`. Listagens `GET …/clients/:id/files` e `GET …/patient/files` expõem `sha256Hash` para integridade. |
 | Exclusão | Política de lifecycle ou job de limpeza ao apagar entidade dona do arquivo |
 
 Variáveis de ambiente típicas: `GCS_BUCKET_NAME`, credenciais (`GCS_SERVICE_ACCOUNT_JSON` ou `GOOGLE_APPLICATION_CREDENTIALS`), opcional `GCS_PROJECT_ID`, `GCS_PUBLIC_BASE_URL`. CORS no bucket para origens do app (PUT/GET/HEAD).
@@ -598,7 +598,7 @@ Prefixo: `/api/v1`.
 | Me | `GET`, `PATCH`, `DELETE` | Perfil do usuário autenticado (`/api/v1/me`, `/api/v1/me/password`). |
 | Admin / tenants | `GET`, `POST` | Gestão global em `/api/v1/admin/tenants`; membros por tenant em `/api/v1/admin/tenants/:tenantId/members`. |
 | Tenants | `GET` | `/api/v1/tenants` lista tenants acessíveis ao usuário. |
-| Clients | `GET`, `POST`, `PATCH`, `DELETE` | `/api/v1/clients`, `/api/v1/clients/:id` (detalhe rico); **linha do tempo** `GET /api/v1/clients/:id/timeline` (audit + transições legado); notas `…/notes`; arquivos `…/files`. |
+| Clients | `GET`, `POST`, `PATCH`, `DELETE` | `/api/v1/clients`, `/api/v1/clients/:id` (detalhe rico); **linha do tempo** `GET /api/v1/clients/:id/timeline` (audit + transições legado); **exportação CSV** `GET /api/v1/clients/:id/audit-export` (admin); notas `…/notes`; arquivos `…/files`. |
 | Patient pathways | `GET`, `POST` | `/api/v1/patient-pathways` lista/inicia jornada; detalhe em `/api/v1/patient-pathways/:id`; transição em `POST /api/v1/patient-pathways/:id/transition`. |
 | Pathways | `GET`, `POST`, `PATCH` | `/api/v1/pathways`, `/api/v1/pathways/:id`, `/versions`, `PATCH /versions/:versionId`, `POST /publish`, `GET /published-stages`, `GET /kanban`, `GET /dashboard-summary`, `GET /dashboard-alerts`. |
 | Stage documents | `POST` | `/api/v1/stage-documents` vincula `FileAsset` a etapa publicada. |

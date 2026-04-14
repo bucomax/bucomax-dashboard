@@ -48,6 +48,7 @@ export async function GET(request: Request) {
       guardianPhone: true,
       assignedToUserId: true,
       opmeSupplierId: true,
+      portalPasswordHash: true,
       createdAt: true,
       updatedAt: true,
       assignedTo: { select: { id: true, name: true, email: true } },
@@ -66,8 +67,11 @@ export async function GET(request: Request) {
     }),
   ]);
 
+  const hasPortalPassword = row.portalPasswordHash != null;
+
   return jsonSuccess({
     ...sanitizeClientDetailForPatientPortal(payload),
     tenant: { name: tenantRow?.name ?? "—" },
+    hasPortalPassword,
   });
 }

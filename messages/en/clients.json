@@ -120,6 +120,10 @@
     "actions": {
       "edit": "Edit",
       "editAria": "Open patient record",
+      "portalLink": "Copy patient portal link",
+      "portalLinkAria": "Generate and copy this patient’s portal access link",
+      "portalLinkCopied": "Portal link copied.",
+      "portalLinkError": "Could not generate the link. Try again.",
       "delete": "Delete",
       "deleteAria": "Remove patient from the list"
     },
@@ -151,7 +155,8 @@
     "copyLink": "Copy link",
     "copied": "Link copied.",
     "linkLabel": "Registration link",
-    "registeringAs": "You are registering at {clinic}",
+    "registeringAsIntro": "You are registering with",
+    "registeringAsTaxLabel": "Tax ID",
     "pageTitle": "Patient registration",
     "validating": "Checking link…",
     "pageDescription": "Fill in your details. The clinic will choose the treatment pathway next.",
@@ -162,10 +167,32 @@
     "submitting": "Submitting…",
     "successTitle": "Thank you!",
     "successBody": "Your registration was completed successfully.",
-    "successContactHint": "We do not send an automatic confirmation email to you. The clinic will reach out using the phone number or WhatsApp you provided to guide you through the next steps of your care pathway.",
+    "successContactHint": "We sent a confirmation and welcome email to the address you provided (check spam if needed). The clinic will reach out soon using the phone or WhatsApp you shared to plan the next steps of your care.",
     "submitFailedTitle": "Could not submit your registration",
     "fixFieldsHint": "Please review the highlighted fields in the form.",
-    "submitNetworkError": "No connection or server unavailable. Check your network and try again."
+    "submitNetworkError": "No connection or server unavailable. Check your network and try again.",
+    "passwordStrength": {
+      "requirementsTitle": "Password requirements",
+      "passwordLabel": "Portal password",
+      "passwordHint": "Use a strong password to sign in with email or CPF and password.",
+      "confirmLabel": "Confirm password",
+      "minLength": "At least 8 characters",
+      "uppercase": "One uppercase letter",
+      "lowercase": "One lowercase letter",
+      "digit": "One number",
+      "special": "One special character (!@#$…)",
+      "match": "Passwords match"
+    },
+    "consent": {
+      "sectionTitle": "Terms and privacy",
+      "sectionDescription": "Both statements below are required to submit your registration. When you open a document, it opens in a new browser tab.",
+      "requiredShort": "Required",
+      "termsShortTitle": "Terms of service",
+      "privacyShortTitle": "Privacy and personal data",
+      "openDocumentHint": "Opens in a new tab",
+      "termsRich": "I declare that I have read and accept the <terms>terms of service</terms>.",
+      "privacyRich": "I declare that I have read and accept the <privacy>privacy notice</privacy> and the processing of my personal data under applicable privacy law."
+    }
   },
   "detail": {
     "pageTitle": "Patient",
@@ -272,7 +299,10 @@
       "reviewRejectSuccess": "Document rejected.",
       "range": "Showing {from}–{to} of {total}",
       "prev": "Previous",
-      "next": "Next"
+      "next": "Next",
+      "sha256Integrity": "SHA-256",
+      "copySha256": "Copy full SHA-256 hash",
+      "sha256Copied": "Hash copied."
     },
     "sla": {
       "ok": "On track",
@@ -309,7 +339,6 @@
       "title": "Completed treatments",
       "description": "Closed pathways, separate from the active one. Expand each entry for stages, checklist, and transition history.",
       "summaryDates": "Started {start} · Completed {end}",
-      "download": "Download",
       "finalStage": "Stage at completion",
       "assigneeTitle": "Assignee on record",
       "assigneeHint": "Current value on the patient; it may have changed after this treatment.",
@@ -379,7 +408,9 @@
       "summaryTo": "To:",
       "notePreview": "Note: {text}",
       "stageDocumentsTitle": "Documents for target stage (bundle)",
-      "stageDocumentsEmpty": "No documents linked to this stage. Ask a tenant admin to attach library files to the stage."
+      "stageDocumentsEmpty": "No documents linked to this stage. Ask a tenant admin to attach library files to the stage.",
+      "openStageDocumentAria": "Open document in a new tab",
+      "openStageDocumentError": "Could not open the document."
     },
     "profile": {
       "title": "Contact & ownership",
@@ -434,6 +465,17 @@
     },
     "timeline": {
       "title": "Timeline",
+      "filtersLabel": "Filter by category",
+      "filtersHint": "Tap the chips to show or hide event types. At least one category stays on.",
+      "filtersShowAll": "Show all",
+      "filtersKeepOneHint": "Keep at least one category selected.",
+      "categories": {
+        "security": "Security & portal",
+        "clinical": "Pathway & stages",
+        "documents": "Documents",
+        "administrative": "Registration & staff",
+        "compliance": "Privacy & consent"
+      },
       "description": "Transitions, files linked to the patient, and self-registration events.",
       "cappedHint": "Only the most recent events are merged here; totals may be incomplete.",
       "range": "Showing {from}–{to} of {total}",
@@ -442,6 +484,8 @@
       "loadError": "Failed to load timeline.",
       "prev": "Previous",
       "next": "Next",
+      "exportCsv": "Export audit (CSV)",
+      "exportError": "Could not export the audit trail.",
       "actorPublic": "Public registration",
       "forcedNoReason": "Forced transition (no reason on this event)",
       "audit": {
@@ -452,7 +496,41 @@
         "portalFileRejected": "Portal document rejected by clinic",
         "selfRegister": "Registration completed via link",
         "selfRegisterUpdate": "Registration updated via link",
-        "fileMeta": "File {id} · {mime}"
+        "portalPasswordSet": "Portal password set",
+        "fileMeta": "File {id}",
+        "portalSessionCreated": "Portal session started",
+        "portalSessionMethod": {
+          "magic_link": "Magic link",
+          "otp": "Email code (OTP)",
+          "password": "CPF and password"
+        },
+        "portalLinkGenerated": "Portal link generated",
+        "portalLinkSingleUse": "Single use",
+        "portalLinkMultiUse": "Multiple uses until expiry",
+        "patientCreated": "Patient created by staff",
+        "patientUpdated": "Patient details updated",
+        "changedFields": "Fields: {fields}",
+        "patientDeleted": "Patient removed from the list (soft delete)",
+        "pathwayStarted": "Care pathway started",
+        "pathwayCompleted": "Care pathway completed",
+        "fileDownloadedStaff": "File download (staff)",
+        "fileDownloadedPatient": "File download (patient portal)",
+        "checklistItemToggled": "Stage checklist",
+        "checklistChecked": "checked",
+        "checklistUnchecked": "unchecked",
+        "fileDeleted": "File deleted",
+        "portalLoginFailed": "Portal login attempt (password)",
+        "portalLoginFailedReason": {
+          "invalidPassword": "Wrong password",
+          "passwordNotSet": "Password not set yet"
+        },
+        "consentGiven": "Consent recorded",
+        "consentKind": {
+          "terms": "Terms of use",
+          "lgpd": "Privacy / LGPD"
+        },
+        "auditExportGenerated": "Audit trail export (CSV)",
+        "auditExportMeta": "{count} rows"
       }
     }
   }

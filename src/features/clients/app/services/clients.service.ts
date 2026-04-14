@@ -54,6 +54,7 @@ export async function getClientTimeline(
   const search = new URLSearchParams();
   if (params?.page != null) search.set("page", String(params.page));
   if (params?.limit != null) search.set("limit", String(params.limit));
+  if (params?.categories?.trim()) search.set("categories", params.categories.trim());
   const qs = search.toString();
   const url = qs
     ? `/api/v1/clients/${clientId}/timeline?${qs}`
@@ -73,6 +74,7 @@ export async function listClients(params?: ListClientsQueryParams): Promise<Clie
   if (params?.pathwayId?.trim()) search.set("pathwayId", params.pathwayId.trim());
   if (params?.stageId?.trim()) search.set("stageId", params.stageId.trim());
   if (params?.status) search.set("status", params.status);
+  if (params?.fresh) search.set("fresh", "1");
   const qs = search.toString();
   const url = qs ? `/api/v1/clients?${qs}` : "/api/v1/clients";
   const res = await apiClient.get<ApiEnvelope<ClientsListResponseData>>(url);

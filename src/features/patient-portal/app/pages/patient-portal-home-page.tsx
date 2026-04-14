@@ -11,19 +11,19 @@ import {
 import { ClientDetailProfileCard } from "@/features/clients/app/components/client-detail-profile-card";
 import { usePatientPortalClientDetail } from "@/features/patient-portal/app/hooks/use-patient-portal-client-detail";
 import { usePatientPortalTenantSlug } from "@/features/patient-portal/app/context/patient-portal-tenant-context";
-import { PatientPortalAccessGate } from "@/features/patient-portal/app/components/patient-portal-access-gate";
+import { PatientPortalLoginPage } from "@/features/patient-portal/app/pages/patient-portal-login-page";
 import { PatientPortalFilesSection } from "@/features/patient-portal/app/components/patient-portal-files-section";
 import { PatientPortalTimelineSection } from "@/features/patient-portal/app/components/patient-portal-timeline-section";
+import { PatientPortalPasswordDialog } from "@/features/patient-portal/app/components/patient-portal-password-dialog";
 import {
   fetchPatientPortalTimeline,
   logoutPatientPortal,
   PatientPortalUnauthorizedError,
 } from "@/lib/api/patient-portal-client";
-import { Link } from "@/i18n/navigation";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardDescription, CardHeader } from "@/shared/components/ui/card";
-import { Info, MapPinned } from "lucide-react";
+import { Info, KeyRound, MapPinned } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import type { PatientPortalTimelineResponseData } from "@/types/api/patient-portal-v1";
@@ -38,6 +38,7 @@ export function PatientPortalHomePage() {
   const [timelineLoading, setTimelineLoading] = useState(false);
   const [timelineError, setTimelineError] = useState<string | null>(null);
   const [timelineRefresh, setTimelineRefresh] = useState(0);
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 
   const loadTimeline = useCallback(() => {
     setTimelineLoading(true);
@@ -88,12 +89,9 @@ export function PatientPortalHomePage() {
     reload();
   }
 
-  if (loading && !data) {
-    return <p className="text-muted-foreground text-sm">{t("home.loading")}</p>;
-  }
-
-  if (needsLink) {
-    return <PatientPortalAccessGate tenantSlug={tenantSlug} />;
+  /** Sem sessão ou ainda verificando: mesmo formulário de `/patient/login` (evita só a frase "Carregando…"). */
+  if (!data && !error && (loading || needsLink)) {
+    return <PatientPortalLoginPage />;
   }
 
   if (error || !data) {
@@ -107,18 +105,40 @@ export function PatientPortalHomePage() {
     );
   }
 
-  const { client, patientPathway: pp, completedTreatments = [] } = data;
+  const { client, patientPathway: pp, completedTreatments = [], hasPortalPassword } = data;
 
   return (
     <div className="mx-auto flex w-full flex-col gap-6">
+      <PatientPortalPasswordDialog
+        open={passwordDialogOpen}
+        onOpenChange={setPasswordDialogOpen}
+        tenantSlug={tenantSlug}
+        hasPortalPassword={hasPortalPassword}
+        onSuccess={() => {
+          reload();
+          setTimelineRefresh((n) => n + 1);
+        }}
+      />
       <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{t("home.welcome", { name: client.name })}</h1>
           <p className="text-muted-foreground text-sm">{t("home.clinic", { clinic: data.tenant.name })}</p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => void onLogout()}>
-          {t("home.logout")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => setPasswordDialogOpen(true)}
+          >
+            <KeyRound className="size-3.5" aria-hidden />
+            {t("home.passwordAction")}
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => void onLogout()}>
+            {t("home.logout")}
+          </Button>
+        </div>
       </div>
 
       <div className="columns-1 gap-6 [column-fill:balance] lg:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
@@ -176,12 +196,6 @@ export function PatientPortalHomePage() {
         <Info className="size-4" aria-hidden />
         <AlertDescription className="text-sm">{t("home.readOnlyJourneyHint")}</AlertDescription>
       </Alert>
-
-      <p className="text-muted-foreground text-center text-xs">
-        <Link href="/login" className="underline underline-offset-2">
-          {t("home.staffLogin")}
-        </Link>
-      </p>
     </div>
   );
 }

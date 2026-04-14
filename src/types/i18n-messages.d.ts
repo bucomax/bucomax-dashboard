@@ -4,6 +4,7 @@ import type auth from "../../messages/pt-BR/auth.json";
 import type clients from "../../messages/pt-BR/clients.json";
 import type dashboard from "../../messages/pt-BR/dashboard.json";
 import type global from "../../messages/pt-BR/global.json";
+import type legal from "../../messages/pt-BR/legal.json";
 import type notifications from "../../messages/pt-BR/notifications.json";
 import type pathways from "../../messages/pt-BR/pathways.json";
 import type patientPortal from "../../messages/pt-BR/patientPortal.json";
@@ -22,6 +23,7 @@ type Messages = {
   pathways: typeof pathways;
   notifications: typeof notifications;
   patientPortal: typeof patientPortal;
+  legal: typeof legal;
 };
 
 declare module "next-intl" {

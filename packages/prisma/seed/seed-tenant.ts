@@ -239,7 +239,7 @@ export async function seedTenant(
 
   const libraryFilesByAlias = new Map<string, SeedFileRef>();
   for (const fileSeed of seed.libraryFiles) {
-    const r2Key = `tenants/${seed.slug}/library/${fileSeed.alias}-${safeKeyPart(fileSeed.fileName)}`;
+    const r2Key = `tenants/${tenant.id}/library/${fileSeed.alias}-${safeKeyPart(fileSeed.fileName)}`;
     const file = await prisma.fileAsset.create({
       data: {
         tenantId: tenant.id,
@@ -289,7 +289,7 @@ export async function seedTenant(
           tenantId: tenant.id,
           uploadedById: assignedActor?.id ?? actors.admin.id,
           clientId: client.id,
-          r2Key: `tenants/${seed.slug}/clients/${clientSeed.key}/arquivo-${index + 1}.pdf`,
+          r2Key: `tenants/${tenant.id}/clients/${client.id}/uploads/arquivo-${index + 1}.pdf`,
           fileName: `${clientSeed.key}-arquivo-${index + 1}.pdf`,
           mimeType: "application/pdf",
           sizeBytes: 140_000 + index * 11_500,

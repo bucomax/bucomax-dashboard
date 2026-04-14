@@ -4,11 +4,15 @@ import { NOTIFICATION_QUEUE_NAME } from "./constants";
 
 const globalForQueue = globalThis as unknown as { __notifQueue?: Queue };
 
-export function getNotificationQueue(): Queue {
+/**
+ * Fila BullMQ ou `null` quando não há Redis utilizável (`REDIS_URL` vazio, circuito aberto
+ * após falha de conexão, etc.). Não lança — o emissor grava inline nesses casos.
+ */
+export function getNotificationQueue(): Queue | null {
   if (!globalForQueue.__notifQueue) {
     const connection = getRedisConnection();
     if (!connection) {
-      throw new Error("Cannot create BullMQ queue: REDIS_URL is not configured.");
+      return null;
     }
     globalForQueue.__notifQueue = new Queue(NOTIFICATION_QUEUE_NAME, {
       connection,

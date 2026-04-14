@@ -55,8 +55,17 @@ export async function assertTenantInvitePermission(session: Session, tenantId: s
   return null;
 }
 
-/** `super_admin` ou `tenant_admin` do tenant (gestão de membros). */
-export async function assertTenantAdminOrSuper(session: Session, tenantId: string, request?: Request, t?: ApiT) {
+/**
+ * `super_admin` ou `tenant_admin` do tenant.
+ * @param forbiddenMessageKey — chave `errors.*` no namespace `api` quando a permissão falha (padrão: gestão de membros).
+ */
+export async function assertTenantAdminOrSuper(
+  session: Session,
+  tenantId: string,
+  request?: Request,
+  t?: ApiT,
+  forbiddenMessageKey: string = "errors.manageMembersPermissionDenied",
+) {
   if (session.user.globalRole === "super_admin") {
     return null;
   }
@@ -65,7 +74,7 @@ export async function assertTenantAdminOrSuper(session: Session, tenantId: strin
   });
   if (!m || m.role !== "tenant_admin") {
     const tr = await resolveApiT(request, t);
-    return jsonError("FORBIDDEN", tr("errors.manageMembersPermissionDenied"), 403);
+    return jsonError("FORBIDDEN", tr(forbiddenMessageKey as Parameters<ApiT>[0]), 403);
   }
   return null;
 }

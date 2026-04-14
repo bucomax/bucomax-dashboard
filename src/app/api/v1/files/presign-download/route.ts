@@ -1,3 +1,4 @@
+import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { prisma } from "@/infrastructure/database/prisma";
 import { isGcsConfigured, presignGetObject } from "@/infrastructure/storage/gcs-storage";
 import { getApiT } from "@/lib/api/i18n";
@@ -42,13 +43,24 @@ export async function POST(request: Request) {
 
   const asset = await prisma.fileAsset.findFirst({
     where: { id: parsed.data.fileId, tenantId },
-    select: { r2Key: true },
+    select: { id: true, r2Key: true, clientId: true },
   });
   if (!asset) {
     return jsonError("NOT_FOUND", apiT("errors.fileNotFound"), 404);
   }
 
   const downloadUrl = await presignGetObject(asset.r2Key, DOWNLOAD_URL_TTL_SECONDS);
+
+  if (asset.clientId) {
+    await recordAuditEvent(prisma, {
+      tenantId,
+      clientId: asset.clientId,
+      patientPathwayId: null,
+      actorUserId: auth.session!.user.id,
+      type: AuditEventType.FILE_DOWNLOADED_BY_STAFF,
+      payload: { fileAssetId: asset.id, userId: auth.session!.user.id },
+    });
+  }
 
   return jsonSuccess({
     downloadUrl,

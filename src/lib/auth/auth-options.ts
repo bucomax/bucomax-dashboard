@@ -2,6 +2,7 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { recordStaffLoginFailed, recordStaffLoginSuccess } from "@/infrastructure/audit/staff-login-audit";
 import { prisma } from "@/infrastructure/database/prisma";
 
 export const authOptions: NextAuthOptions = {
@@ -23,10 +24,20 @@ export const authOptions: NextAuthOptions = {
         const user = await prisma.user.findFirst({
           where: { email, deletedAt: null },
         });
-        if (!user?.passwordHash) return null;
+        if (!user?.passwordHash) {
+          if (user) {
+            void recordStaffLoginFailed(email, "no_password", user.id).catch(() => undefined);
+          }
+          return null;
+        }
 
         const ok = await bcrypt.compare(password, user.passwordHash);
-        if (!ok) return null;
+        if (!ok) {
+          void recordStaffLoginFailed(email, "invalid_credentials", user.id).catch(() => undefined);
+          return null;
+        }
+
+        void recordStaffLoginSuccess(user.id).catch(() => undefined);
 
         return {
           id: user.id,

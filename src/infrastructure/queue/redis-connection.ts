@@ -56,7 +56,7 @@ export function isRedisEnabled(): boolean {
 
 function createConnection(): IORedis {
   const url = process.env.REDIS_URL!.trim();
-  return new IORedis(url, {
+  const conn = new IORedis(url, {
     maxRetriesPerRequest: null,
     enableReadyCheck: true,
     lazyConnect: true,
@@ -75,6 +75,10 @@ function createConnection(): IORedis {
       return Math.min(times * 400, 4_000);
     },
   });
+  conn.on("error", () => {
+    /* Evita "Unhandled error event" do ioredis com enableOfflineQueue: false; reconexão via retryStrategy. */
+  });
+  return conn;
 }
 
 function getPool(): Map<ConnectionSlot, IORedis> {

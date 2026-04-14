@@ -28,6 +28,11 @@ function sanitizeAuditPayloadForPatient(
       return {
         ...(typeof payload.mode === "string" ? { mode: payload.mode } : {}),
       };
+    case "PATIENT_CONSENT_GIVEN":
+      return {
+        ...(typeof payload.consentType === "string" ? { consentType: payload.consentType } : {}),
+        ...(typeof payload.version === "string" ? { version: payload.version } : {}),
+      };
     default:
       return {};
   }
@@ -38,6 +43,7 @@ function mapAuditItem(item: Extract<ClientTimelineItemDto, { kind: "audit" }>): 
     kind: "audit",
     id: item.id,
     type: item.type,
+    category: item.category,
     createdAt: item.createdAt,
     actorName: item.actor?.name ?? null,
     payload: sanitizeAuditPayloadForPatient(item.type, item.payload),
@@ -50,6 +56,7 @@ function mapLegacyItem(
   return {
     kind: "legacy_transition",
     id: item.id,
+    category: item.category,
     createdAt: item.createdAt,
     fromStage: item.fromStage ? { name: item.fromStage.name } : null,
     toStage: { name: item.toStage.name },
