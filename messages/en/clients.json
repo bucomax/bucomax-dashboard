@@ -20,6 +20,30 @@
     "guardianName": "Guardian full name",
     "guardianDocumentId": "Guardian CPF",
     "guardianPhone": "Guardian phone",
+    "guardianEmail": "Guardian email",
+    "guardianEmailHint": "Optional. Used for notifications when different from the patient's email.",
+    "guardianRelationshipLabel": "Guardian relationship",
+    "guardianRelationshipHint": "Required for minors.",
+    "guardianRelationshipPlaceholder": "Select relationship",
+    "guardianRelationship": {
+      "mother": "Mother",
+      "father": "Father",
+      "legal_guardian": "Legal guardian",
+      "other": "Other"
+    },
+    "birthDate": "Date of birth",
+    "birthDateHint": "Optional. Format YYYY-MM-DD.",
+    "preferredChannelField": "Preferred contact channel",
+    "preferredChannelHint": "Informational preference; the clinic may use other channels when needed.",
+    "preferredChannelOption": {
+      "email": "Email",
+      "whatsapp": "WhatsApp",
+      "sms": "SMS",
+      "none": "No preference"
+    },
+    "emergencySection": "Emergency contact",
+    "emergencyContactName": "Name",
+    "emergencyContactPhone": "Phone",
     "addressSection": "Address",
     "postalCode": "Postal code (CEP)",
     "postalCodeHint": "Enter the postal code for automatic lookup (ViaCEP).",
@@ -80,6 +104,7 @@
     "retry": "Try again",
     "journey": "Journey",
     "journeyCompletedShort": "Treatment completed",
+    "minorBadge": "Minor",
     "filters": {
       "pathway": "Pathway",
       "pathwayPlaceholder": "All",
@@ -197,6 +222,7 @@
   "detail": {
     "pageTitle": "Patient",
     "pageDescription": "Pathway, timeline, and stage history.",
+    "minorBadge": "Minor",
     "identitySection": {
       "title": "Identity",
       "hint": "Name and contact details on file. Use the cards below to edit clinical notes, assignment, and other fields.",
@@ -433,6 +459,26 @@
       "guardianName": "Guardian full name",
       "guardianDocumentId": "Guardian CPF",
       "guardianPhone": "Guardian phone",
+      "guardianEmail": "Guardian email",
+      "guardianRelationshipLabel": "Guardian relationship",
+      "guardianRelationshipPlaceholder": "Select relationship",
+      "guardianRelationship": {
+        "mother": "Mother",
+        "father": "Father",
+        "legal_guardian": "Legal guardian",
+        "other": "Other"
+      },
+      "birthDate": "Date of birth",
+      "emergencySection": "Emergency contact",
+      "emergencyContactName": "Name",
+      "emergencyContactPhone": "Phone",
+      "preferredChannelField": "Preferred contact channel",
+      "preferredChannelOption": {
+        "email": "Email",
+        "whatsapp": "WhatsApp",
+        "sms": "SMS",
+        "none": "No preference"
+      },
       "addressSection": "Address",
       "postalCode": "Postal code (CEP)",
       "postalCodeHint": "8 digits. You can edit the fields below manually.",

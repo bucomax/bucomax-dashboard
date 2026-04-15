@@ -20,6 +20,30 @@
     "guardianName": "Nome do responsável",
     "guardianDocumentId": "CPF do responsável",
     "guardianPhone": "Telefone do responsável",
+    "guardianEmail": "E-mail do responsável",
+    "guardianEmailHint": "Opcional. Usado para notificações quando for diferente do e-mail do paciente.",
+    "guardianRelationshipLabel": "Parentesco do responsável",
+    "guardianRelationshipHint": "Obrigatório para menor de idade.",
+    "guardianRelationshipPlaceholder": "Selecione o parentesco",
+    "guardianRelationship": {
+      "mother": "Mãe",
+      "father": "Pai",
+      "legal_guardian": "Tutor legal",
+      "other": "Outro"
+    },
+    "birthDate": "Data de nascimento",
+    "birthDateHint": "Opcional. Formato AAAA-MM-DD.",
+    "preferredChannelField": "Canal preferido para contato",
+    "preferredChannelHint": "Preferência informativa; a clínica pode usar outros canais quando necessário.",
+    "preferredChannelOption": {
+      "email": "E-mail",
+      "whatsapp": "WhatsApp",
+      "sms": "SMS",
+      "none": "Sem preferência"
+    },
+    "emergencySection": "Contato de emergência",
+    "emergencyContactName": "Nome",
+    "emergencyContactPhone": "Telefone",
     "addressSection": "Endereço",
     "postalCode": "CEP",
     "postalCodeHint": "Digite o CEP para preenchimento automático (ViaCEP).",
@@ -104,6 +128,7 @@
       "emptyRange": "Nenhum paciente nesta página.",
       "statusCappedHint": "Filtro por status: resultado limitado aos primeiros pacientes ordenados por atualização; o total pode ser incompleto."
     },
+    "minorBadge": "Menor",
     "columns": {
       "name": "Nome",
       "cpf": "CPF",
@@ -197,6 +222,7 @@
   "detail": {
     "pageTitle": "Paciente",
     "pageDescription": "Jornada, timeline e histórico de etapas.",
+    "minorBadge": "Menor de idade",
     "identitySection": {
       "title": "Identificação",
       "hint": "Nome e contatos deste cadastro. Para alterar dados clínicos ou responsáveis, use os blocos abaixo na ficha.",
@@ -433,6 +459,26 @@
       "guardianName": "Nome do responsável",
       "guardianDocumentId": "CPF do responsável",
       "guardianPhone": "Telefone do responsável",
+      "guardianEmail": "E-mail do responsável",
+      "guardianRelationshipLabel": "Parentesco do responsável",
+      "guardianRelationshipPlaceholder": "Selecione o parentesco",
+      "guardianRelationship": {
+        "mother": "Mãe",
+        "father": "Pai",
+        "legal_guardian": "Tutor legal",
+        "other": "Outro"
+      },
+      "birthDate": "Data de nascimento",
+      "emergencySection": "Contato de emergência",
+      "emergencyContactName": "Nome",
+      "emergencyContactPhone": "Telefone",
+      "preferredChannelField": "Canal preferido",
+      "preferredChannelOption": {
+        "email": "E-mail",
+        "whatsapp": "WhatsApp",
+        "sms": "SMS",
+        "none": "Sem preferência"
+      },
       "addressSection": "Endereço",
       "postalCode": "CEP",
       "postalCodeHint": "8 dígitos. Você pode ajustar os campos abaixo manualmente.",

@@ -8,6 +8,9 @@ const baseSelect = {
   phone: true,
   name: true,
   documentId: true,
+  isMinor: true,
+  guardianPhone: true,
+  guardianEmail: true,
   portalPasswordHash: true,
   portalPasswordChangedAt: true,
 } satisfies Prisma.ClientSelect;
@@ -19,7 +22,14 @@ export function buildWhereByPortalLogin(
   parsed: ParsedPortalLogin,
 ): Prisma.ClientWhereInput {
   if (parsed.kind === "cpf") {
-    return { tenantId, deletedAt: null, documentId: parsed.cpf11 };
+    return {
+      tenantId,
+      deletedAt: null,
+      OR: [
+        { documentId: parsed.cpf11 },
+        { isMinor: true, guardianDocumentId: parsed.cpf11 },
+      ],
+    };
   }
   return {
     tenantId,

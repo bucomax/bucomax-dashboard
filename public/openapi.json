@@ -375,6 +375,20 @@
                   "guardianName": { "type": "string" },
                   "guardianDocumentId": { "type": "string", "description": "CPF do responsável (11 dígitos) quando `isMinor: true`." },
                   "guardianPhone": { "type": "string" },
+                  "guardianEmail": { "type": "string", "format": "email", "description": "E-mail do responsável (menor)." },
+                  "birthDate": { "type": "string", "format": "date", "description": "Data de nascimento (AAAA-MM-DD), opcional." },
+                  "guardianRelationship": {
+                    "type": "string",
+                    "enum": ["mother", "father", "legal_guardian", "other"],
+                    "description": "Obrigatório quando `isMinor: true`."
+                  },
+                  "emergencyContactName": { "type": "string" },
+                  "emergencyContactPhone": { "type": "string" },
+                  "preferredChannel": {
+                    "type": "string",
+                    "enum": ["email", "whatsapp", "sms", "none"],
+                    "default": "none"
+                  },
                   "postalCode": { "type": "string", "description": "CEP: 8 dígitos." },
                   "addressLine": { "type": "string" },
                   "addressNumber": { "type": "string" },
@@ -446,6 +460,15 @@
                   "guardianName": { "type": ["string", "null"] },
                   "guardianDocumentId": { "type": ["string", "null"] },
                   "guardianPhone": { "type": ["string", "null"] },
+                  "guardianEmail": { "type": ["string", "null"], "format": "email" },
+                  "birthDate": { "type": ["string", "null"], "format": "date" },
+                  "guardianRelationship": {
+                    "type": ["string", "null"],
+                    "description": "`mother` | `father` | `legal_guardian` | `other`"
+                  },
+                  "emergencyContactName": { "type": ["string", "null"] },
+                  "emergencyContactPhone": { "type": ["string", "null"] },
+                  "preferredChannel": { "type": "string", "enum": ["email", "whatsapp", "sms", "none"] },
                   "postalCode": { "type": ["string", "null"] },
                   "addressLine": { "type": ["string", "null"] },
                   "addressNumber": { "type": ["string", "null"] },

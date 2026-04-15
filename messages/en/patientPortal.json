@@ -107,6 +107,7 @@
     "loadError": "Could not load the timeline."
   },
   "home": {
+    "sessionLoading": "Checking your session…",
     "retry": "Try again",
     "loading": "Loading…",
     "accessTitle": "Patient portal",

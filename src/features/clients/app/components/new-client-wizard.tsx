@@ -10,7 +10,15 @@ import { formatCpfDisplay } from "@/lib/validators/cpf";
 import { formatPhoneBrDisplay } from "@/lib/validators/phone";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { Form, FormCep, FormCpf, FormInput, FormPhoneNumber, FormTextarea } from "@/shared/components/forms";
+import {
+  Form,
+  FormCep,
+  FormCpf,
+  FormInput,
+  FormPhoneNumber,
+  FormSelect,
+  FormTextarea,
+} from "@/shared/components/forms";
 import {
   Select,
   SelectContent,
@@ -21,6 +29,7 @@ import {
 import { Field, FieldDescription, FieldLabel } from "@/shared/components/ui/field";
 import { useTenantSettingsPickers } from "@/features/settings/app/hooks/use-tenant-settings-pickers";
 import { newClientFormSchema, type NewClientFormValues } from "@/features/clients/app/utils/schemas";
+import { GuardianRelationship, PatientPreferredChannel } from "@prisma/client";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
 import { postClientBodySchema } from "@/lib/validators/client";
 import { cn } from "@/lib/utils";
@@ -91,6 +100,12 @@ export function NewClientWizard({
       guardianName: "",
       guardianDocumentId: "",
       guardianPhone: "",
+      guardianEmail: "",
+      birthDate: "",
+      guardianRelationship: undefined,
+      emergencyContactName: "",
+      emergencyContactPhone: "",
+      preferredChannel: PatientPreferredChannel.none,
       postalCode: "",
       addressLine: "",
       addressNumber: "",
@@ -102,6 +117,32 @@ export function NewClientWizard({
   });
 
   const isMinorWatched = useWatch({ control: form.control, name: "isMinor" });
+
+  const guardianRelationshipOptions = useMemo(
+    () =>
+      (
+        [
+          [GuardianRelationship.mother, "guardianRelationship.mother"],
+          [GuardianRelationship.father, "guardianRelationship.father"],
+          [GuardianRelationship.legal_guardian, "guardianRelationship.legal_guardian"],
+          [GuardianRelationship.other, "guardianRelationship.other"],
+        ] as const
+      ).map(([value, key]) => ({ value, label: t(key) })),
+    [t],
+  );
+
+  const preferredChannelOptions = useMemo(
+    () =>
+      (
+        [
+          [PatientPreferredChannel.none, "preferredChannelOption.none"],
+          [PatientPreferredChannel.email, "preferredChannelOption.email"],
+          [PatientPreferredChannel.whatsapp, "preferredChannelOption.whatsapp"],
+          [PatientPreferredChannel.sms, "preferredChannelOption.sms"],
+        ] as const
+      ).map(([value, key]) => ({ value, label: t(key) })),
+    [t],
+  );
 
   const selectedPathway = useMemo(
     () => eligiblePathways.find((p) => p.id === pathwayId) ?? null,
@@ -152,6 +193,12 @@ export function NewClientWizard({
         guardianName: String(values.guardianName ?? "").trim() || undefined,
         guardianDocumentId: values.guardianDocumentId ?? "",
         guardianPhone: String(values.guardianPhone ?? ""),
+        guardianEmail: String(values.guardianEmail ?? "").trim() || undefined,
+        birthDate: String(values.birthDate ?? "").trim() || undefined,
+        guardianRelationship: values.guardianRelationship,
+        emergencyContactName: String(values.emergencyContactName ?? "").trim() || undefined,
+        emergencyContactPhone: String(values.emergencyContactPhone ?? ""),
+        preferredChannel: values.preferredChannel ?? PatientPreferredChannel.none,
         postalCode: String(values.postalCode ?? "").trim() || undefined,
         addressLine: String(values.addressLine ?? "").trim() || undefined,
         addressNumber: String(values.addressNumber ?? "").trim() || undefined,
@@ -233,6 +280,21 @@ export function NewClientWizard({
                   label={isMinorWatched ? t("documentIdMinor") : t("documentId")}
                   description={isMinorWatched ? t("documentIdMinorHint") : t("documentIdHint")}
                 />
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <FormInput
+                    name="birthDate"
+                    label={t("birthDate")}
+                    description={t("birthDateHint")}
+                    type="date"
+                    autoComplete="bday"
+                  />
+                  <FormSelect
+                    name="preferredChannel"
+                    label={t("preferredChannelField")}
+                    description={t("preferredChannelHint")}
+                    options={preferredChannelOptions}
+                  />
+                </div>
                 <Controller
                   name="isMinor"
                   control={form.control}
@@ -241,7 +303,13 @@ export function NewClientWizard({
                       <input
                         type="checkbox"
                         checked={field.value}
-                        onChange={(e) => field.onChange(e.target.checked)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          field.onChange(checked);
+                          if (!checked) {
+                            form.setValue("guardianRelationship", undefined);
+                          }
+                        }}
                         className="mt-0.5 size-4"
                       />
                       <span className="min-w-0">{t("isMinor")}</span>
@@ -257,8 +325,31 @@ export function NewClientWizard({
                     <FormCpf name="guardianDocumentId" label={t("guardianDocumentId")} />
                     <FormPhoneNumber name="guardianPhone" label={t("guardianPhone")} />
                   </div>
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <FormSelect
+                      name="guardianRelationship"
+                      label={t("guardianRelationshipLabel")}
+                      description={t("guardianRelationshipHint")}
+                      placeholder={t("guardianRelationshipPlaceholder")}
+                      options={guardianRelationshipOptions}
+                    />
+                    <FormInput
+                      name="guardianEmail"
+                      label={t("guardianEmail")}
+                      description={t("guardianEmailHint")}
+                      type="email"
+                      autoComplete="email"
+                    />
+                  </div>
                 </div>
               ) : null}
+              <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
+                <p className="text-sm font-medium">{t("emergencySection")}</p>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  <FormInput name="emergencyContactName" label={t("emergencyContactName")} />
+                  <FormPhoneNumber name="emergencyContactPhone" label={t("emergencyContactPhone")} />
+                </div>
+              </div>
               {pickersError ? <p className="text-destructive text-sm">{pickersError}</p> : null}
               <div className="grid gap-4 lg:grid-cols-2">
                 <Field>

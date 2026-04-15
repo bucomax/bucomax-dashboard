@@ -1,3 +1,4 @@
+import { GuardianRelationship, PatientPreferredChannel } from "@prisma/client";
 import { z } from "zod";
 
 import { zodApiMsg } from "@/lib/api/zod-i18n";
@@ -79,6 +80,43 @@ const guardianFieldsCreate = {
     },
     z.union([z.undefined(), phoneDigitsSchema]),
   ),
+  guardianEmail: z.preprocess(
+    (v) => (v === undefined || v === null ? undefined : String(v).trim()),
+    z.union([z.undefined(), z.literal(""), z.string().email().max(320)]),
+  ),
+};
+
+const birthDateField = z.preprocess(
+  (v) => {
+    if (v === undefined || v === null) return undefined;
+    const s = String(v).trim();
+    return s === "" ? undefined : s;
+  },
+  z.union([z.undefined(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]),
+);
+
+const extendedProfileFieldsCreate = {
+  birthDate: birthDateField,
+  guardianRelationship: z.preprocess(
+    (v) => (v === undefined || v === null || v === "" ? undefined : v),
+    z.union([z.undefined(), z.nativeEnum(GuardianRelationship)]),
+  ),
+  emergencyContactName: trimOpt(200),
+  emergencyContactPhone: z.preprocess(
+    (v) => {
+      if (v === undefined || v === null) return undefined;
+      const d = digitsOnlyPhone(String(v));
+      return d === "" ? undefined : d;
+    },
+    z.union([z.undefined(), phoneDigitsSchema]),
+  ),
+  preferredChannel: z.preprocess(
+    (v) => {
+      if (v === undefined || v === null || v === "") return PatientPreferredChannel.none;
+      return v;
+    },
+    z.nativeEnum(PatientPreferredChannel),
+  ),
 };
 
 const documentIdRawForCreate = z.preprocess(
@@ -97,7 +135,62 @@ const clientCreateObject = z.object({
   isMinor: z.boolean().default(false),
   ...addressFieldsCreate,
   ...guardianFieldsCreate,
+  ...extendedProfileFieldsCreate,
 });
+
+function refineEmergencyContact(
+  data: { emergencyContactName?: string | undefined; emergencyContactPhone?: string | undefined },
+  ctx: z.RefinementCtx,
+) {
+  const n = data.emergencyContactName?.trim() ?? "";
+  const ph = digitsOnlyPhone(data.emergencyContactPhone ?? "");
+  if (n.length > 0 && ph.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["emergencyContactPhone"],
+      message: zodApiMsg("errors.validationEmergencyPhoneRequired"),
+    });
+  }
+  if (ph.length > 0 && n.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["emergencyContactName"],
+      message: zodApiMsg("errors.validationEmergencyNameRequired"),
+    });
+  }
+}
+
+function refineEmergencyContactPatch(
+  data: {
+    emergencyContactName?: string | null | undefined;
+    emergencyContactPhone?: string | null | undefined;
+  },
+  ctx: z.RefinementCtx,
+) {
+  if (data.emergencyContactName === undefined && data.emergencyContactPhone === undefined) return;
+  const n =
+    data.emergencyContactName === undefined || data.emergencyContactName === null
+      ? ""
+      : String(data.emergencyContactName).trim();
+  const ph =
+    data.emergencyContactPhone === undefined || data.emergencyContactPhone === null
+      ? ""
+      : digitsOnlyPhone(String(data.emergencyContactPhone));
+  if (n.length > 0 && ph.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["emergencyContactPhone"],
+      message: zodApiMsg("errors.validationEmergencyPhoneRequired"),
+    });
+  }
+  if (ph.length > 0 && n.length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["emergencyContactName"],
+      message: zodApiMsg("errors.validationEmergencyNameRequired"),
+    });
+  }
+}
 
 function refineMinorGuardianCpf(
   data: {
@@ -105,11 +198,19 @@ function refineMinorGuardianCpf(
     documentId: string;
     guardianName?: string | undefined;
     guardianDocumentId?: string | undefined;
+    guardianRelationship?: GuardianRelationship | undefined;
   },
   ctx: z.RefinementCtx,
 ) {
   const doc = digitsOnlyCpf(data.documentId);
   if (data.isMinor) {
+    if (!data.guardianRelationship) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["guardianRelationship"],
+        message: zodApiMsg("errors.validationGuardianRelationshipRequired"),
+      });
+    }
     if (!data.guardianName?.trim()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -168,13 +269,34 @@ export type ClientCreateNormalized = {
   guardianName: string | null;
   guardianDocumentId: string | null;
   guardianPhone: string | null;
+  guardianEmail: string | null;
+  birthDate: Date | null;
+  guardianRelationship: GuardianRelationship | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  preferredChannel: PatientPreferredChannel;
 };
+
+function parseBirthDateOnly(isoYmd: string | undefined): Date | null {
+  const s = isoYmd?.trim();
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const d = new Date(`${s}T12:00:00.000Z`);
+  return Number.isFinite(d.getTime()) ? d : null;
+}
 
 function normalizeClientCreatePayload(
   data: z.infer<typeof clientCreateObject>,
 ): ClientCreateNormalized {
   const doc = digitsOnlyCpf(data.documentId);
   const gPhone = data.guardianPhone;
+  const gEmail =
+    typeof data.guardianEmail === "string" && data.guardianEmail.trim() !== ""
+      ? data.guardianEmail.trim()
+      : null;
+  const emName = data.emergencyContactName?.trim() || null;
+  const emPhoneRaw = data.emergencyContactPhone;
+  const emPhone =
+    emPhoneRaw && digitsOnlyPhone(emPhoneRaw).length > 0 ? digitsOnlyPhone(emPhoneRaw) : null;
   return {
     name: data.name.trim(),
     phone: data.phone.trim(),
@@ -194,11 +316,18 @@ function normalizeClientCreatePayload(
     guardianName: data.isMinor ? data.guardianName!.trim() : null,
     guardianDocumentId: data.isMinor ? digitsOnlyCpf(data.guardianDocumentId!) : null,
     guardianPhone: data.isMinor && gPhone && gPhone.length > 0 ? gPhone : null,
+    guardianEmail: data.isMinor ? gEmail : null,
+    birthDate: parseBirthDateOnly(data.birthDate),
+    guardianRelationship: data.isMinor ? (data.guardianRelationship ?? null) : null,
+    emergencyContactName: emName,
+    emergencyContactPhone: emPhone,
+    preferredChannel: data.preferredChannel ?? PatientPreferredChannel.none,
   };
 }
 
 export const postClientBodySchema = clientCreateObject
   .superRefine((data, ctx) => refineMinorGuardianCpf(data, ctx))
+  .superRefine((data, ctx) => refineEmergencyContact(data, ctx))
   .transform((data) => normalizeClientCreatePayload(data));
 
 const publicPatientSelfRegisterObject = clientCreateObject
@@ -225,6 +354,7 @@ export const patientSelfRegisterFormSchema = clientCreateObject
   })
   .superRefine((data, ctx) => {
     refineMinorGuardianCpf(data, ctx);
+    refineEmergencyContact(data, ctx);
     const pw = portalPasswordSchema.safeParse(data.password);
     if (!pw.success) {
       for (const issue of pw.error.issues) {
@@ -263,6 +393,7 @@ export const publicPatientSelfRegisterBodySchema = publicPatientSelfRegisterObje
     void _at;
     void _ap;
     refineMinorGuardianCpf(rest, ctx);
+    refineEmergencyContact(rest, ctx);
   })
   .transform((data) => {
     const { token, password, acceptTerms: _acceptTerms, acceptPrivacy: _acceptPrivacy, ...rest } = data;
@@ -339,6 +470,43 @@ const patchClientBodyBaseSchema = z.object({
     },
     z.union([z.undefined(), z.null(), phoneDigitsSchema]),
   ).optional(),
+  guardianEmail: z.preprocess(
+    (v) => {
+      if (v === undefined) return undefined;
+      if (v === null) return null;
+      const s = String(v).trim();
+      return s === "" ? null : s;
+    },
+    z.union([z.undefined(), z.null(), z.string().email().max(320)]),
+  ).optional(),
+  birthDate: z.preprocess(
+    (v) => {
+      if (v === undefined) return undefined;
+      if (v === null) return null;
+      const s = String(v).trim();
+      return s === "" ? null : s;
+    },
+    z.union([z.undefined(), z.null(), z.string().regex(/^\d{4}-\d{2}-\d{2}$/)]),
+  ).optional(),
+  guardianRelationship: z.preprocess(
+    (v) => {
+      if (v === undefined) return undefined;
+      if (v === null) return null;
+      return v;
+    },
+    z.union([z.undefined(), z.null(), z.nativeEnum(GuardianRelationship)]),
+  ).optional(),
+  emergencyContactName: nullableTrimmed(200).optional(),
+  emergencyContactPhone: z.preprocess(
+    (v) => {
+      if (v === undefined) return undefined;
+      if (v === null) return null;
+      const d = digitsOnlyPhone(String(v));
+      return d === "" ? null : d;
+    },
+    z.union([z.undefined(), z.null(), phoneDigitsSchema]),
+  ).optional(),
+  preferredChannel: z.nativeEnum(PatientPreferredChannel).optional(),
 });
 
 export const patchClientBodySchema = patchClientBodyBaseSchema.superRefine((data, ctx) => {
@@ -391,5 +559,13 @@ export const patchClientBodySchema = patchClientBodyBaseSchema.superRefine((data
         });
       }
     }
+    if (data.guardianRelationship === undefined || data.guardianRelationship === null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["guardianRelationship"],
+        message: zodApiMsg("errors.validationGuardianRelationshipRequired"),
+      });
+    }
   }
+  refineEmergencyContactPatch(data, ctx);
 });

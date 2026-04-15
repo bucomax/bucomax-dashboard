@@ -19,6 +19,7 @@ import {
   DataTableRow,
   DataTableScroll,
 } from "@/shared/components/layout/data-table";
+import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Field, FieldLabel } from "@/shared/components/ui/field";
 import { Input } from "@/shared/components/ui/input";
@@ -273,11 +274,19 @@ export function ClientsList() {
                       nativeButton={false}
                       size="sm"
                       variant="link"
-                      className="h-auto min-w-0 max-w-full gap-1 px-0 font-medium"
+                      className="h-auto min-w-0 max-w-full gap-1.5 px-0 font-medium"
                       render={<Link href={`/dashboard/clients/${c.id}`} />}
                     >
                       <UserRound className="size-3.5 shrink-0" aria-hidden />
                       <span className="min-w-0 truncate">{c.name}</span>
+                      {c.isMinor ? (
+                        <Badge
+                          variant="secondary"
+                          className="h-5 shrink-0 px-1.5 text-[10px] font-semibold uppercase tracking-wide"
+                        >
+                          {t("minorBadge")}
+                        </Badge>
+                      ) : null}
                     </Button>
                   </span>
                   <span className="text-muted-foreground min-w-0 truncate tabular-nums">

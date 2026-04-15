@@ -30,7 +30,7 @@ export function RedirectIfAuthenticated({ to = "/dashboard" }: { to?: string }) 
   }, [status, session, to]);
 
   if (status === "loading" || status === "authenticated") {
-    return <FullScreenLoading message={t("enter.validating")} />;
+    return <FullScreenLoading message={t("enter.validating")} showMessage={false} />;
   }
 
   return null;

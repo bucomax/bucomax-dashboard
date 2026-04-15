@@ -7,6 +7,7 @@ import { useTenantSettingsPickers } from "@/features/settings/app/hooks/use-tena
 import { patchPatientPortalProfile } from "@/lib/api/patient-portal-client";
 import type { PatchPatientPortalProfileBody } from "@/lib/validators/patient-portal-profile";
 import type { ClientDetailClientDto, PatchClientRequestBody } from "@/types/api/clients-v1";
+import { GuardianRelationship, PatientPreferredChannel } from "@prisma/client";
 import { toast } from "@/lib/toast";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/shared/components/ui/card";
@@ -28,6 +29,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
 
 const NONE = "__none__";
+const REL_NONE = "__rel_none__";
 
 type ClientDetailProfileCardProps = {
   clientId: string;
@@ -90,6 +92,16 @@ export function ClientDetailProfileCard({
   const [draftGuardianPhoneDigits, setDraftGuardianPhoneDigits] = useState(() =>
     digitsOnlyPhone(client.guardianPhone ?? ""),
   );
+  const [draftBirthDate, setDraftBirthDate] = useState(client.birthDate ?? "");
+  const [draftGuardianEmail, setDraftGuardianEmail] = useState(client.guardianEmail ?? "");
+  const [draftGuardianRelationship, setDraftGuardianRelationship] = useState(
+    () => client.guardianRelationship ?? REL_NONE,
+  );
+  const [draftEmergencyName, setDraftEmergencyName] = useState(client.emergencyContactName ?? "");
+  const [draftEmergencyPhoneDigits, setDraftEmergencyPhoneDigits] = useState(() =>
+    digitsOnlyPhone(client.emergencyContactPhone ?? ""),
+  );
+  const [draftPreferredChannel, setDraftPreferredChannel] = useState(client.preferredChannel);
 
   useEffect(() => {
     setDraftName(client.name);
@@ -109,6 +121,12 @@ export function ClientDetailProfileCard({
     setDraftGuardianName(client.guardianName ?? "");
     setDraftGuardianDocumentDigits(digitsOnlyCpf(client.guardianDocumentId ?? ""));
     setDraftGuardianPhoneDigits(digitsOnlyPhone(client.guardianPhone ?? ""));
+    setDraftBirthDate(client.birthDate ?? "");
+    setDraftGuardianEmail(client.guardianEmail ?? "");
+    setDraftGuardianRelationship(client.guardianRelationship ?? REL_NONE);
+    setDraftEmergencyName(client.emergencyContactName ?? "");
+    setDraftEmergencyPhoneDigits(digitsOnlyPhone(client.emergencyContactPhone ?? ""));
+    setDraftPreferredChannel(client.preferredChannel);
   }, [
     client.id,
     client.updatedAt,
@@ -129,6 +147,12 @@ export function ClientDetailProfileCard({
     client.guardianName,
     client.guardianDocumentId,
     client.guardianPhone,
+    client.birthDate,
+    client.guardianEmail,
+    client.guardianRelationship,
+    client.emergencyContactName,
+    client.emergencyContactPhone,
+    client.preferredChannel,
   ]);
 
   const dirty = useMemo(() => {
@@ -155,7 +179,18 @@ export function ClientDetailProfileCard({
       draftIsMinor !== client.isMinor ||
       normNullable(draftGuardianName) !== normNullable(client.guardianName) ||
       digitsOnlyCpf(draftGuardianDocumentDigits) !== digitsOnlyCpf(client.guardianDocumentId ?? "") ||
-      digitsOnlyPhone(draftGuardianPhoneDigits) !== digitsOnlyPhone(client.guardianPhone ?? "");
+      digitsOnlyPhone(draftGuardianPhoneDigits) !== digitsOnlyPhone(client.guardianPhone ?? "") ||
+      draftGuardianEmail.trim() !== (client.guardianEmail ?? "").trim() ||
+      (draftGuardianRelationship === REL_NONE ? null : draftGuardianRelationship) !==
+        (client.guardianRelationship ?? null);
+
+    const staffProfileExtraDirty =
+      !isPatient &&
+      (draftBirthDate !== (client.birthDate ?? "") ||
+        normNullable(draftEmergencyName) !== normNullable(client.emergencyContactName) ||
+        digitsOnlyPhone(draftEmergencyPhoneDigits) !==
+          digitsOnlyPhone(client.emergencyContactPhone ?? "") ||
+        draftPreferredChannel !== client.preferredChannel);
 
     if (isPatient) {
       return (
@@ -175,7 +210,8 @@ export function ClientDetailProfileCard({
       a !== client.assignedToUserId ||
       o !== client.opmeSupplierId ||
       addressDirty ||
-      guardianDirty
+      guardianDirty ||
+      staffProfileExtraDirty
     );
   }, [
     isPatient,
@@ -196,6 +232,12 @@ export function ClientDetailProfileCard({
     draftGuardianName,
     draftGuardianDocumentDigits,
     draftGuardianPhoneDigits,
+    draftGuardianEmail,
+    draftGuardianRelationship,
+    draftBirthDate,
+    draftEmergencyName,
+    draftEmergencyPhoneDigits,
+    draftPreferredChannel,
     client,
   ]);
 
@@ -289,6 +331,10 @@ export function ClientDetailProfileCard({
         toast.error(tApi("errors.validationGuardianCpfRequired"));
         return;
       }
+      if (draftGuardianRelationship === REL_NONE) {
+        toast.error(tApi("errors.validationGuardianRelationshipRequired"));
+        return;
+      }
       if (doc.length > 0 && doc.length !== 11) {
         toast.error(tApi("errors.validationCpf11Digits"));
         return;
@@ -333,6 +379,37 @@ export function ClientDetailProfileCard({
           body.guardianPhone = gPhone.length > 0 ? gPhone : null;
         }
       }
+      const gEmailTrim = draftGuardianEmail.trim();
+      const serverGEmail = (client.guardianEmail ?? "").trim();
+      if (gEmailTrim !== serverGEmail) {
+        body.guardianEmail = gEmailTrim === "" ? null : gEmailTrim;
+      }
+      const rel =
+        draftGuardianRelationship === REL_NONE
+          ? null
+          : (draftGuardianRelationship as GuardianRelationship);
+      if (rel !== client.guardianRelationship) {
+        body.guardianRelationship = rel;
+      }
+    }
+
+    const birthTrim = draftBirthDate.trim();
+    const serverBirth = client.birthDate ?? "";
+    if (birthTrim !== serverBirth) {
+      body.birthDate = birthTrim === "" ? null : birthTrim;
+    }
+
+    const emNameNorm = normNullable(draftEmergencyName);
+    const emPhone = digitsOnlyPhone(draftEmergencyPhoneDigits);
+    const serverEmName = normNullable(client.emergencyContactName);
+    const serverEmPhone = digitsOnlyPhone(client.emergencyContactPhone ?? "");
+    if (emNameNorm !== serverEmName) body.emergencyContactName = emNameNorm;
+    if (emPhone !== serverEmPhone) {
+      body.emergencyContactPhone = emPhone.length > 0 ? emPhone : null;
+    }
+
+    if (draftPreferredChannel !== client.preferredChannel) {
+      body.preferredChannel = draftPreferredChannel;
     }
 
     const pCep = digitsOnlyCep(draftPostalCode);
@@ -475,11 +552,62 @@ export function ClientDetailProfileCard({
         </Field>
 
         {!isPatient ? (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="client-birth-date">{t("birthDate")}</FieldLabel>
+              <Input
+                id="client-birth-date"
+                type="date"
+                autoComplete="bday"
+                value={draftBirthDate}
+                onChange={(e) => setDraftBirthDate(e.target.value)}
+                disabled={saving}
+                className="w-full min-w-0"
+              />
+            </Field>
+            <Field>
+              <FieldLabel>{t("preferredChannelField")}</FieldLabel>
+              <Select
+                value={draftPreferredChannel}
+                onValueChange={(v) =>
+                  setDraftPreferredChannel((v ?? PatientPreferredChannel.none) as PatientPreferredChannel)
+                }
+                disabled={saving}
+              >
+                <SelectTrigger className="w-full min-w-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={PatientPreferredChannel.none}>
+                    {t("preferredChannelOption.none")}
+                  </SelectItem>
+                  <SelectItem value={PatientPreferredChannel.email}>
+                    {t("preferredChannelOption.email")}
+                  </SelectItem>
+                  <SelectItem value={PatientPreferredChannel.whatsapp}>
+                    {t("preferredChannelOption.whatsapp")}
+                  </SelectItem>
+                  <SelectItem value={PatientPreferredChannel.sms}>
+                    {t("preferredChannelOption.sms")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+          </div>
+        ) : null}
+
+        {!isPatient ? (
           <label className="border-border flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm">
             <input
               type="checkbox"
               checked={draftIsMinor}
-              onChange={(e) => setDraftIsMinor(e.target.checked)}
+              onChange={(e) => {
+                const v = e.target.checked;
+                setDraftIsMinor(v);
+                if (!v) {
+                  setDraftGuardianRelationship(REL_NONE);
+                }
+              }}
               disabled={saving}
               className="mt-0.5 size-4"
             />
@@ -523,6 +651,75 @@ export function ClientDetailProfileCard({
                 className="w-full min-w-0 tabular-nums"
               />
             </Field>
+            <Field>
+              <FieldLabel>{t("guardianRelationshipLabel")}</FieldLabel>
+              <Select
+                value={draftGuardianRelationship}
+                onValueChange={(v) => setDraftGuardianRelationship(v ?? REL_NONE)}
+                disabled={saving}
+              >
+                <SelectTrigger className="w-full min-w-0">
+                  <SelectValue placeholder={t("guardianRelationshipLabel")} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={REL_NONE}>{t("guardianRelationshipPlaceholder")}</SelectItem>
+                  <SelectItem value={GuardianRelationship.mother}>
+                    {t("guardianRelationship.mother")}
+                  </SelectItem>
+                  <SelectItem value={GuardianRelationship.father}>
+                    {t("guardianRelationship.father")}
+                  </SelectItem>
+                  <SelectItem value={GuardianRelationship.legal_guardian}>
+                    {t("guardianRelationship.legal_guardian")}
+                  </SelectItem>
+                  <SelectItem value={GuardianRelationship.other}>
+                    {t("guardianRelationship.other")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="guardian-email">{t("guardianEmail")}</FieldLabel>
+              <Input
+                id="guardian-email"
+                type="email"
+                autoComplete="email"
+                value={draftGuardianEmail}
+                onChange={(e) => setDraftGuardianEmail(e.target.value)}
+                disabled={saving}
+                className="w-full min-w-0"
+              />
+            </Field>
+          </div>
+        ) : null}
+
+        {!isPatient ? (
+          <div className="bg-muted/40 space-y-3 rounded-lg border p-4">
+            <p className="text-sm font-medium">{t("emergencySection")}</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field>
+                <FieldLabel htmlFor="emergency-name">{t("emergencyContactName")}</FieldLabel>
+                <Input
+                  id="emergency-name"
+                  value={draftEmergencyName}
+                  onChange={(e) => setDraftEmergencyName(e.target.value)}
+                  disabled={saving}
+                  className="w-full min-w-0"
+                />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="emergency-phone">{t("emergencyContactPhone")}</FieldLabel>
+                <Input
+                  id="emergency-phone"
+                  type="tel"
+                  inputMode="tel"
+                  value={formatPhoneBrDisplay(draftEmergencyPhoneDigits)}
+                  onChange={(e) => setDraftEmergencyPhoneDigits(digitsOnlyPhone(e.target.value))}
+                  disabled={saving}
+                  className="w-full min-w-0 tabular-nums"
+                />
+              </Field>
+            </div>
           </div>
         ) : null}
 
@@ -541,6 +738,24 @@ export function ClientDetailProfileCard({
               <span className="text-muted-foreground">{t("guardianPhone")}: </span>
               {client.guardianPhone ? formatPhoneBrDisplay(client.guardianPhone) : "—"}
             </p>
+            {client.guardianEmail?.trim() ? (
+              <p>
+                <span className="text-muted-foreground">{t("guardianEmail")}: </span>
+                {client.guardianEmail}
+              </p>
+            ) : null}
+            {client.guardianRelationship ? (
+              <p>
+                <span className="text-muted-foreground">{t("guardianRelationshipLabel")}: </span>
+                {client.guardianRelationship === GuardianRelationship.mother
+                  ? t("guardianRelationship.mother")
+                  : client.guardianRelationship === GuardianRelationship.father
+                    ? t("guardianRelationship.father")
+                    : client.guardianRelationship === GuardianRelationship.legal_guardian
+                      ? t("guardianRelationship.legal_guardian")
+                      : t("guardianRelationship.other")}
+              </p>
+            ) : null}
           </div>
         ) : null}
 

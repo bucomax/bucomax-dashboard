@@ -59,9 +59,15 @@ export async function GET(request: Request, ctx: RouteCtx) {
     city: true,
     state: true,
     isMinor: true,
+    birthDate: true,
     guardianName: true,
     guardianDocumentId: true,
     guardianPhone: true,
+    guardianEmail: true,
+    guardianRelationship: true,
+    emergencyContactName: true,
+    emergencyContactPhone: true,
+    preferredChannel: true,
     assignedToUserId: true,
     opmeSupplierId: true,
     createdAt: true,
@@ -150,11 +156,26 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
       p.guardianDocumentId === null ? null : digitsOnlyCpf(p.guardianDocumentId);
   }
   if (p.guardianPhone !== undefined) data.guardianPhone = p.guardianPhone;
+  if (p.guardianEmail !== undefined) data.guardianEmail = p.guardianEmail;
+  if (p.guardianRelationship !== undefined) data.guardianRelationship = p.guardianRelationship;
+  if (p.emergencyContactName !== undefined) data.emergencyContactName = p.emergencyContactName;
+  if (p.emergencyContactPhone !== undefined) data.emergencyContactPhone = p.emergencyContactPhone;
+  if (p.preferredChannel !== undefined) data.preferredChannel = p.preferredChannel;
+  if (p.birthDate !== undefined) {
+    if (p.birthDate === null) {
+      data.birthDate = null;
+    } else {
+      const d = new Date(`${p.birthDate}T12:00:00.000Z`);
+      data.birthDate = Number.isFinite(d.getTime()) ? d : null;
+    }
+  }
 
   if (p.isMinor === false) {
     data.guardianName = null;
     data.guardianDocumentId = null;
     data.guardianPhone = null;
+    data.guardianEmail = null;
+    data.guardianRelationship = null;
   }
 
   if (Object.keys(data).length === 0) {
@@ -180,9 +201,15 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
       city: true,
       state: true,
       isMinor: true,
+      birthDate: true,
       guardianName: true,
       guardianDocumentId: true,
       guardianPhone: true,
+      guardianEmail: true,
+      guardianRelationship: true,
+      emergencyContactName: true,
+      emergencyContactPhone: true,
+      preferredChannel: true,
       assignedToUserId: true,
       opmeSupplierId: true,
       createdAt: true,

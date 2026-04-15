@@ -14,6 +14,7 @@ import { usePatientPortalTenantSlug } from "@/features/patient-portal/app/contex
 import { PatientPortalLoginPage } from "@/features/patient-portal/app/pages/patient-portal-login-page";
 import { PatientPortalFilesSection } from "@/features/patient-portal/app/components/patient-portal-files-section";
 import { PatientPortalTimelineSection } from "@/features/patient-portal/app/components/patient-portal-timeline-section";
+import { PatientPortalFullScreenLoading } from "@/features/patient-portal/app/components/patient-portal-full-screen-loading";
 import { PatientPortalPasswordDialog } from "@/features/patient-portal/app/components/patient-portal-password-dialog";
 import {
   fetchPatientPortalTimeline,
@@ -89,8 +90,13 @@ export function PatientPortalHomePage() {
     reload();
   }
 
-  /** Sem sessão ou ainda verificando: mesmo formulário de `/patient/login` (evita só a frase "Carregando…"). */
-  if (!data && !error && (loading || needsLink)) {
+  /** Primeira carga da sessão: tela de loading unificada (evita flash do formulário de login). */
+  if (!data && !error && loading) {
+    return <PatientPortalFullScreenLoading message={t("home.sessionLoading")} showMessage={false} />;
+  }
+
+  /** Sem sessão: mesmo formulário de `/patient/login`. */
+  if (!data && !error && needsLink) {
     return <PatientPortalLoginPage />;
   }
 

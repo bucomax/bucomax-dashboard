@@ -1,3 +1,4 @@
+import type { GuardianRelationship, PatientPreferredChannel } from "@prisma/client";
 import type { ApiPagination } from "@/lib/api/pagination";
 import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
 import {
@@ -24,9 +25,15 @@ export type ClientDto = {
   city: string | null;
   state: string | null;
   isMinor: boolean;
+  birthDate: string | null;
   guardianName: string | null;
   guardianDocumentId: string | null;
   guardianPhone: string | null;
+  guardianEmail: string | null;
+  guardianRelationship: GuardianRelationship | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  preferredChannel: PatientPreferredChannel;
   assignedToUserId: string | null;
   opmeSupplierId: string | null;
   assignedTo: { id: string; name: string | null; email: string } | null;
@@ -154,9 +161,15 @@ export type ClientDetailClientDto = {
   city: string | null;
   state: string | null;
   isMinor: boolean;
+  birthDate: string | null;
   guardianName: string | null;
   guardianDocumentId: string | null;
   guardianPhone: string | null;
+  guardianEmail: string | null;
+  guardianRelationship: GuardianRelationship | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  preferredChannel: PatientPreferredChannel;
   assignedToUserId: string | null;
   opmeSupplierId: string | null;
   assignedTo: { id: string; name: string | null; email: string } | null;
@@ -401,6 +414,12 @@ export type PublicPatientSelfRegisterFormPrefillDto = {
   guardianName: string | null;
   guardianDocumentId: string | null;
   guardianPhone: string | null;
+  guardianEmail: string | null;
+  birthDate: string | null;
+  guardianRelationship: GuardianRelationship | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  preferredChannel: PatientPreferredChannel;
 };
 
 /** `GET /api/v1/public/patient-self-register?token=` */

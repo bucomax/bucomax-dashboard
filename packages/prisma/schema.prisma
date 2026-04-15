@@ -76,6 +76,22 @@ enum PatientPortalFileReviewStatus {
   REJECTED
 }
 
+/** Parentesco do responsável legal (menor). */
+enum GuardianRelationship {
+  mother
+  father
+  legal_guardian
+  other
+}
+
+/** Preferência declarada de canal de contato (campo informativo / roteamento futuro). */
+enum PatientPreferredChannel {
+  email
+  whatsapp
+  sms
+  none
+}
+
 model User {
   id                                String                        @id @default(cuid())
   name                              String?
@@ -230,9 +246,15 @@ model Client {
 
   // === Menor de idade / Responsável ===
   isMinor            Boolean          @default(false)
+  birthDate          DateTime?        @db.Date
+  guardianRelationship GuardianRelationship?
   guardianName       String?
   guardianDocumentId String?          // CPF do responsável (11 dígitos)
   guardianPhone      String?
+  guardianEmail      String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  preferredChannel      PatientPreferredChannel @default(none)
   portalPasswordHash String?
   /// Última vez que a senha do portal foi definida ou alterada (invalida cookies com `pwdv` desatualizado).
   portalPasswordChangedAt DateTime?

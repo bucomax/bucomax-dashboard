@@ -27,6 +27,7 @@ import { toast } from "@/lib/toast";
 import { formatCpfDisplay } from "@/lib/validators/cpf";
 import { formatPhoneBrDisplay } from "@/lib/validators/phone";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
+import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { InfoTooltip } from "@/shared/components/ui/info-tooltip";
 import { Card, CardContent, CardDescription, CardHeader } from "@/shared/components/ui/card";
@@ -273,7 +274,14 @@ export function ClientDetailView({ clientId }: ClientDetailViewProps) {
               </div>
             </CardHeader>
             <CardContent className="space-y-3 pt-0">
-              <p className="text-xl font-semibold tracking-tight">{client.name}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-xl font-semibold tracking-tight">{client.name}</p>
+                {client.isMinor ? (
+                  <Badge variant="secondary" className="text-xs font-medium">
+                    {t("minorBadge")}
+                  </Badge>
+                ) : null}
+              </div>
               <ul className="text-muted-foreground flex flex-col gap-2.5 text-sm">
                 {client.phone?.trim() ? (
                   <li className="bg-muted/30 flex min-w-0 items-center gap-3 rounded-lg border border-border/50 px-3 py-2">

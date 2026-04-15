@@ -107,6 +107,7 @@
     "loadError": "Não foi possível carregar a linha do tempo."
   },
   "home": {
+    "sessionLoading": "Verificando sua sessão…",
     "retry": "Tentar novamente",
     "loading": "Carregando…",
     "accessTitle": "Portal do paciente",

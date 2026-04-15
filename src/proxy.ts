@@ -21,6 +21,10 @@ function isPublicPath(pathname: string): boolean {
   if (PUBLIC_PAGES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return true;
   }
+  /** Termos de uso e aviso de privacidade (LGPD) — leitura sem sessão (links no auto-cadastro / portal). */
+  if (pathname.startsWith("/legal/")) {
+    return true;
+  }
   /** Landing do portal (sem slug). */
   if (pathname === "/patient") {
     return true;

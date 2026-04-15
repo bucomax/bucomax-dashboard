@@ -1,5 +1,6 @@
 "use client";
 
+import { PatientPortalFullScreenLoading } from "@/features/patient-portal/app/components/patient-portal-full-screen-loading";
 import { usePatientPortalTenantSlug } from "@/features/patient-portal/app/context/patient-portal-tenant-context";
 import {
   fetchPatientPortalOverview,
@@ -71,12 +72,7 @@ export function PatientPortalSetPasswordPage() {
   }
 
   if (loadingSession) {
-    return (
-      <div className="text-muted-foreground flex items-center gap-2 text-sm">
-        <Loader2 className="size-4 animate-spin" aria-hidden />
-        {t("setPassword.loading")}
-      </div>
-    );
+    return <PatientPortalFullScreenLoading message={t("setPassword.loading")} showMessage={false} />;
   }
 
   if (unauthorized) {

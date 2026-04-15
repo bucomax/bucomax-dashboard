@@ -1,5 +1,5 @@
 import { prisma } from "@/infrastructure/database/prisma";
-import type { Prisma } from "@prisma/client";
+import type { GuardianRelationship, PatientPreferredChannel, Prisma } from "@prisma/client";
 import {
   clientDetailPatientPathwaySelect,
   collectPathwayStageDefaultAssigneeUserIds,
@@ -8,6 +8,7 @@ import {
   serializeActivePatientPathwayDetail,
   serializeCompletedTreatment,
 } from "@/lib/clients/client-detail-pathway-serialization";
+import { formatClientBirthDateIso } from "@/lib/clients/clients-list-shared";
 import { loadStageAssigneeSummariesMap } from "@/lib/clients/load-stage-assignee-summaries";
 import type { ClientDetailResponseData } from "@/types/api/clients-v1";
 
@@ -34,9 +35,15 @@ export type ClientDetailClientRow = {
   city: string | null;
   state: string | null;
   isMinor: boolean;
+  birthDate: Date | null;
   guardianName: string | null;
   guardianDocumentId: string | null;
   guardianPhone: string | null;
+  guardianEmail: string | null;
+  guardianRelationship: GuardianRelationship | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  preferredChannel: PatientPreferredChannel;
   assignedToUserId: string | null;
   opmeSupplierId: string | null;
   createdAt: Date;
@@ -88,9 +95,15 @@ export async function loadClientDetailResponseData(
     city: row.city,
     state: row.state,
     isMinor: row.isMinor,
+    birthDate: formatClientBirthDateIso(row.birthDate),
     guardianName: row.guardianName,
     guardianDocumentId: row.guardianDocumentId,
     guardianPhone: row.guardianPhone,
+    guardianEmail: row.guardianEmail,
+    guardianRelationship: row.guardianRelationship,
+    emergencyContactName: row.emergencyContactName,
+    emergencyContactPhone: row.emergencyContactPhone,
+    preferredChannel: row.preferredChannel,
     assignedToUserId: row.assignedToUserId,
     opmeSupplierId: row.opmeSupplierId,
     assignedTo: row.assignedTo

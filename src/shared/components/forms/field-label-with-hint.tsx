@@ -9,13 +9,13 @@ import { cn } from "@/lib/utils";
 type FieldLabelWithHintProps = {
   htmlFor: string;
   label: string;
-  /** Texto exibido no tooltip ao passar o mouse ou focar no ícone. */
+  /** Texto da dica no (i): toque ou hover (popover, não tooltip). */
   description?: string;
   className?: string;
 };
 
 /**
- * Label do campo com ícone (i) opcional à direita — dica só no hover/foco.
+ * Label do campo com ícone (i) opcional à direita — dica em popover (toque no mobile, hover no desktop).
  */
 export function FieldLabelWithHint({ htmlFor, label, description, className }: FieldLabelWithHintProps) {
   const t = useTranslations("global");

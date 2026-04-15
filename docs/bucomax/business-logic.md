@@ -163,15 +163,86 @@ Este documento resume a **regra de negócio efetiva** que hoje governa cadastro 
 
 ---
 
-## 9. Gaps ainda em aberto
+## 9. Auto-cadastro do paciente (`PatientSelfRegisterInvite`)
 
-- `ChannelDispatch` real com status/erro/retry.
-- Decisão formal se a transição pode ir para **qualquer etapa da versão** ou apenas etapas adjacentes no fluxo.
-- Regras de migração de pacientes entre versões publicadas.
+### Fluxo atual
+
+1. Staff cria convite: `POST /api/v1/clients/self-register-invites` (token 64-char hex, TTL 48h).
+2. Paciente acessa URL `/{tenantSlug}/patient-self-register?token=...`.
+3. Formulario coleta: dados pessoais, data de nascimento (opcional), canal preferido, contato de emergencia (opcional), endereco, responsavel com parentesco e e-mail (se menor), senha, consentimentos.
+4. Backend cria/atualiza `Client`, marca invite como usado, emite audit events.
+5. Notifica staff (in-app + e-mail) e paciente (e-mail de boas-vindas).
+6. **Nao** atribui jornada automaticamente — staff escolhe no painel.
+
+### Campos coletados
+
+| Campo | Obrigatorio | Observacao |
+|-------|-------------|------------|
+| `name` | sim | |
+| `phone` | sim | |
+| `email` | nao | |
+| `documentId` (CPF) | adulto sim, menor nao | |
+| `isMinor` | sim (checkbox) | |
+| `guardianName` | se menor | |
+| `guardianDocumentId` (CPF) | se menor | |
+| `guardianPhone` | nao | |
+| `guardianEmail` | nao | Menor: opcional; notificacoes quando distinto do e-mail do paciente |
+| `guardianRelationship` | se menor | Enum: mae, pai, tutor legal, outro |
+| `birthDate` | nao | AAAA-MM-DD |
+| `emergencyContactName` / `emergencyContactPhone` | nao | Par opcional; se um preenchido, o outro exigido (validacao) |
+| `preferredChannel` | nao | `email` \| `whatsapp` \| `sms` \| `none` (default `none`) |
+| Endereco completo | nao | CEP, logradouro, numero, complemento, bairro, cidade, UF |
+| `password` + confirmacao | sim | min 8 chars, maiuscula, minuscula, digito, especial |
+| `acceptTerms` | sim | |
+| `acceptPrivacy` | sim | LGPD |
+
+### Validacao menor/responsavel
+
+- `isMinor = true`: CPF do paciente e opcional, `guardianName` + `guardianDocumentId` + `guardianRelationship` obrigatorios.
+- `isMinor = false`: CPF do paciente obrigatorio (11 digitos).
+- Login no portal aceita CPF do paciente **ou** CPF do responsavel (menor).
+
+### Gaps identificados
+
+#### P0 — Impacto direto no uso
+
+| # | Gap | Status |
+|---|-----|--------|
+| 1 | Indicador de menor na lista | **Feito** — badge na coluna nome (`ClientsList`). |
+| 2 | Indicador de menor no header da ficha | **Feito** — badge ao lado do nome (`ClientDetailView`). |
+| 3 | Notificacoes ao responsavel (menor) | **Parcial** — revisao de arquivo (`notifyPatientFileReviewed`): e-mail e WhatsApp tambem para `guardianEmail` / `guardianPhone` quando distintos do paciente; OTP do portal (`otp/request`): segundo e-mail e webhook WhatsApp para o responsavel nas mesmas condicoes. Demais eventos (ex.: transicao de etapa) ainda nao duplicados. |
+
+#### P1 — Melhorias planejadas
+
+| # | Gap | Descricao | Esforco |
+|---|-----|-----------|---------|
+| 4 | **Sem upload de documentos durante o cadastro** | Paciente precisa voltar ao portal depois para enviar arquivos (exames, laudos). Formulario de cadastro poderia ter etapa de upload | Medio |
+| 5 | **Sem lembrete de atribuicao de jornada** | Apos cadastro, nenhum lembrete automatico para o staff atribuir jornada. Paciente pode ficar "solto" | Medio — notificacao agendada (ex.: 24h sem jornada) |
+| 6 | **Sem data de nascimento** | ~~Usa flag `isMinor` mas nao calcula idade~~ | **Feito** — `Client.birthDate` (`@db.Date`), formulario publico + painel (PATCH). |
+| 7 | **Sem campo de parentesco** | ~~`guardianName` existe mas nao ha campo indicando a relacao~~ | **Feito** — `Client.guardianRelationship` + UI. |
+| 8 | **Sem login proxy do responsavel** | Responsavel nao tem conta propria; acessa o portal do menor com o CPF do menor. Idealmente teria painel proprio | Grande |
+| 9 | **Contato de emergencia ausente** | ~~Nao ha campo de contato de emergencia separado do responsavel~~ | **Feito** — `emergencyContactName` / `emergencyContactPhone`. |
+| 10 | **Sem preferencia de canal** | ~~Nao ha campo indicando se paciente prefere e-mail, SMS ou WhatsApp~~ | **Feito** — `Client.preferredChannel`. |
+
+#### P2 — Futuro / decisao de produto
+
+| # | Gap | Descricao |
+|---|-----|-----------|
+| 11 | Jornada auto-atribuida quando tenant tem fluxo unico | Hoje e manual mesmo com 1 fluxo; poderia ser automatico |
+| 12 | Termos e politica versionados com aceite rastreavel | Audit event registra versao, mas nao ha tela para staff ver historico de aceites |
+| 13 | Convite por WhatsApp alem de QR/link | Enviar link de auto-cadastro direto pelo WhatsApp da clinica |
 
 ---
 
-## 10. Referências
+## 10. Gaps gerais
+
+- `ChannelDispatch` real com status/erro/retry.
+- Decisao formal se a transicao pode ir para **qualquer etapa da versao** ou apenas etapas adjacentes no fluxo.
+- Regras de migracao de pacientes entre versoes publicadas.
+
+---
+
+## 11. Referencias
 
 - `docs/ARCHITECTURE.md`
 - `docs/PRODUCT-SCOPE.md`

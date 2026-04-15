@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import type { GuardianRelationship, PatientPreferredChannel, Prisma } from "@prisma/client";
 import { computeSlaHealthStatus } from "@/lib/pathway/sla-health";
 import type { ClientDto } from "@/types/api/clients-v1";
 
@@ -38,6 +38,12 @@ function isValidDate(d: unknown): d is Date {
 /** Evita `RangeError` se `Date` vier inválido após cache/JSON (ex.: Vercel + `unstable_cache`). */
 function toIsoSafe(d: Date): string {
   return isValidDate(d) ? d.toISOString() : new Date(0).toISOString();
+}
+
+/** `Client.birthDate` (`@db.Date`) → `YYYY-MM-DD` para DTOs JSON. */
+export function formatClientBirthDateIso(d: Date | null | undefined): string | null {
+  if (!isValidDate(d)) return null;
+  return d.toISOString().slice(0, 10);
 }
 
 export function clientSearchWhere(q: string): Prisma.ClientWhereInput {
@@ -88,9 +94,15 @@ function baseClientFields(c: ClientListRow) {
     city: c.city,
     state: c.state,
     isMinor: c.isMinor,
+    birthDate: formatClientBirthDateIso(c.birthDate),
     guardianName: c.guardianName,
     guardianDocumentId: c.guardianDocumentId,
     guardianPhone: c.guardianPhone,
+    guardianEmail: c.guardianEmail,
+    guardianRelationship: c.guardianRelationship,
+    emergencyContactName: c.emergencyContactName,
+    emergencyContactPhone: c.emergencyContactPhone,
+    preferredChannel: c.preferredChannel,
     assignedToUserId: c.assignedToUserId,
     opmeSupplierId: c.opmeSupplierId,
     assignedTo: c.assignedTo
@@ -118,9 +130,15 @@ export function mapPrismaClientRowToClientDto(row: {
   city: string | null;
   state: string | null;
   isMinor: boolean;
+  birthDate: Date | null;
   guardianName: string | null;
   guardianDocumentId: string | null;
   guardianPhone: string | null;
+  guardianEmail: string | null;
+  guardianRelationship: GuardianRelationship | null;
+  emergencyContactName: string | null;
+  emergencyContactPhone: string | null;
+  preferredChannel: PatientPreferredChannel;
   assignedToUserId: string | null;
   opmeSupplierId: string | null;
   createdAt: Date;
@@ -144,9 +162,15 @@ export function mapPrismaClientRowToClientDto(row: {
     city: row.city,
     state: row.state,
     isMinor: row.isMinor,
+    birthDate: formatClientBirthDateIso(row.birthDate),
     guardianName: row.guardianName,
     guardianDocumentId: row.guardianDocumentId,
     guardianPhone: row.guardianPhone,
+    guardianEmail: row.guardianEmail,
+    guardianRelationship: row.guardianRelationship,
+    emergencyContactName: row.emergencyContactName,
+    emergencyContactPhone: row.emergencyContactPhone,
+    preferredChannel: row.preferredChannel,
     assignedToUserId: row.assignedToUserId,
     opmeSupplierId: row.opmeSupplierId,
     assignedTo: row.assignedTo

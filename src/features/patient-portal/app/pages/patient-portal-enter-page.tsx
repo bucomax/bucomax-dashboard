@@ -48,13 +48,13 @@ function PatientPortalEnterPageInner() {
     );
   }
 
-  return <PatientPortalFullScreenLoading message={t("enter.validating")} />;
+  return <PatientPortalFullScreenLoading message={t("enter.validating")} showMessage={false} />;
 }
 
 export function PatientPortalEnterPage() {
   const t = useTranslations("patientPortal");
   return (
-    <Suspense fallback={<PatientPortalFullScreenLoading message={t("enter.validating")} />}>
+    <Suspense fallback={<PatientPortalFullScreenLoading message={t("enter.validating")} showMessage={false} />}>
       <PatientPortalEnterPageInner />
     </Suspense>
   );

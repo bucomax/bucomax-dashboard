@@ -25,7 +25,7 @@ import { Link } from "@/i18n/navigation";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button, buttonVariants } from "@/shared/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Skeleton } from "@/shared/components/ui/skeleton";
+import { FullScreenLoading } from "@/shared/components/feedback/full-screen-loading";
 import {
   Card,
   CardContent,
@@ -41,6 +41,7 @@ import {
   FormInput,
   FormPassword,
   FormPhoneNumber,
+  FormSelect,
   FormTextarea,
   PasswordStrengthIndicator,
 } from "@/shared/components/forms";
@@ -49,6 +50,7 @@ import type { FormEvent } from "react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm, useWatch, type FieldErrors } from "react-hook-form";
 import { useParams, useSearchParams } from "next/navigation";
+import { GuardianRelationship, PatientPreferredChannel } from "@prisma/client";
 
 type Phase = "loading" | "invalid" | "form" | "success";
 
@@ -119,6 +121,12 @@ function PatientSelfRegisterInner() {
       guardianName: "",
       guardianDocumentId: "",
       guardianPhone: "",
+      guardianEmail: "",
+      birthDate: "",
+      guardianRelationship: undefined,
+      emergencyContactName: "",
+      emergencyContactPhone: "",
+      preferredChannel: PatientPreferredChannel.none,
       postalCode: "",
       addressLine: "",
       addressNumber: "",
@@ -134,6 +142,32 @@ function PatientSelfRegisterInner() {
   });
 
   const isMinorWatched = useWatch({ control: form.control, name: "isMinor" });
+
+  const guardianRelationshipOptions = useMemo(
+    () =>
+      (
+        [
+          [GuardianRelationship.mother, "guardianRelationship.mother"],
+          [GuardianRelationship.father, "guardianRelationship.father"],
+          [GuardianRelationship.legal_guardian, "guardianRelationship.legal_guardian"],
+          [GuardianRelationship.other, "guardianRelationship.other"],
+        ] as const
+      ).map(([value, key]) => ({ value, label: tWiz(key) })),
+    [tWiz],
+  );
+
+  const preferredChannelOptions = useMemo(
+    () =>
+      (
+        [
+          [PatientPreferredChannel.none, "preferredChannelOption.none"],
+          [PatientPreferredChannel.email, "preferredChannelOption.email"],
+          [PatientPreferredChannel.whatsapp, "preferredChannelOption.whatsapp"],
+          [PatientPreferredChannel.sms, "preferredChannelOption.sms"],
+        ] as const
+      ).map(([value, key]) => ({ value, label: tWiz(key) })),
+    [tWiz],
+  );
   const passwordWatched = useWatch({ control: form.control, name: "password" }) ?? "";
   const confirmPasswordWatched = useWatch({ control: form.control, name: "confirmPassword" }) ?? "";
   const acceptTermsWatched = useWatch({ control: form.control, name: "acceptTerms" }) === true;
@@ -190,6 +224,12 @@ function PatientSelfRegisterInner() {
       guardianName: formPrefill.guardianName ?? "",
       guardianDocumentId: formPrefill.guardianDocumentId ?? "",
       guardianPhone: formPrefill.guardianPhone ?? "",
+      guardianEmail: formPrefill.guardianEmail ?? "",
+      birthDate: formPrefill.birthDate ?? "",
+      guardianRelationship: formPrefill.guardianRelationship ?? undefined,
+      emergencyContactName: formPrefill.emergencyContactName ?? "",
+      emergencyContactPhone: formPrefill.emergencyContactPhone ?? "",
+      preferredChannel: formPrefill.preferredChannel ?? PatientPreferredChannel.none,
       postalCode: formPrefill.postalCode ?? "",
       addressLine: formPrefill.addressLine ?? "",
       addressNumber: formPrefill.addressNumber ?? "",
@@ -279,20 +319,7 @@ function PatientSelfRegisterInner() {
         </Link>
       </header>
 
-      {phase === "loading" ? (
-        <Card className="w-full border shadow-xl shadow-black/5 dark:shadow-black/20">
-          <CardHeader className="space-y-2">
-            <Skeleton className="h-7 w-48" />
-            <Skeleton className="h-4 w-full max-w-sm" />
-            <p className="text-muted-foreground text-sm">{t("validating")}</p>
-          </CardHeader>
-          <CardContent className="space-y-3 pt-0">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </CardContent>
-        </Card>
-      ) : null}
+      {phase === "loading" ? <FullScreenLoading message={t("validating")} showMessage={false} /> : null}
 
       {phase === "invalid" ? (
         <Card className="w-full border shadow-xl shadow-black/5 dark:shadow-black/20">
@@ -368,6 +395,25 @@ function PatientSelfRegisterInner() {
                     label={isMinorWatched ? tWiz("documentIdMinor") : tWiz("documentId")}
                     description={isMinorWatched ? tWiz("documentIdMinorHint") : tWiz("documentIdHint")}
                   />
+                  <div className="grid grid-cols-1 gap-4 @min-[40rem]/patient-register:grid-cols-2">
+                    <div className="min-w-0">
+                      <FormInput
+                        name="birthDate"
+                        label={tWiz("birthDate")}
+                        description={tWiz("birthDateHint")}
+                        type="date"
+                        autoComplete="bday"
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <FormSelect
+                        name="preferredChannel"
+                        label={tWiz("preferredChannelField")}
+                        description={tWiz("preferredChannelHint")}
+                        options={preferredChannelOptions}
+                      />
+                    </div>
+                  </div>
                   <Controller
                     name="isMinor"
                     control={form.control}
@@ -398,8 +444,39 @@ function PatientSelfRegisterInner() {
                         <FormPhoneNumber name="guardianPhone" label={tWiz("guardianPhone")} />
                       </div>
                     </div>
+                    <div className="grid grid-cols-1 gap-4 @min-[40rem]/patient-register:grid-cols-2">
+                      <div className="min-w-0">
+                        <FormSelect
+                          name="guardianRelationship"
+                          label={tWiz("guardianRelationshipLabel")}
+                          description={tWiz("guardianRelationshipHint")}
+                          placeholder={tWiz("guardianRelationshipPlaceholder")}
+                          options={guardianRelationshipOptions}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <FormInput
+                          name="guardianEmail"
+                          label={tWiz("guardianEmail")}
+                          description={tWiz("guardianEmailHint")}
+                          type="email"
+                          autoComplete="email"
+                        />
+                      </div>
+                    </div>
                   </div>
                 ) : null}
+                <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
+                  <p className="text-sm font-medium">{tWiz("emergencySection")}</p>
+                  <div className="grid grid-cols-1 gap-4 @min-[40rem]/patient-register:grid-cols-2">
+                    <div className="min-w-0">
+                      <FormInput name="emergencyContactName" label={tWiz("emergencyContactName")} />
+                    </div>
+                    <div className="min-w-0">
+                      <FormPhoneNumber name="emergencyContactPhone" label={tWiz("emergencyContactPhone")} />
+                    </div>
+                  </div>
+                </div>
                 <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
                   <p className="text-sm font-medium">{tWiz("addressSection")}</p>
                   <div className="grid grid-cols-1 gap-4 @min-[30rem]/patient-register:grid-cols-2">

@@ -10,6 +10,7 @@ import { getPatientPortalOtpHtml } from "@/infrastructure/email/email-templates"
 import { isEmailConfigured, sendEmail } from "@/infrastructure/email/resend.client";
 import { notifyPatientPortalOtpByWebhook } from "@/infrastructure/notifications/patient-portal-otp-wpp";
 import { findClientForPortalLogin } from "@/lib/patient-portal/find-client-by-portal-login";
+import { digitsOnlyPhone } from "@/lib/validators/phone";
 import { parsePortalLoginInput } from "@/lib/patient-portal/login-identifier";
 import { findActiveTenantBySlug } from "@/lib/tenants/resolve-public-tenant";
 import {
@@ -67,10 +68,19 @@ export async function POST(request: Request, ctx: RouteCtx) {
   }
 
   const email = client.email?.trim() ?? "";
+  const guardianEmail = client.isMinor ? (client.guardianEmail?.trim() ?? "") : "";
   const hasWebhook = Boolean(process.env.PATIENT_PORTAL_OTP_NOTIFY_URL?.trim());
   const phoneDigits = client.phone?.replace(/\D/g, "") ?? "";
-  const emailReady = Boolean(email) && isEmailConfigured();
-  const wppReady = phoneDigits.length >= 10 && hasWebhook;
+  const guardianPhoneDigits = client.isMinor ? digitsOnlyPhone(client.guardianPhone ?? "") : "";
+  const emailReady =
+    isEmailConfigured() &&
+    (Boolean(email) ||
+      (client.isMinor &&
+        Boolean(guardianEmail) &&
+        guardianEmail.toLowerCase() !== email.toLowerCase()));
+  const wppReady =
+    hasWebhook &&
+    (phoneDigits.length >= 10 || (client.isMinor && guardianPhoneDigits.length >= 10));
 
   if (!emailReady && !wppReady) {
     return jsonSuccessOpaque();
@@ -99,26 +109,45 @@ export async function POST(request: Request, ctx: RouteCtx) {
   const clinicName = tenant.name;
 
   if (emailReady) {
-    const { error } = await sendEmail({
-      to: email,
-      subject: `${clinicName} — Código do portal do paciente (Bucomax)`,
-      html: getPatientPortalOtpHtml({
-        patientName: client.name,
-        clinicName,
-        code,
-      }),
-      text: `Olá, ${client.name}. Seu código Bucomax: ${code}. Válido por poucos minutos.`,
+    const subject = `${clinicName} — Código do portal do paciente (Bucomax)`;
+    const html = getPatientPortalOtpHtml({
+      patientName: client.name,
+      clinicName,
+      code,
     });
-    if (error) {
-      console.error("[patient-portal] OTP email failed:", error);
+    const text = `Olá, ${client.name}. Seu código Bucomax: ${code}. Válido por poucos minutos.`;
+    const toList: string[] = [];
+    if (email) toList.push(email);
+    if (
+      client.isMinor &&
+      guardianEmail &&
+      guardianEmail.toLowerCase() !== email.toLowerCase() &&
+      !toList.some((x) => x.toLowerCase() === guardianEmail.toLowerCase())
+    ) {
+      toList.push(guardianEmail);
+    }
+    for (const to of toList) {
+      const { error } = await sendEmail({ to, subject, html, text });
+      if (error) {
+        console.error("[patient-portal] OTP email failed:", error);
+      }
     }
   }
 
   if (wppReady) {
-    await notifyPatientPortalOtpByWebhook({
-      phone: client.phone.trim(),
-      text: `Bucomax (${clinicName}): seu código para acessar o portal é ${code}. Válido por poucos minutos.`,
-    });
+    const text = `Bucomax (${clinicName}): seu código para acessar o portal é ${code}. Válido por poucos minutos.`;
+    const phones: string[] = [];
+    if (phoneDigits.length >= 10) phones.push(client.phone!.trim());
+    if (
+      client.isMinor &&
+      guardianPhoneDigits.length >= 10 &&
+      guardianPhoneDigits !== phoneDigits
+    ) {
+      phones.push(client.guardianPhone!.trim());
+    }
+    for (const phone of phones) {
+      await notifyPatientPortalOtpByWebhook({ phone, text });
+    }
   }
 
   return jsonSuccessOpaque();

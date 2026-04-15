@@ -24,7 +24,14 @@ export async function notifyPatientFileReviewed(params: NotifyParams): Promise<v
   const [client, tenant] = await Promise.all([
     prisma.client.findFirst({
       where: { id: clientId, tenantId },
-      select: { name: true, email: true, phone: true },
+      select: {
+        name: true,
+        email: true,
+        phone: true,
+        isMinor: true,
+        guardianEmail: true,
+        guardianPhone: true,
+      },
     }),
     prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -46,50 +53,62 @@ export async function notifyPatientFileReviewed(params: NotifyParams): Promise<v
   const clinicName = tenant.name;
   const patientName = client.name?.trim() || "Paciente";
 
+  const patientEmail = client.email?.trim() ?? "";
+  const guardianEmailTrim = client.isMinor ? (client.guardianEmail?.trim() ?? "") : "";
+  const emailRecipients = new Set<string>();
+  if (patientEmail) emailRecipients.add(patientEmail);
+  if (guardianEmailTrim && guardianEmailTrim.toLowerCase() !== patientEmail.toLowerCase()) {
+    emailRecipients.add(guardianEmailTrim);
+  }
+
   // --- E-mail ---
-  if (isEmailConfigured() && client.email?.trim()) {
+  if (isEmailConfigured() && emailRecipients.size > 0) {
     const isApproved = decision === "approve";
     const subject = isApproved
       ? `Bucomax — Documento aprovado: ${fileName}`
       : `Bucomax — Documento precisa de ajustes: ${fileName}`;
 
-    sendEmail({
-      to: client.email.trim(),
-      subject,
-      html: getFileReviewResultPatientHtml({
-        patientName,
-        clinicName,
-        fileName,
-        decision,
-        rejectReason,
-        portalUrl,
-      }),
-      text: isApproved
-        ? `Seu documento "${fileName}" foi aprovado pela ${clinicName}. Acesse: ${portalUrl}`
-        : `Seu documento "${fileName}" precisa de ajustes. ${rejectReason ? `Motivo: ${rejectReason}. ` : ""}Acesse: ${portalUrl}`,
-    }).catch((err) => console.error("[notify-file-reviewed] email failed:", err));
+    const html = getFileReviewResultPatientHtml({
+      patientName,
+      clinicName,
+      fileName,
+      decision,
+      rejectReason,
+      portalUrl,
+    });
+    const text = isApproved
+      ? `Seu documento "${fileName}" foi aprovado pela ${clinicName}. Acesse: ${portalUrl}`
+      : `Seu documento "${fileName}" precisa de ajustes. ${rejectReason ? `Motivo: ${rejectReason}. ` : ""}Acesse: ${portalUrl}`;
+
+    for (const to of emailRecipients) {
+      sendEmail({ to, subject, html, text }).catch((err) =>
+        console.error("[notify-file-reviewed] email failed:", err),
+      );
+    }
   }
 
   // --- WhatsApp ---
-  if (
-    tenant.whatsappEnabled &&
-    tenant.whatsappPhoneNumberId &&
-    tenant.whatsappAccessTokenEnc &&
-    client.phone?.trim()
-  ) {
+  if (tenant.whatsappEnabled && tenant.whatsappPhoneNumberId && tenant.whatsappAccessTokenEnc) {
     const isApproved = decision === "approve";
     const message = isApproved
       ? `${clinicName}: Seu documento "${fileName}" foi aprovado. Acesse o portal para acompanhar sua jornada: ${portalUrl}`
       : `${clinicName}: Seu documento "${fileName}" precisa de ajustes.${rejectReason ? ` Motivo: ${rejectReason}.` : ""} Acesse o portal: ${portalUrl}`;
 
+    const phones = new Set<string>();
+    const p = client.phone?.replace(/\D/g, "") ?? "";
+    if (p.length >= 10) phones.add(client.phone!.trim());
+    if (client.isMinor) {
+      const g = client.guardianPhone?.replace(/\D/g, "") ?? "";
+      if (g.length >= 10 && g !== p) {
+        phones.add(client.guardianPhone!.trim());
+      }
+    }
+
     try {
       const accessToken = decryptTenantSecret(tenant.whatsappAccessTokenEnc);
-      await sendTextMessage(
-        tenant.whatsappPhoneNumberId,
-        accessToken,
-        client.phone.trim(),
-        message,
-      );
+      for (const to of phones) {
+        await sendTextMessage(tenant.whatsappPhoneNumberId, accessToken, to, message);
+      }
     } catch (err) {
       console.error("[notify-file-reviewed] whatsapp failed:", err);
     }
