@@ -31,6 +31,15 @@ export type ClientListRow = Prisma.ClientGetPayload<{ include: typeof CLIENT_LIS
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+function isValidDate(d: unknown): d is Date {
+  return d instanceof Date && Number.isFinite(d.getTime());
+}
+
+/** Evita `RangeError` se `Date` vier inválido após cache/JSON (ex.: Vercel + `unstable_cache`). */
+function toIsoSafe(d: Date): string {
+  return isValidDate(d) ? d.toISOString() : new Date(0).toISOString();
+}
+
 export function clientSearchWhere(q: string): Prisma.ClientWhereInput {
   const qDigits = q.replace(/\D/g, "");
   const or: Prisma.ClientWhereInput[] = [
@@ -88,8 +97,8 @@ function baseClientFields(c: ClientListRow) {
       ? { id: c.assignedTo.id, name: c.assignedTo.name, email: c.assignedTo.email }
       : null,
     opmeSupplier: c.opmeSupplier ? { id: c.opmeSupplier.id, name: c.opmeSupplier.name } : null,
-    createdAt: c.createdAt.toISOString(),
-    updatedAt: c.updatedAt.toISOString(),
+    createdAt: toIsoSafe(c.createdAt),
+    updatedAt: toIsoSafe(c.updatedAt),
   };
 }
 
@@ -166,23 +175,54 @@ export function serializeClientListItem(c: ClientListRow, now: Date) {
     };
   }
 
-  if (pp.completedAt) {
+  const pathwayName = pp.pathway?.name ?? null;
+
+  if (pp.completedAt && isValidDate(pp.completedAt)) {
     return {
       ...baseClientFields(c),
       patientPathwayId: pp.id,
       pathwayId: pp.pathwayId,
-      pathwayName: pp.pathway.name,
+      pathwayName,
       currentStageId: null,
       currentStageName: null,
       daysInStage: null,
       slaStatus: null,
-      journeyCompletedAt: pp.completedAt.toISOString(),
+      journeyCompletedAt: toIsoSafe(pp.completedAt),
     };
   }
 
-  const daysInStage = Math.floor((now.getTime() - pp.enteredStageAt.getTime()) / MS_PER_DAY);
+  if (!pp.currentStage) {
+    return {
+      ...baseClientFields(c),
+      patientPathwayId: pp.id,
+      pathwayId: pp.pathwayId,
+      pathwayName,
+      currentStageId: null,
+      currentStageName: null,
+      daysInStage: null,
+      slaStatus: null,
+      journeyCompletedAt: pp.completedAt && isValidDate(pp.completedAt) ? toIsoSafe(pp.completedAt) : null,
+    };
+  }
+
+  const entered = pp.enteredStageAt;
+  if (!isValidDate(entered)) {
+    return {
+      ...baseClientFields(c),
+      patientPathwayId: pp.id,
+      pathwayId: pp.pathwayId,
+      pathwayName,
+      currentStageId: pp.currentStage.id,
+      currentStageName: pp.currentStage.name,
+      daysInStage: null,
+      slaStatus: null,
+      journeyCompletedAt: null,
+    };
+  }
+
+  const daysInStage = Math.floor((now.getTime() - entered.getTime()) / MS_PER_DAY);
   const slaStatus = computeSlaHealthStatus(
-    pp.enteredStageAt,
+    entered,
     now,
     pp.currentStage.alertWarningDays,
     pp.currentStage.alertCriticalDays,
@@ -192,7 +232,7 @@ export function serializeClientListItem(c: ClientListRow, now: Date) {
     ...baseClientFields(c),
     patientPathwayId: pp.id,
     pathwayId: pp.pathwayId,
-    pathwayName: pp.pathway.name,
+    pathwayName,
     currentStageId: pp.currentStage.id,
     currentStageName: pp.currentStage.name,
     daysInStage,
