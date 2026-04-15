@@ -12,8 +12,10 @@ type PatchMePayload = {
     email: string;
     name: string | null;
     image: string | null;
+    imageUrl: string | null;
     globalRole: string;
-    emailVerified: Date | null;
+    /** ISO string — JSON não deserializa como `Date`. */
+    emailVerified: string | null;
   };
 };
 

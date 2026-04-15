@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "node --disable-warning=DEP0169 ./node_modules/next/dist/bin/next dev",
     "build": "next build",
+    "build:vercel": "prisma migrate deploy --schema=packages/prisma/schema.prisma && next build",
     "start": "node --disable-warning=DEP0169 ./node_modules/next/dist/bin/next start",
     "lint": "eslint",
     "db:generate": "prisma generate --schema=packages/prisma/schema.prisma",

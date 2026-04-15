@@ -60,6 +60,12 @@ enum AuditEventType {
   PATIENT_PORTAL_LOGIN_FAILED
   PATIENT_CONSENT_GIVEN
   AUDIT_EXPORT_GENERATED
+  WHATSAPP_DISPATCH_QUEUED
+  WHATSAPP_DISPATCH_SENT
+  WHATSAPP_DISPATCH_DELIVERED
+  WHATSAPP_DISPATCH_READ
+  WHATSAPP_DISPATCH_FAILED
+  WHATSAPP_PATIENT_CONFIRMED
 }
 
 /** Validação na ficha quando o paciente envia arquivo pelo portal. */
@@ -172,6 +178,17 @@ model Tenant {
   notifyNewPatients          Boolean                     @default(true)
   notifyWeeklyReport         Boolean                     @default(true)
   notifyDocumentDelivery     Boolean                     @default(true)
+
+  // === WhatsApp Business API ===
+  whatsappEnabled            Boolean                     @default(false)
+  whatsappPhoneNumberId      String?
+  whatsappBusinessAccountId  String?
+  /** AES-256-GCM encrypted access token; decrypted only at dispatch time. */
+  whatsappAccessTokenEnc     String?                     @db.Text
+  whatsappWebhookVerifyToken String?
+  /** ISO timestamp of last successful API health check. */
+  whatsappVerifiedAt         DateTime?
+
   createdAt                  DateTime                    @default(now())
   updatedAt                  DateTime                    @updatedAt
   memberships                TenantMembership[]
@@ -186,6 +203,7 @@ model Tenant {
   notifications              Notification[]
   patientSelfRegisterInvites PatientSelfRegisterInvite[]
   auditEvents                AuditEvent[]
+  channelDispatches          ChannelDispatch[]
 }
 
 /**
@@ -237,6 +255,7 @@ model Client {
   patientPortalLinkTokens      PatientPortalLinkToken[]
   patientPortalOtpChallenges PatientPortalOtpChallenge[]
   auditEvents                  AuditEvent[]
+  channelDispatches            ChannelDispatch[]
 
   @@index([tenantId])
   @@index([tenantId, deletedAt])
@@ -525,7 +544,8 @@ model StageTransition {
   forcedByUser     User?          @relation("StageTransitionForcedBy", fields: [forcedByUserId], references: [id], onDelete: SetNull)
   dispatchStub     Json?
 
-  createdAt DateTime @default(now())
+  createdAt          DateTime          @default(now())
+  channelDispatches  ChannelDispatch[]
 
   @@index([patientPathwayId])
   @@index([forcedByUserId])
@@ -622,4 +642,67 @@ model Notification {
 
   @@index([userId, readAt, createdAt])
   @@index([tenantId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// WhatsApp / Channel Dispatch
+// ---------------------------------------------------------------------------
+
+enum DispatchChannel {
+  WHATSAPP
+}
+
+enum DispatchStatus {
+  QUEUED
+  SENT
+  DELIVERED
+  READ
+  CONFIRMED
+  FAILED
+}
+
+/**
+ * Registro de envio por canal externo (WhatsApp, futuro: email, SMS).
+ * Cada documento enviado gera um ChannelDispatch; a mensagem interativa
+ * de confirmação também gera seu próprio registro.
+ */
+model ChannelDispatch {
+  id                  String          @id @default(cuid())
+  tenantId            String
+  tenant              Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stageTransitionId   String
+  stageTransition     StageTransition @relation(fields: [stageTransitionId], references: [id], onDelete: Cascade)
+  clientId            String
+  client              Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  channel             DispatchChannel
+  status              DispatchStatus  @default(QUEUED)
+  /** WhatsApp message ID (wamid) returned by Meta API. */
+  externalMessageId   String?
+  /** Phone number the message was sent to (E.164 format). */
+  recipientPhone      String
+  /** Document file name — null for the interactive confirmation message. */
+  documentFileName    String?
+  /** R2/GCS key of the document sent. */
+  documentR2Key       String?
+  /** Presigned URL generated at dispatch time (short TTL). */
+  presignedUrl        String?         @db.Text
+  /** Error details from Meta API or internal failures. */
+  errorDetail         String?         @db.Text
+  /** Timestamp when Meta reported 'sent'. */
+  sentAt              DateTime?
+  /** Timestamp when Meta reported 'delivered'. */
+  deliveredAt         DateTime?
+  /** Timestamp when Meta reported 'read'. */
+  readAt              DateTime?
+  /** Timestamp when patient clicked confirmation button. */
+  confirmedAt         DateTime?
+  /** Button payload received from patient (e.g. "received" or "help"). */
+  confirmationPayload String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  @@index([tenantId, createdAt])
+  @@index([stageTransitionId])
+  @@index([externalMessageId])
+  @@index([clientId, createdAt])
 }

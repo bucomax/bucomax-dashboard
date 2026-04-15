@@ -28,3 +28,4 @@ description: Conecta o painel aos projetos externos WhatsApp (chatbot) e IA (an�
 ## Documentação
 
 - Ao fixar contrato, adicionar ou atualizar `docs/integrations/` (criar pasta quando o código existir).
+- **WhatsApp Cloud (disparos, botões, auditoria):** `docs/integrations/whatsapp-dispatch-events.md`.

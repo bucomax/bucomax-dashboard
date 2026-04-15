@@ -10,7 +10,12 @@ import {
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
-import { buildStageDispatchStub, getStageDocumentBundle } from "@/lib/pathway/stage-document-bundle";
+import { enqueueWhatsAppDispatch } from "@/infrastructure/whatsapp/whatsapp-dispatch-emitter";
+import {
+  buildStageDispatchStub,
+  getStageDocumentBundle,
+  type StageDocumentBundleItem,
+} from "@/lib/pathway/stage-document-bundle";
 import { resolvePathwayNotificationTargetUserIds } from "@/lib/notifications/resolve-pathway-notification-targets";
 import { listPendingRequiredChecklistItems } from "@/lib/pathway/pending-required-checklist";
 import { resolvePatientPathwayStageAssigneeUserId } from "@/lib/pathway/validate-stage-assignees";
@@ -52,7 +57,7 @@ export async function POST(request: Request, ctx: RouteCtx) {
   const pp = await prisma.patientPathway.findFirst({
     where: { id: patientPathwayId, tenantId: tenantCtx.tenantId },
     include: {
-      client: { select: { id: true, name: true, assignedToUserId: true } },
+      client: { select: { id: true, name: true, phone: true, assignedToUserId: true } },
       currentStage: { select: { id: true, name: true, stageKey: true } },
     },
   });
@@ -86,6 +91,11 @@ export async function POST(request: Request, ctx: RouteCtx) {
 
   let updated;
   let blockedPending: { id: string; label: string }[] | null = null;
+  let whatsappEnqueue: {
+    transitionId: string;
+    documents: StageDocumentBundleItem[];
+  } | null = null;
+
   try {
     const txResult = await prisma.$transaction(async (tx) => {
       const pendingRequired = await listPendingRequiredChecklistItems(
@@ -169,13 +179,24 @@ export async function POST(request: Request, ctx: RouteCtx) {
         },
       });
 
-      return { outcome: "ok" as const, patientPathway: nextPp };
+      return {
+        outcome: "ok" as const,
+        patientPathway: nextPp,
+        transitionId: createdTransition.id,
+        documents,
+      };
     });
 
     if (txResult.outcome === "blocked") {
       blockedPending = txResult.pending;
     } else {
       updated = txResult.patientPathway;
+      if (txResult.documents.length > 0 && pp.client.phone) {
+        whatsappEnqueue = {
+          transitionId: txResult.transitionId,
+          documents: txResult.documents,
+        };
+      }
     }
   } finally {
     await releaseLock(lockKey);
@@ -214,6 +235,22 @@ export async function POST(request: Request, ctx: RouteCtx) {
       stageName: toStage.name,
     },
   }).catch((err) => console.error("[notification] stage_transition emit failed:", err));
+
+  // WhatsApp document dispatch (async, fire-and-forget)
+  if (whatsappEnqueue) {
+    enqueueWhatsAppDispatch({
+      tenantId: tenantCtx.tenantId,
+      stageTransitionId: whatsappEnqueue.transitionId,
+      clientId: pp.clientId,
+      recipientPhone: pp.client.phone!,
+      stageName: toStage.name,
+      documents: whatsappEnqueue.documents.map((d) => ({
+        fileName: d.file.fileName,
+        r2Key: d.file.r2Key,
+        mimeType: d.file.mimeType,
+      })),
+    }).catch((err) => console.error("[whatsapp] dispatch enqueue failed:", err));
+  }
 
   revalidateTenantClientsList(tenantCtx.tenantId);
 

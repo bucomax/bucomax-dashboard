@@ -102,7 +102,7 @@ export function AccountProfileCard() {
               <Input id="account-email" readOnly value={profile?.email ?? ""} className="bg-muted/50" />
             </Field>
             <FormInput name="name" label={t("name")} autoComplete="name" />
-            <AccountProfileImageField />
+            <AccountProfileImageField displayUrl={profile?.imageUrl ?? null} />
           </CardContent>
           <CardFooter className="mt-6 justify-end border-t pt-4">
             <Button type="submit" disabled={form.formState.isSubmitting}>

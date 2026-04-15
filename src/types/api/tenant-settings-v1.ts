@@ -80,3 +80,34 @@ export type UpdateTenantNotificationSettingsRequestBody = Partial<TenantNotifica
 export type UpdateTenantNotificationSettingsResponseData = {
   notifications: TenantNotificationSettingsDto;
 };
+
+// ---------------------------------------------------------------------------
+// WhatsApp Business API Settings
+// ---------------------------------------------------------------------------
+
+export type WhatsAppSettingsDto = {
+  whatsappEnabled: boolean;
+  whatsappPhoneNumberId: string | null;
+  whatsappBusinessAccountId: string | null;
+  /** Access token is never exposed — only a boolean flag. */
+  hasAccessToken: boolean;
+  whatsappWebhookVerifyToken: string | null;
+  whatsappVerifiedAt: string | null;
+};
+
+export type GetWhatsAppSettingsResponseData = {
+  whatsapp: WhatsAppSettingsDto;
+};
+
+export type UpdateWhatsAppSettingsRequestBody = {
+  whatsappEnabled?: boolean;
+  whatsappPhoneNumberId?: string | null;
+  whatsappBusinessAccountId?: string | null;
+  /** Plaintext on write — encrypted at storage layer. */
+  whatsappAccessToken?: string | null;
+  whatsappWebhookVerifyToken?: string | null;
+};
+
+export type UpdateWhatsAppSettingsResponseData = {
+  whatsapp: WhatsAppSettingsDto;
+};

@@ -4,6 +4,7 @@ import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-t
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
+import { jsonIfPrismaSchemaMismatch } from "@/lib/api/prisma-schema-error";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import {
   assertActiveTenantMembership,
@@ -40,93 +41,101 @@ export async function GET(request: Request) {
   const forbidden = await assertActiveTenantMembership(auth.session!, tenantId, request, apiT);
   if (forbidden) return forbidden;
 
-  const clientScope = await loadTenantMembershipClientScope(
-    auth.session!.user.id,
-    tenantId,
-    auth.session!.user.globalRole,
-  );
+  try {
+    const clientScope = await loadTenantMembershipClientScope(
+      auth.session!.user.id,
+      tenantId,
+      auth.session!.user.globalRole,
+    );
 
-  const url = new URL(request.url);
-  const parsed = clientsListQuerySchema.safeParse({
-    limit: url.searchParams.get("limit") ?? undefined,
-    page: url.searchParams.get("page") ?? undefined,
-    q: url.searchParams.get("q") ?? undefined,
-    pathwayId: url.searchParams.get("pathwayId") ?? undefined,
-    stageId: url.searchParams.get("stageId") ?? undefined,
-    status: url.searchParams.get("status") || undefined,
-    fresh: url.searchParams.get("fresh") ?? undefined,
-  });
-  if (!parsed.success) {
-    return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
-  }
-
-  const { limit, page, q, pathwayId, stageId, status: statusFilter } = parsed.data;
-  const offset = (page - 1) * limit;
-  const now = new Date();
-
-  const baseWhere = buildClientsListBaseWhere({ tenantId, q, pathwayId, stageId });
-  const where = mergeClientWhereWithVisibility(baseWhere, clientScope, auth.session!.user.id);
-
-  if (statusFilter) {
-    const pageRows: ReturnType<typeof serializeClientListItem>[] = [];
-    let matchedCount = 0;
-    let skip = 0;
-
-    while (true) {
-      const batch = await prisma.client.findMany({
-        where,
-        orderBy: { updatedAt: "desc" },
-        take: STATUS_FILTER_SCAN_BATCH,
-        skip,
-        include: CLIENT_LIST_INCLUDE,
-      });
-      if (batch.length === 0) break;
-
-      for (const client of batch) {
-        const row = serializeClientListItem(client, now);
-        const matchesStatus =
-          statusFilter === "completed"
-            ? row.journeyCompletedAt != null
-            : row.slaStatus === statusFilter;
-        if (!matchesStatus) continue;
-        if (matchedCount >= offset && pageRows.length < limit) {
-          pageRows.push(row);
-        }
-        matchedCount += 1;
-      }
-
-      if (batch.length < STATUS_FILTER_SCAN_BATCH) break;
-      skip += batch.length;
+    const url = new URL(request.url);
+    const parsed = clientsListQuerySchema.safeParse({
+      limit: url.searchParams.get("limit") ?? undefined,
+      page: url.searchParams.get("page") ?? undefined,
+      q: url.searchParams.get("q") ?? undefined,
+      pathwayId: url.searchParams.get("pathwayId") ?? undefined,
+      stageId: url.searchParams.get("stageId") ?? undefined,
+      status: url.searchParams.get("status") || undefined,
+      fresh: url.searchParams.get("fresh") ?? undefined,
+    });
+    if (!parsed.success) {
+      return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
     }
 
+    const { limit, page, q, pathwayId, stageId, status: statusFilter } = parsed.data;
+    const offset = (page - 1) * limit;
+    const now = new Date();
+
+    const baseWhere = buildClientsListBaseWhere({ tenantId, q, pathwayId, stageId });
+    const where = mergeClientWhereWithVisibility(baseWhere, clientScope, auth.session!.user.id);
+
+    if (statusFilter) {
+      const pageRows: ReturnType<typeof serializeClientListItem>[] = [];
+      let matchedCount = 0;
+      let skip = 0;
+
+      while (true) {
+        const batch = await prisma.client.findMany({
+          where,
+          orderBy: { updatedAt: "desc" },
+          take: STATUS_FILTER_SCAN_BATCH,
+          skip,
+          include: CLIENT_LIST_INCLUDE,
+        });
+        if (batch.length === 0) break;
+
+        for (const client of batch) {
+          const row = serializeClientListItem(client, now);
+          const matchesStatus =
+            statusFilter === "completed"
+              ? row.journeyCompletedAt != null
+              : row.slaStatus === statusFilter;
+          if (!matchesStatus) continue;
+          if (matchedCount >= offset && pageRows.length < limit) {
+            pageRows.push(row);
+          }
+          matchedCount += 1;
+        }
+
+        if (batch.length < STATUS_FILTER_SCAN_BATCH) break;
+        skip += batch.length;
+      }
+
+      return jsonSuccess({
+        data: pageRows,
+        pagination: buildPagination(page, limit, matchedCount),
+        statusFilterCapped: false,
+      });
+    }
+
+    const listArgs = {
+      tenantId,
+      viewerUserId: auth.session!.user.id,
+      globalRole: auth.session!.user.globalRole,
+      scope: clientScope,
+      limit,
+      page,
+      q,
+      pathwayId,
+      stageId,
+    };
+
+    // Sem `unstable_cache` aqui: em Vercel/serverless o cache incremental pode falhar ou serializar
+    // mal o payload Prisma → 500 na listagem. A consulta já é leve com índices em `tenantId`.
+    const { items, total } = await getClientsListPageWithoutCache(listArgs);
+
     return jsonSuccess({
-      data: pageRows,
-      pagination: buildPagination(page, limit, matchedCount),
+      data: items.map((c) => serializeClientListItem(c, now)),
+      pagination: buildPagination(page, limit, total),
       statusFilterCapped: false,
     });
+  } catch (err) {
+    console.error("[GET /api/v1/clients]", err);
+    const schemaErr = jsonIfPrismaSchemaMismatch(err, apiT, "[GET /api/v1/clients]");
+    if (schemaErr) return schemaErr;
+    if (err instanceof Error) console.error("[GET /api/v1/clients]", err.message);
+    return jsonError("INTERNAL_ERROR", apiT("errors.internalError"), 500);
   }
-
-  const listArgs = {
-    tenantId,
-    viewerUserId: auth.session!.user.id,
-    globalRole: auth.session!.user.globalRole,
-    scope: clientScope,
-    limit,
-    page,
-    q,
-    pathwayId,
-    stageId,
-  };
-
-  // Sem `unstable_cache` aqui: em Vercel/serverless o cache incremental pode falhar ou serializar
-  // mal o payload Prisma → 500 na listagem. A consulta já é leve com índices em `tenantId`.
-  const { items, total } = await getClientsListPageWithoutCache(listArgs);
-
-  return jsonSuccess({
-    data: items.map((c) => serializeClientListItem(c, now)),
-    pagination: buildPagination(page, limit, total),
-    statusFilterCapped: false,
-  });
 }
 
 export async function POST(request: Request) {

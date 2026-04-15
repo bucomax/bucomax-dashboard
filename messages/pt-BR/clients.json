@@ -530,7 +530,13 @@
           "lgpd": "Privacidade / LGPD"
         },
         "auditExportGenerated": "Exportação de auditoria (CSV)",
-        "auditExportMeta": "{count} linhas"
+        "auditExportMeta": "{count} linhas",
+        "whatsappDispatchQueued": "WhatsApp: envio na fila",
+        "whatsappDispatchSent": "WhatsApp: documento enviado",
+        "whatsappDispatchDelivered": "WhatsApp: mensagem entregue",
+        "whatsappDispatchRead": "WhatsApp: mensagem lida",
+        "whatsappDispatchFailed": "WhatsApp: falha no envio",
+        "whatsappPatientConfirmed": "WhatsApp: paciente confirmou recebimento"
       }
     }
   }

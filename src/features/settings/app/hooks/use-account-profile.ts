@@ -39,9 +39,10 @@ export function useAccountProfile() {
               ...prev,
               name: nextUser.name,
               image: nextUser.image,
+              imageUrl: nextUser.imageUrl,
               email: nextUser.email,
               globalRole: nextUser.globalRole,
-              emailVerified: nextUser.emailVerified?.toISOString() ?? null,
+              emailVerified: nextUser.emailVerified ?? null,
             }
           : prev,
       );

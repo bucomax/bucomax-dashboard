@@ -33,6 +33,23 @@ function sanitizeAuditPayloadForPatient(
         ...(typeof payload.consentType === "string" ? { consentType: payload.consentType } : {}),
         ...(typeof payload.version === "string" ? { version: payload.version } : {}),
       };
+    case "WHATSAPP_DISPATCH_QUEUED":
+    case "WHATSAPP_DISPATCH_SENT":
+    case "WHATSAPP_DISPATCH_DELIVERED":
+    case "WHATSAPP_DISPATCH_READ":
+    case "WHATSAPP_DISPATCH_FAILED":
+    case "WHATSAPP_PATIENT_CONFIRMED":
+      return {
+        ...(typeof payload.channelDispatchId === "string"
+          ? { channelDispatchId: payload.channelDispatchId }
+          : {}),
+        ...(typeof payload.documentFileName === "string"
+          ? { documentFileName: payload.documentFileName }
+          : {}),
+        ...(typeof payload.stageTransitionId === "string"
+          ? { stageTransitionId: payload.stageTransitionId }
+          : {}),
+      };
     default:
       return {};
   }

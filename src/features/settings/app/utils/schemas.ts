@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { profileImageFormFieldSchema } from "@/lib/validators/profile";
+
 export const inviteUserFormSchema = z.object({
   email: z.string().email("Email inválido."),
   name: z.string().max(120, "Máximo de 120 caracteres.").optional(),
@@ -10,7 +12,7 @@ export type InviteUserFormValues = z.infer<typeof inviteUserFormSchema>;
 
 export const profileFormSchema = z.object({
   name: z.string().min(1, "Informe o nome.").max(120),
-  image: z.union([z.string().url("URL inválida."), z.literal("")]).optional(),
+  image: profileImageFormFieldSchema.optional(),
 });
 
 export type ProfileFormValues = z.infer<typeof profileFormSchema>;

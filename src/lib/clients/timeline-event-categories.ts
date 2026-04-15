@@ -15,6 +15,12 @@ export function auditEventTypeToCategory(type: AuditEventType): ClientTimelineEv
     case AuditEventType.PATIENT_PATHWAY_STARTED:
     case AuditEventType.PATIENT_PATHWAY_COMPLETED:
     case AuditEventType.CHECKLIST_ITEM_TOGGLED:
+    case AuditEventType.WHATSAPP_DISPATCH_QUEUED:
+    case AuditEventType.WHATSAPP_DISPATCH_SENT:
+    case AuditEventType.WHATSAPP_DISPATCH_DELIVERED:
+    case AuditEventType.WHATSAPP_DISPATCH_READ:
+    case AuditEventType.WHATSAPP_DISPATCH_FAILED:
+    case AuditEventType.WHATSAPP_PATIENT_CONFIRMED:
       return "clinical";
 
     case AuditEventType.FILE_UPLOADED_TO_CLIENT:

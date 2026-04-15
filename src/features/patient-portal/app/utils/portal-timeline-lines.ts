@@ -71,6 +71,24 @@ export function patientPortalTimelineRow(
       else title = t("timeline.consentRecorded");
       break;
     }
+    case "WHATSAPP_DISPATCH_QUEUED":
+      title = t("timeline.whatsappDispatchQueued");
+      break;
+    case "WHATSAPP_DISPATCH_SENT":
+      title = t("timeline.whatsappDispatchSent");
+      break;
+    case "WHATSAPP_DISPATCH_DELIVERED":
+      title = t("timeline.whatsappDispatchDelivered");
+      break;
+    case "WHATSAPP_DISPATCH_READ":
+      title = t("timeline.whatsappDispatchRead");
+      break;
+    case "WHATSAPP_DISPATCH_FAILED":
+      title = t("timeline.whatsappDispatchFailed");
+      break;
+    case "WHATSAPP_PATIENT_CONFIRMED":
+      title = t("timeline.whatsappPatientConfirmed");
+      break;
     default:
       title = t("timeline.event");
   }

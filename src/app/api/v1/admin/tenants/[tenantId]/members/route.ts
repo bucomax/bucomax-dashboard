@@ -1,3 +1,4 @@
+import { resolveUserProfileImageUrl } from "@/infrastructure/storage/resolve-user-profile-image-url";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -39,17 +40,23 @@ export async function GET(request: Request, ctx: RouteCtx) {
     orderBy: { user: { email: "asc" } },
   });
 
-  const members = rows
-    .filter((r) => r.user.deletedAt === null)
-    .map((r) => ({
-      userId: r.userId,
-      email: r.user.email,
-      name: r.user.name,
-      image: r.user.image,
-      role: r.role,
-      restrictedToAssignedOnly: r.restrictedToAssignedOnly,
-      linkedOpmeSupplierId: r.linkedOpmeSupplierId,
-    }));
+  const filtered = rows.filter((r) => r.user.deletedAt === null);
+
+  const members = await Promise.all(
+    filtered.map(async (r) => {
+      const imageUrl = await resolveUserProfileImageUrl(r.user.image);
+      return {
+        userId: r.userId,
+        email: r.user.email,
+        name: r.user.name,
+        image: r.user.image,
+        imageUrl,
+        role: r.role,
+        restrictedToAssignedOnly: r.restrictedToAssignedOnly,
+        linkedOpmeSupplierId: r.linkedOpmeSupplierId,
+      };
+    }),
+  );
 
   return jsonSuccess({ members });
 }

@@ -11,6 +11,7 @@ import {
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
+import { enqueueWhatsAppDispatch } from "@/infrastructure/whatsapp/whatsapp-dispatch-emitter";
 import { buildStageDispatchStub, getStageDocumentBundle } from "@/lib/pathway/stage-document-bundle";
 import { resolvePathwayNotificationTargetUserIds } from "@/lib/notifications/resolve-pathway-notification-targets";
 import { resolvePatientPathwayStageAssigneeUserId } from "@/lib/pathway/validate-stage-assignees";
@@ -108,7 +109,7 @@ export async function POST(request: Request) {
 
   const firstStage = publishedVersion.stages[0]!;
 
-  const result = await prisma.$transaction(async (tx) => {
+  const txResult = await prisma.$transaction(async (tx) => {
     const now = new Date();
     const currentStageAssigneeUserId = await resolvePatientPathwayStageAssigneeUserId(
       tx,
@@ -138,7 +139,7 @@ export async function POST(request: Request) {
     });
     const documents = await getStageDocumentBundle(tx, firstStage.id);
 
-    await tx.stageTransition.create({
+    const createdTransition = await tx.stageTransition.create({
       data: {
         patientPathwayId: pp.id,
         fromStageId: null,
@@ -152,10 +153,14 @@ export async function POST(request: Request) {
           documents,
         }),
       },
+      select: { id: true },
     });
 
-    return pp;
+    return { pp, transitionId: createdTransition.id, documents };
   });
+
+  const result = txResult.pp;
+  const { transitionId, documents } = txResult;
 
   const newPatientTargets = await resolvePathwayNotificationTargetUserIds({
     tenantId,
@@ -177,6 +182,22 @@ export async function POST(request: Request) {
       stageName: result.currentStage.name,
     },
   }).catch((err) => console.error("[notification] new_patient emit failed:", err));
+
+  // WhatsApp document dispatch (async, fire-and-forget)
+  if (documents.length > 0 && result.client.phone) {
+    enqueueWhatsAppDispatch({
+      tenantId,
+      stageTransitionId: transitionId,
+      clientId: result.clientId,
+      recipientPhone: result.client.phone,
+      stageName: result.currentStage.name,
+      documents: documents.map((d) => ({
+        fileName: d.file.fileName,
+        r2Key: d.file.r2Key,
+        mimeType: d.file.mimeType,
+      })),
+    }).catch((err) => console.error("[whatsapp] dispatch enqueue failed:", err));
+  }
 
   revalidateTenantClientsList(tenantId);
 

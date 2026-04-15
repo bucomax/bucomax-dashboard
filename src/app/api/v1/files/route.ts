@@ -8,6 +8,7 @@ import {
 } from "@/infrastructure/storage/gcs-storage";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { jsonIfPrismaSchemaMismatch } from "@/lib/api/prisma-schema-error";
 import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
 import {
   assertActiveTenantMembership,
@@ -72,8 +73,9 @@ export async function POST(request: Request) {
   try {
     let sha256Hash: string | null = null;
     try {
+      // Se a leitura no GCS rejeitar, o Promise.race falharia inteiro — tratar como null.
       sha256Hash = await Promise.race([
-        computeSha256HexForGcsObjectKey(parsed.data.key),
+        computeSha256HexForGcsObjectKey(parsed.data.key).catch(() => null),
         new Promise<null>((resolve) => setTimeout(() => resolve(null), GCS_SHA256_REGISTER_TIMEOUT_MS)),
       ]);
     } catch {
@@ -130,6 +132,13 @@ export async function POST(request: Request) {
       if (err.code === "P2002") {
         return jsonError("CONFLICT", apiT("errors.fileAlreadyRegistered"), 409);
       }
+      const schemaErr = jsonIfPrismaSchemaMismatch(err, apiT, "[POST /api/v1/files]");
+      if (schemaErr) return schemaErr;
+      if (err.code === "P2003") {
+        console.error("[POST /api/v1/files] FK constraint (check uploadedById / tenantId)", err.meta);
+      }
+    } else if (err instanceof Error) {
+      console.error("[POST /api/v1/files]", err.message);
     }
     return jsonError("INTERNAL_ERROR", apiT("errors.internalError"), 500);
   }

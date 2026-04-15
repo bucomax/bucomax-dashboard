@@ -57,7 +57,16 @@
                             "id": { "type": "string" },
                             "email": { "type": "string", "format": "email" },
                             "name": { "type": "string", "nullable": true },
-                            "image": { "type": "string", "nullable": true },
+                            "image": {
+                              "type": "string",
+                              "nullable": true,
+                              "description": "Valor persistido: URL http(s) ou gcs:{objectKey}"
+                            },
+                            "imageUrl": {
+                              "type": "string",
+                              "nullable": true,
+                              "description": "URL resolvida para exibição (presign ou base pública)"
+                            },
                             "globalRole": { "type": "string" },
                             "tenantId": { "type": "string", "nullable": true },
                             "tenantRole": { "type": "string", "nullable": true },
@@ -86,7 +95,11 @@
                 "type": "object",
                 "properties": {
                   "name": { "type": "string", "maxLength": 120 },
-                  "image": { "type": "string", "nullable": true, "description": "URL ou null/vazio para limpar" }
+                  "image": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "URL http(s), referência gcs:{key} do tenant ativo, ou null/vazio para limpar"
+                  }
                 }
               }
             }
@@ -332,7 +345,10 @@
         "responses": {
           "200": { "description": "`data[]` (jornada = instância mais recente; `journeyCompletedAt` + `currentStageName`/`currentStageId` nulos quando concluída) + `pagination` + `statusFilterCapped` opcional" },
           "400": { "description": "Tenant não selecionado" },
-          "401": { "description": "Não autenticado" }
+          "401": { "description": "Não autenticado" },
+          "503": {
+            "description": "Schema do banco desatualizado (`DATABASE_SCHEMA_PENDING`); rodar `prisma migrate deploy` no ambiente de produção"
+          }
         }
       },
       "post": {
@@ -692,12 +708,12 @@
     },
     "/api/v1/files/storage-status": {
       "get": {
-        "summary": "Indica se o envio de arquivos com URL pública está disponível (GCS + base pública)",
+        "summary": "Indica se upload ao GCS está disponível (credenciais + bucket)",
         "tags": ["Files"],
         "security": [{ "cookieAuth": [] }],
         "responses": {
           "200": {
-            "description": "Envelope `data.available` — `true` quando armazenamento e `GCS_PUBLIC_BASE_URL` estão configurados"
+            "description": "Envelope `data.available` — `true` quando o GCS está configurado"
           },
           "401": { "description": "Não autenticado" }
         }
@@ -717,7 +733,8 @@
                 "properties": {
                   "fileName": { "type": "string" },
                   "mimeType": { "type": "string" },
-                  "clientId": { "type": "string" }
+                  "clientId": { "type": "string" },
+                  "purpose": { "type": "string", "enum": ["avatar"], "description": "Opcional — avatar grava em tenants/{id}/avatars/" }
                 }
               }
             }
@@ -759,6 +776,9 @@
           },
           "403": { "description": "Chave inválida" },
           "409": { "description": "Já registrado" },
+          "503": {
+            "description": "Schema do banco desatualizado (rodar `prisma migrate deploy` no ambiente de produção); código `DATABASE_SCHEMA_PENDING`"
+          },
           "401": { "description": "Não autenticado" }
         }
       }
@@ -894,6 +914,85 @@
           "401": { "description": "Não autenticado" },
           "403": { "description": "Sem permissão para editar o tenant ativo" },
           "422": { "description": "Validação" }
+        }
+      }
+    },
+    "/api/v1/tenant/whatsapp": {
+      "get": {
+        "summary": "Configuração WhatsApp Business do tenant ativo (token nunca retornado)",
+        "tags": ["Tenant"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "`whatsapp` com flags, IDs e `hasAccessToken`" },
+          "400": { "description": "Tenant não selecionado" },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Apenas tenant admin" },
+          "404": { "description": "Tenant não encontrado" }
+        }
+      },
+      "patch": {
+        "summary": "Atualiza credenciais e flags WhatsApp do tenant ativo",
+        "tags": ["Tenant"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "whatsappEnabled": { "type": "boolean" },
+                  "whatsappPhoneNumberId": { "type": ["string", "null"] },
+                  "whatsappBusinessAccountId": { "type": ["string", "null"] },
+                  "whatsappAccessToken": { "type": "string" },
+                  "whatsappWebhookVerifyToken": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "`whatsapp` atualizado" },
+          "400": { "description": "Tenant não selecionado ou JSON inválido" },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Apenas tenant admin" },
+          "422": { "description": "Validação" }
+        }
+      }
+    },
+    "/api/v1/tenant/whatsapp/test": {
+      "post": {
+        "summary": "Testa conexão com a API Cloud do WhatsApp (Graph)",
+        "tags": ["Tenant"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "`ok` e opcional `error`" },
+          "400": { "description": "Tenant não selecionado" },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Apenas tenant admin" }
+        }
+      }
+    },
+    "/api/v1/webhooks/whatsapp": {
+      "get": {
+        "summary": "Verificação do webhook Meta (hub.challenge)",
+        "tags": ["Webhooks"],
+        "parameters": [
+          { "name": "hub.mode", "in": "query", "schema": { "type": "string" } },
+          { "name": "hub.verify_token", "in": "query", "schema": { "type": "string" } },
+          { "name": "hub.challenge", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "text/plain challenge" },
+          "403": { "description": "Token inválido" }
+        }
+      },
+      "post": {
+        "summary": "Callback Meta: status de entrega e respostas de botões",
+        "tags": ["Webhooks"],
+        "responses": {
+          "200": { "description": "OK (processamento assíncrono)" },
+          "401": { "description": "Assinatura inválida" }
         }
       }
     },
@@ -1371,6 +1470,19 @@
           "401": { "description": "Não autenticado" },
           "404": { "description": "Jornada do paciente ou item não encontrado" },
           "422": { "description": "Validação ou item fora da etapa atual" }
+        }
+      }
+    },
+    "/api/v1/patient-pathways/{patientPathwayId}/dispatches": {
+      "get": {
+        "summary": "Lista ChannelDispatch (WhatsApp) da jornada do paciente",
+        "tags": ["PatientPathways"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [{ "name": "patientPathwayId", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": {
+          "200": { "description": "`dispatches[]`" },
+          "401": { "description": "Não autenticado" },
+          "404": { "description": "Jornada não encontrada no tenant" }
         }
       }
     },

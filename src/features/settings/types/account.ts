@@ -4,7 +4,10 @@ export type MeUser = {
   id: string;
   email: string;
   name: string | null;
+  /** Valor persistido: URL http(s) ou `gcs:{objectKey}`. */
   image: string | null;
+  /** URL resolvida para `<img src>` (presign ou base pública); ausente se não houver imagem. */
+  imageUrl: string | null;
   emailVerified: string | null;
   globalRole: string;
   tenantId: string | null;
@@ -17,6 +20,7 @@ export type TenantMemberRow = {
   email: string;
   name: string | null;
   image: string | null;
+  imageUrl: string | null;
   role: TenantRole;
 };
 

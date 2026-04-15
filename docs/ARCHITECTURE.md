@@ -273,7 +273,7 @@ Campos alinhados ao produto:
 
 **Produto (negócio):** a **jornada do paciente** é um fluxo **por tenant**; o tenant pode ter **vários** fluxos (ex.: tipos de tratamento), com **templates padrão** da plataforma e **edição visual** com **@xyflow/react** (adicionar/remover etapas), persistida no banco. Ao **iniciar** a jornada num paciente: **um único** fluxo → associação **automática**; **mais de um** → escolha explícita do fluxo. Ao **entrar** numa etapa nova, o paciente recebe o **pacote integral** de documentos; o **chatbot** envia mensagem + anexos. Detalhe em [PRODUCT-SCOPE.md](./PRODUCT-SCOPE.md) §3.1–3.2.
 
-**Implementação atual:** `CarePathway` (múltiplos por tenant), `PathwayVersion` com **JSON React Flow** + **`PathwayStage`** materializado, `StageDocument`, **`PatientPathway`** (referência a `pathwayId` + `currentStageId`), **`StageTransition`** com **`dispatchStub`** para snapshot do bundle documental. `ChannelDispatch` / `AiJob` permanecem evolução futura. Motor n8n genérico (`WorkflowDefinition`) permanece **opcional** para cenários futuros. Detalhe em **§8**.
+**Implementação atual:** `CarePathway` (múltiplos por tenant), `PathwayVersion` com **JSON React Flow** + **`PathwayStage`** materializado, `StageDocument`, **`PatientPathway`** (referência a `pathwayId` + `currentStageId`), **`StageTransition`** com **`dispatchStub`** para snapshot do bundle documental. `ChannelDispatch` (WhatsApp Business Cloud API) já está implementado; `AiJob` permanece evolução futura. Motor n8n genérico (`WorkflowDefinition`) permanece **opcional** para cenários futuros. Detalhe em **§8**.
 
 ### 7.1 Conceitos (motor genérico / n8n)
 
@@ -495,7 +495,7 @@ Esta secção fixa **como** o produto se materializa em **PostgreSQL/Prisma** e 
 - **`StageTransition`**: histórico da mudança de etapa + `dispatchStub` com snapshot do bundle; campos de override de checklist (`ruleOverrideReason`, `forcedByUserId`) quando a transição força conclusão incompleta.
 - **`AuditEvent`**: eventos de linha do tempo (`tenantId`, **`clientId?`** — ausente em alguns eventos só de staff/plataforma, ex. login no painel —, `patientPathwayId?`, `actorUserId?`, `type`, `payload` Json, `createdAt`). Inclui transição de etapa, arquivos, cadastro público, portal (`PATIENT_PORTAL_*`), CRUD de paciente, downloads, checklist, sessão do portal, consentimento (`PATIENT_CONSENT_GIVEN` com `consentType` + `version`), exportação de auditoria (`AUDIT_EXPORT_GENERATED`), etc. **LGPD:** `payload` com IDs e metadados mínimos — sem duplicar texto clínico.
 
-O **núcleo já implementado** é: **jornada + versão + etapas + checklist/documentos por etapa + paciente na jornada + notas dedicadas + transição + auditoria de timeline + notificações in-app**. `ChannelDispatch`, `AiJob` e dispatch HTTP real continuam como evolução.
+O **núcleo já implementado** é: **jornada + versão + etapas + checklist/documentos por etapa + paciente na jornada + notas dedicadas + transição + auditoria de timeline + notificações in-app + `ChannelDispatch` (WhatsApp Business Cloud API)**. `AiJob` continua como evolução futura.
 - **`Notification`**: notificação in-app persistida por usuário (`tenantId`, `userId`, `type`, `title`, `body?`, `metadata` Json, `readAt?`). Tipos: `sla_critical`, `sla_warning`, `stage_transition`, `new_patient`, `checklist_complete`. Ver §7.4.
 
 ### 8.2 Tabelas e relacionamentos (núcleo)
@@ -524,7 +524,7 @@ O **núcleo já implementado** é: **jornada + versão + etapas + checklist/docu
 |--------|--------------|------------|
 | `StageTransition` | `patientPathwayId`, `fromStageId?`, `toStageId`, `actorUserId`, `note?`, `ruleOverrideReason?`, `forcedByUserId?`, `dispatchStub`, `createdAt` | Histórico; `dispatchStub.correlationId` amarra o snapshot do bundle. |
 | `AuditEvent` | `tenantId`, `clientId?`, `patientPathwayId?`, `actorUserId?`, `type` (enum), `payload` Json, `createdAt` | Linha do tempo unificada na ficha quando há `clientId`; índice `(tenantId, clientId, createdAt)`. Escrita via `recordAuditEvent` (infra). Eventos sem `clientId` não aparecem na timeline do paciente. |
-| `ChannelDispatch` | Futuro | Evolução para persistência dedicada de dispatch/status/erro. |
+| `ChannelDispatch` | Implementado | Registro de envio por canal externo (WhatsApp). Status: QUEUED → SENT → DELIVERED → READ → CONFIRMED / FAILED. Detalhe de **quando dispara**, **botões de confirmação** e **eventos de auditoria**: [integrations/whatsapp-dispatch-events.md](./integrations/whatsapp-dispatch-events.md). |
 
 | Modelo | Observação |
 |--------|------------|
@@ -560,7 +560,7 @@ Eventos de domínio (opcional): após `TransitionPatientStage`, worker assíncro
 ### 8.6 Evolução natural
 
 1. Consolidar a lógica hoje espalhada em `app/api/v1` em casos de uso dedicados.  
-2. Introduzir `ChannelDispatch` e cliente HTTP real do canal.  
+2. ~~Introduzir `ChannelDispatch` e cliente HTTP real do canal.~~ **Implementado** — WhatsApp Business Cloud API via `ChannelDispatch`.  
 3. Introduzir `AiJob` + webhooks.  
 4. Evoluir notas e regras de topologia do fluxo.  
 5. Ampliar `AuditEvent` (ex. assinaturas, dispatch real). **RBAC fino** na leitura (lista/ficha/Kanban/notificações) está em `src/lib/auth/client-visibility.ts` — ver Fase 7 em `docs/bucomax/meeting-presentation-action-plan.md`.  
@@ -612,7 +612,7 @@ Prefixo: `/api/v1`.
 ### 10.0 Evoluções previstas
 
 - RBAC fino (assignee + OPME em `TenantMembership`) aplicado nas rotas principais; UI dedicada para flags do membro e **CareTeam** podem evoluir (plano Fase 7).
-- `ChannelDispatch` dedicado e endpoints/contratos de dispatch reais.
+- ~~`ChannelDispatch` dedicado e endpoints/contratos de dispatch reais.~~ **Implementado.**
 - `AiJob` e webhooks de IA.
 - Webhooks do chatbot / WhatsApp.
 - Eventual camada de workflow genérico, se a jornada clínica deixar de ser suficiente.
@@ -660,7 +660,7 @@ Prefixo: `/api/v1`.
 3. CRUD `Client` com isolamento por tenant.
 4. Integração GCS + entidade de metadados de arquivo.
 5. **Jornada:** `CarePathway` → `PathwayVersion` → `PathwayStage` + `StageDocument`; UI editor (lista de etapas + docs).
-6. **Paciente na jornada:** `PatientPathway` + `POST …/transition` + `StageTransition` + `dispatchStub`; `ChannelDispatch` entra na evolução seguinte.
+6. **Paciente na jornada:** `PatientPathway` + `POST …/transition` + `StageTransition` + `dispatchStub` + `ChannelDispatch` (WhatsApp Business Cloud API, com botões interativos de confirmação e webhook de callback).
 7. `AiJob` + webhook IA; opcional: `WorkflowDefinition` + React Flow se precisar de ramificações.
 8. Formulários dinâmicos (se necessário) e dashboard analítico (gráficos).
 

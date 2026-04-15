@@ -5,6 +5,7 @@ import type {
   CreateOpmeSupplierResponseData,
   GetTenantNotificationSettingsResponseData,
   GetTenantClinicSettingsResponseData,
+  GetWhatsAppSettingsResponseData,
   ListOpmeSuppliersQueryParams,
   OpmeSuppliersListResponseData,
   TenantMembersListResponseData,
@@ -12,6 +13,8 @@ import type {
   UpdateTenantClinicSettingsResponseData,
   UpdateTenantNotificationSettingsRequestBody,
   UpdateTenantNotificationSettingsResponseData,
+  UpdateWhatsAppSettingsRequestBody,
+  UpdateWhatsAppSettingsResponseData,
 } from "@/types/api/tenant-settings-v1";
 
 export async function listTenantMembersForPicker(
@@ -96,6 +99,45 @@ export async function createOpmeSupplier(name: string): Promise<CreateOpmeSuppli
   const res = await apiClient.post<ApiEnvelope<CreateOpmeSupplierResponseData>>(
     "/api/v1/opme-suppliers",
     { name },
+  );
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data;
+}
+
+// ---------------------------------------------------------------------------
+// WhatsApp Business API Settings
+// ---------------------------------------------------------------------------
+
+export async function getWhatsAppSettings(): Promise<GetWhatsAppSettingsResponseData> {
+  const res = await apiClient.get<ApiEnvelope<GetWhatsAppSettingsResponseData>>(
+    "/api/v1/tenant/whatsapp",
+    { skipErrorToast: true },
+  );
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data;
+}
+
+export async function updateWhatsAppSettings(
+  body: UpdateWhatsAppSettingsRequestBody,
+): Promise<UpdateWhatsAppSettingsResponseData> {
+  const res = await apiClient.patch<ApiEnvelope<UpdateWhatsAppSettingsResponseData>>(
+    "/api/v1/tenant/whatsapp",
+    body,
+    { toastSuccessMessage: "Configurações do WhatsApp salvas." },
+  );
+  if (!res.data.success) {
+    throw new Error(res.data.error.message);
+  }
+  return res.data.data;
+}
+
+export async function testWhatsAppConnection(): Promise<{ ok: boolean }> {
+  const res = await apiClient.post<ApiEnvelope<{ ok: boolean }>>(
+    "/api/v1/tenant/whatsapp/test",
   );
   if (!res.data.success) {
     throw new Error(res.data.error.message);

@@ -41,6 +41,7 @@
     "accountInvalid": "Invalid or deactivated account.",
     "sessionInvalid": "Missing or invalid session.",
     "dbUnavailable": "Could not connect to the database.",
+    "databaseSchemaOutdated": "The database is still being updated for this release. Try again shortly; contact support if it persists.",
     "noLocalPassword": "Account has no local password; use the invite flow or a provider.",
     "wrongCurrentPassword": "Current password is incorrect.",
     "forbiddenTenantAccess": "No access to this tenant.",

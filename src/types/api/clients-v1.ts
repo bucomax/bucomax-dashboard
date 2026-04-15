@@ -246,7 +246,13 @@ export type ClientTimelineAuditEventType =
   | "FILE_DELETED"
   | "PATIENT_PORTAL_LOGIN_FAILED"
   | "PATIENT_CONSENT_GIVEN"
-  | "AUDIT_EXPORT_GENERATED";
+  | "AUDIT_EXPORT_GENERATED"
+  | "WHATSAPP_DISPATCH_QUEUED"
+  | "WHATSAPP_DISPATCH_SENT"
+  | "WHATSAPP_DISPATCH_DELIVERED"
+  | "WHATSAPP_DISPATCH_READ"
+  | "WHATSAPP_DISPATCH_FAILED"
+  | "WHATSAPP_PATIENT_CONFIRMED";
 
 /** Transição legada na timeline (inclui instância da jornada). */
 export type ClientTimelineLegacyTransitionDto = ClientDetailTransitionDto & {

@@ -1,8 +1,11 @@
+import { keyBelongsToTenant } from "@/infrastructure/storage/gcs-storage";
+import { resolveUserProfileImageUrl } from "@/infrastructure/storage/resolve-user-profile-image-url";
 import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT, type ApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { requireSessionOr401 } from "@/lib/auth/guards";
+import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
 import { getSession } from "@/lib/auth/session";
+import { parseUserProfileImageGcsKey } from "@/lib/utils/user-profile-image-ref";
 import { patchMeBodySchema } from "@/lib/validators/profile";
 
 export const dynamic = "force-dynamic";
@@ -56,12 +59,15 @@ export async function GET(request: Request) {
     tenantRole = null;
   }
 
+  const imageUrl = await resolveUserProfileImageUrl(user.image);
+
   return jsonSuccess({
     user: {
       id: user.id,
       email: user.email,
       name: user.name,
       image: user.image,
+      imageUrl,
       emailVerified: user.emailVerified,
       globalRole: user.globalRole,
       tenantId,
@@ -91,6 +97,17 @@ export async function PATCH(request: Request) {
   const { user, response } = await getActiveUserOr401(auth.session!.user.id, apiT);
   if (response) return response;
 
+  const gcsKey = parseUserProfileImageGcsKey(
+    parsed.data.image === "" || parsed.data.image === null ? null : parsed.data.image,
+  );
+  if (gcsKey) {
+    const tenantCtx = await getActiveTenantIdOr400(auth.session!, request, apiT);
+    if (tenantCtx.response) return tenantCtx.response;
+    if (!keyBelongsToTenant(gcsKey, tenantCtx.tenantId!)) {
+      return jsonError("VALIDATION_ERROR", apiT("errors.invalidObjectKey"), 422);
+    }
+  }
+
   const data: { name?: string | null; image?: string | null } = {};
   if (parsed.data.name !== undefined) data.name = parsed.data.name;
   if (parsed.data.image !== undefined) {
@@ -114,7 +131,14 @@ export async function PATCH(request: Request) {
     },
   });
 
-  return jsonSuccess({ user: updated });
+  const imageUrl = await resolveUserProfileImageUrl(updated.image);
+
+  return jsonSuccess({
+    user: {
+      ...updated,
+      imageUrl,
+    },
+  });
 }
 
 /** Soft delete da própria conta (invalida sessões persistidas no Prisma Adapter). */

@@ -372,6 +372,47 @@ export function ClientDetailTimelineSection({ clientId, refreshSignal }: ClientD
       };
     }
 
+    if (item.type === "WHATSAPP_DISPATCH_QUEUED") {
+      const file = stringField(item.payload, "documentFileName");
+      return {
+        title: t("timeline.audit.whatsappDispatchQueued"),
+        subtitle: [new Date(item.createdAt).toLocaleString(), actorLabel, file].filter(Boolean).join(" · "),
+      };
+    }
+    if (item.type === "WHATSAPP_DISPATCH_SENT") {
+      const file = stringField(item.payload, "documentFileName");
+      return {
+        title: t("timeline.audit.whatsappDispatchSent"),
+        subtitle: [new Date(item.createdAt).toLocaleString(), actorLabel, file].filter(Boolean).join(" · "),
+      };
+    }
+    if (item.type === "WHATSAPP_DISPATCH_DELIVERED") {
+      return {
+        title: t("timeline.audit.whatsappDispatchDelivered"),
+        subtitle: [new Date(item.createdAt).toLocaleString(), actorLabel].join(" · "),
+      };
+    }
+    if (item.type === "WHATSAPP_DISPATCH_READ") {
+      return {
+        title: t("timeline.audit.whatsappDispatchRead"),
+        subtitle: [new Date(item.createdAt).toLocaleString(), actorLabel].join(" · "),
+      };
+    }
+    if (item.type === "WHATSAPP_DISPATCH_FAILED") {
+      const file = stringField(item.payload, "documentFileName");
+      const err = stringField(item.payload, "errorDetail");
+      return {
+        title: t("timeline.audit.whatsappDispatchFailed"),
+        subtitle: [new Date(item.createdAt).toLocaleString(), actorLabel, file, err].filter(Boolean).join(" · "),
+      };
+    }
+    if (item.type === "WHATSAPP_PATIENT_CONFIRMED") {
+      return {
+        title: t("timeline.audit.whatsappPatientConfirmed"),
+        subtitle: [new Date(item.createdAt).toLocaleString(), t("timeline.actorPublic")].join(" · "),
+      };
+    }
+
     return {
       title: item.type,
       subtitle: new Date(item.createdAt).toLocaleString(),

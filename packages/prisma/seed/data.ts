@@ -1,44 +1,6 @@
-import type { LibraryFileSeed, TenantSeed } from "./types";
+import type { TenantSeed } from "./types";
 
-const BASE_LIBRARY_FILES: LibraryFileSeed[] = [
-  {
-    alias: "pedido-tomografia",
-    fileName: "pedido-tomografia.pdf",
-    mimeType: "application/pdf",
-    sizeBytes: 248_120,
-  },
-  {
-    alias: "checklist-preop",
-    fileName: "checklist-pre-operatorio.pdf",
-    mimeType: "application/pdf",
-    sizeBytes: 181_704,
-  },
-  {
-    alias: "termo-consentimento",
-    fileName: "termo-consentimento.pdf",
-    mimeType: "application/pdf",
-    sizeBytes: 322_412,
-  },
-  {
-    alias: "orientacoes-posop",
-    fileName: "orientacoes-pos-operatorias.pdf",
-    mimeType: "application/pdf",
-    sizeBytes: 205_890,
-  },
-  {
-    alias: "guia-internacao",
-    fileName: "guia-internacao.pdf",
-    mimeType: "application/pdf",
-    sizeBytes: 219_640,
-  },
-  {
-    alias: "risco-cirurgico",
-    fileName: "avaliacao-risco-cirurgico.pdf",
-    mimeType: "application/pdf",
-    sizeBytes: 168_240,
-  },
-];
-
+/** Sem `FileAsset` de biblioteca nem `StageDocument` no seed (fluxos e checklist apenas). */
 export const tenants: TenantSeed[] = [
   {
     slug: "clinica-alpha",
@@ -65,7 +27,7 @@ export const tenants: TenantSeed[] = [
       { name: "NeoGuide", active: true },
       { name: "BioImplant", active: false },
     ],
-    libraryFiles: BASE_LIBRARY_FILES,
+    libraryFiles: [],
     pathways: [
       {
         key: "ortognatica",
@@ -79,7 +41,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 2,
             alertCriticalDays: 4,
             checklist: ["Confirmar cadastro completo", "Anexar exames iniciais"],
-            documentAliases: ["pedido-tomografia", "checklist-preop"],
+            documentAliases: [],
           },
           {
             key: "exames-pre-operatorios",
@@ -88,7 +50,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 5,
             alertCriticalDays: 8,
             checklist: ["Receber tomografia", "Validar risco cirúrgico"],
-            documentAliases: ["pedido-tomografia", "risco-cirurgico"],
+            documentAliases: [],
           },
           {
             key: "autorizacao-hospitalar",
@@ -97,7 +59,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 4,
             alertCriticalDays: 6,
             checklist: ["Autorizar convênio", "Confirmar hospital"],
-            documentAliases: ["termo-consentimento", "guia-internacao"],
+            documentAliases: [],
           },
           {
             key: "cirurgia",
@@ -106,7 +68,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 1,
             alertCriticalDays: 2,
             checklist: ["Checklist de centro cirúrgico", "Confirmar equipe"],
-            documentAliases: ["termo-consentimento", "orientacoes-posop"],
+            documentAliases: [],
           },
           {
             key: "pos-operatorio",
@@ -115,7 +77,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 7,
             alertCriticalDays: 10,
             checklist: ["Agendar retorno", "Prescrição entregue"],
-            documentAliases: ["orientacoes-posop"],
+            documentAliases: [],
           },
         ],
         draftStages: [
@@ -126,7 +88,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 2,
             alertCriticalDays: 4,
             checklist: ["Confirmar cadastro completo", "Anexar exames iniciais"],
-            documentAliases: ["pedido-tomografia", "checklist-preop"],
+            documentAliases: [],
           },
           {
             key: "exames-pre-operatorios",
@@ -135,7 +97,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 5,
             alertCriticalDays: 8,
             checklist: ["Receber tomografia", "Validar risco cirúrgico"],
-            documentAliases: ["pedido-tomografia", "risco-cirurgico"],
+            documentAliases: [],
           },
           {
             key: "planejamento-3d",
@@ -144,7 +106,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 3,
             alertCriticalDays: 5,
             checklist: ["Aprovar setup virtual"],
-            documentAliases: ["guia-internacao"],
+            documentAliases: [],
           },
           {
             key: "autorizacao-hospitalar",
@@ -153,7 +115,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 4,
             alertCriticalDays: 6,
             checklist: ["Autorizar convênio", "Confirmar hospital"],
-            documentAliases: ["termo-consentimento", "guia-internacao"],
+            documentAliases: [],
           },
           {
             key: "cirurgia",
@@ -162,7 +124,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 1,
             alertCriticalDays: 2,
             checklist: ["Checklist de centro cirúrgico", "Confirmar equipe"],
-            documentAliases: ["termo-consentimento", "orientacoes-posop"],
+            documentAliases: [],
           },
           {
             key: "pos-operatorio",
@@ -171,7 +133,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 7,
             alertCriticalDays: 10,
             checklist: ["Agendar retorno", "Prescrição entregue"],
-            documentAliases: ["orientacoes-posop"],
+            documentAliases: [],
           },
         ],
       },
@@ -187,7 +149,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 3,
             alertCriticalDays: 5,
             checklist: ["Triagem validada", "Exames solicitados"],
-            documentAliases: ["pedido-tomografia"],
+            documentAliases: [],
           },
           {
             key: "planejamento",
@@ -196,7 +158,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 4,
             alertCriticalDays: 6,
             checklist: ["Planejamento aprovado", "Materiais confirmados"],
-            documentAliases: ["checklist-preop", "risco-cirurgico"],
+            documentAliases: [],
           },
           {
             key: "procedimento",
@@ -205,7 +167,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 1,
             alertCriticalDays: 2,
             checklist: ["Sala confirmada", "Equipe confirmada"],
-            documentAliases: ["termo-consentimento"],
+            documentAliases: [],
           },
           {
             key: "reabilitacao",
@@ -214,7 +176,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 6,
             alertCriticalDays: 9,
             checklist: ["Retorno agendado", "Orientações entregues"],
-            documentAliases: ["orientacoes-posop"],
+            documentAliases: [],
           },
         ],
       },
@@ -226,6 +188,13 @@ export const tenants: TenantSeed[] = [
         phone: "(11) 99999-1001",
         email: "ana.martins@example.com",
         documentId: "123.456.789-00",
+        postalCode: "01414-001",
+        addressLine: "Rua Haddock Lobo",
+        addressNumber: "595",
+        addressComp: "cj. 42",
+        neighborhood: "Cerqueira César",
+        city: "São Paulo",
+        state: "SP",
         caseDescription: "Paciente com assimetria facial e indicacao de cirurgia ortognatica.",
         createdDaysAgo: 4,
         assignedTo: "admin",
@@ -235,7 +204,6 @@ export const tenants: TenantSeed[] = [
         enteredStageDaysAgo: 1,
         completedChecklistCount: 1,
         noteCount: 2,
-        clientFileCount: 2,
       },
       {
         key: "bruno-costa",
@@ -243,6 +211,12 @@ export const tenants: TenantSeed[] = [
         phone: "(11) 99999-1002",
         email: "bruno.costa@example.com",
         documentId: "123.456.789-01",
+        postalCode: "04538-132",
+        addressLine: "Av. Brigadeiro Faria Lima",
+        addressNumber: "3477",
+        neighborhood: "Itaim Bibi",
+        city: "São Paulo",
+        state: "SP",
         caseDescription: "Caso classe III com exames pré-operatórios em andamento.",
         createdDaysAgo: 18,
         assignedTo: "user",
@@ -252,7 +226,6 @@ export const tenants: TenantSeed[] = [
         enteredStageDaysAgo: 6,
         completedChecklistCount: 1,
         noteCount: 2,
-        clientFileCount: 2,
       },
       {
         key: "carla-souza",
@@ -269,7 +242,6 @@ export const tenants: TenantSeed[] = [
         enteredStageDaysAgo: 9,
         completedChecklistCount: 0,
         noteCount: 3,
-        clientFileCount: 1,
       },
       {
         key: "diego-lima",
@@ -286,7 +258,6 @@ export const tenants: TenantSeed[] = [
         enteredStageDaysAgo: 1,
         completedChecklistCount: 1,
         noteCount: 2,
-        clientFileCount: 2,
       },
       {
         key: "elisa-rocha",
@@ -303,20 +274,28 @@ export const tenants: TenantSeed[] = [
         enteredStageDaysAgo: 4,
         completedChecklistCount: 2,
         noteCount: 3,
-        clientFileCount: 2,
       },
       {
         key: "fernanda-alves",
         name: "Fernanda Alves",
         phone: "(11) 99999-1006",
         email: "fernanda.alves@example.com",
-        documentId: "123.456.789-05",
+        documentId: null,
+        isMinor: true,
+        guardianName: "Marcos Alves",
+        guardianDocumentId: "52998224725",
+        guardianPhone: "(11) 98877-6600",
+        postalCode: "01310-100",
+        addressLine: "Av. Paulista",
+        addressNumber: "1578",
+        neighborhood: "Bela Vista",
+        city: "São Paulo",
+        state: "SP",
         caseDescription: "Lead recém-cadastrado aguardando definição da jornada ideal.",
         createdDaysAgo: 2,
         assignedTo: "user",
         supplierName: null,
         noteCount: 1,
-        clientFileCount: 1,
       },
       {
         key: "gabriel-oliveira",
@@ -333,7 +312,6 @@ export const tenants: TenantSeed[] = [
         enteredStageDaysAgo: 5,
         completedChecklistCount: 1,
         noteCount: 2,
-        clientFileCount: 2,
       },
     ],
   },
@@ -362,7 +340,7 @@ export const tenants: TenantSeed[] = [
       { name: "MaxFace", active: true },
       { name: "Oral Prime", active: false },
     ],
-    libraryFiles: BASE_LIBRARY_FILES,
+    libraryFiles: [],
     pathways: [
       {
         key: "trauma-facial",
@@ -376,7 +354,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 2,
             alertCriticalDays: 4,
             checklist: ["Cadastro validado", "Exames solicitados"],
-            documentAliases: ["pedido-tomografia"],
+            documentAliases: [],
           },
           {
             key: "preparo-cirurgico",
@@ -385,7 +363,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 4,
             alertCriticalDays: 6,
             checklist: ["Risco cirúrgico validado", "Hospital confirmado"],
-            documentAliases: ["risco-cirurgico", "guia-internacao"],
+            documentAliases: [],
           },
           {
             key: "cirurgia",
@@ -394,7 +372,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 1,
             alertCriticalDays: 2,
             checklist: ["Equipe alinhada", "Checklist concluído"],
-            documentAliases: ["termo-consentimento"],
+            documentAliases: [],
           },
           {
             key: "retorno",
@@ -403,7 +381,7 @@ export const tenants: TenantSeed[] = [
             alertWarningDays: 5,
             alertCriticalDays: 8,
             checklist: ["Retorno confirmado", "Orientações reforçadas"],
-            documentAliases: ["orientacoes-posop"],
+            documentAliases: [],
           },
         ],
       },
@@ -415,6 +393,13 @@ export const tenants: TenantSeed[] = [
         phone: "(21) 98888-2001",
         email: "helena.porto@example.com",
         documentId: "987.654.321-00",
+        postalCode: "22250-040",
+        addressLine: "Rua Barão de Ipanema",
+        addressNumber: "76",
+        addressComp: "ap. 801",
+        neighborhood: "Copacabana",
+        city: "Rio de Janeiro",
+        state: "RJ",
         caseDescription: "Paciente em triagem após trauma facial leve.",
         createdDaysAgo: 3,
         assignedTo: "admin",
@@ -424,7 +409,6 @@ export const tenants: TenantSeed[] = [
         enteredStageDaysAgo: 1,
         completedChecklistCount: 1,
         noteCount: 2,
-        clientFileCount: 1,
       },
       {
         key: "igor-melo",
@@ -441,7 +425,6 @@ export const tenants: TenantSeed[] = [
         enteredStageDaysAgo: 5,
         completedChecklistCount: 1,
         noteCount: 2,
-        clientFileCount: 2,
       },
       {
         key: "julia-nunes",
@@ -449,6 +432,12 @@ export const tenants: TenantSeed[] = [
         phone: "(21) 98888-2003",
         email: "julia.nunes@example.com",
         documentId: "987.654.321-02",
+        postalCode: "20511-060",
+        addressLine: "Rua das Laranjeiras",
+        addressNumber: "200",
+        neighborhood: "Laranjeiras",
+        city: "Rio de Janeiro",
+        state: "RJ",
         caseDescription: "Retorno atrasado no pós-operatório, precisa de contato do time.",
         createdDaysAgo: 24,
         assignedTo: "admin",
@@ -458,7 +447,6 @@ export const tenants: TenantSeed[] = [
         enteredStageDaysAgo: 9,
         completedChecklistCount: 0,
         noteCount: 3,
-        clientFileCount: 2,
       },
       {
         key: "karen-silva",
@@ -471,7 +459,6 @@ export const tenants: TenantSeed[] = [
         assignedTo: "user",
         supplierName: null,
         noteCount: 1,
-        clientFileCount: 1,
       },
     ],
   },

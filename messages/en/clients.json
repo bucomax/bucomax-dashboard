@@ -530,7 +530,13 @@
           "lgpd": "Privacy / LGPD"
         },
         "auditExportGenerated": "Audit trail export (CSV)",
-        "auditExportMeta": "{count} rows"
+        "auditExportMeta": "{count} rows",
+        "whatsappDispatchQueued": "WhatsApp: dispatch queued",
+        "whatsappDispatchSent": "WhatsApp: document sent",
+        "whatsappDispatchDelivered": "WhatsApp: message delivered",
+        "whatsappDispatchRead": "WhatsApp: message read",
+        "whatsappDispatchFailed": "WhatsApp: send failed",
+        "whatsappPatientConfirmed": "WhatsApp: patient confirmed receipt"
       }
     }
   }

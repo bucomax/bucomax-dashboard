@@ -7,12 +7,14 @@ import { SuperAdminTenantsCard } from "@/features/settings/app/components/super-
 import { TenantNotificationsCard } from "@/features/settings/app/components/tenant-notifications-card";
 import { UserSettingsPanel } from "@/features/settings/app/components/user-settings-panel";
 import { UsersManagementPanel } from "@/features/settings/app/components/users-management-panel";
+import { WhatsAppSettingsCard } from "@/features/settings/app/components/whatsapp-settings-card";
 import { cn } from "@/lib/utils";
 import {
   Bell,
   Building2,
   ClipboardList,
   Factory,
+  MessageCircle,
   Shield,
   User,
   Users,
@@ -23,7 +25,7 @@ import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-type SectionId = "account" | "clinic" | "notifications" | "team" | "opme" | "phases" | "admin";
+type SectionId = "account" | "clinic" | "notifications" | "whatsapp" | "team" | "opme" | "phases" | "admin";
 
 type NavDef = { id: SectionId; icon: LucideIcon; superAdminOnly?: boolean; tenantAdminOnly?: boolean };
 
@@ -31,6 +33,7 @@ const NAV_DEFS: NavDef[] = [
   { id: "account", icon: User },
   { id: "clinic", icon: Building2 },
   { id: "notifications", icon: Bell },
+  { id: "whatsapp", icon: MessageCircle, tenantAdminOnly: true },
   { id: "team", icon: Users, tenantAdminOnly: true },
   { id: "opme", icon: Factory },
   { id: "phases", icon: ClipboardList },
@@ -43,6 +46,7 @@ const HASH_TO_SECTION: Record<string, SectionId> = {
   account: "account",
   clinic: "clinic",
   notifications: "notifications",
+  whatsapp: "whatsapp",
   team: "team",
   opme: "opme",
   phases: "phases",
@@ -144,6 +148,8 @@ export function SettingsPageLayout() {
         return <ClinicSettingsCard />;
       case "notifications":
         return <TenantNotificationsCard />;
+      case "whatsapp":
+        return <WhatsAppSettingsCard />;
       case "team":
         return <UsersManagementPanel />;
       case "opme":

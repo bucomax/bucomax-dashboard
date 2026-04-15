@@ -30,7 +30,7 @@ export type ClientSeed = {
   name: string;
   phone: string;
   email?: string;
-  documentId?: string;
+  documentId?: string | null;
   caseDescription: string;
   createdDaysAgo: number;
   assignedTo?: ActorKey | null;
@@ -40,7 +40,19 @@ export type ClientSeed = {
   enteredStageDaysAgo?: number;
   completedChecklistCount?: number;
   noteCount?: number;
+  /** Sem seed de `FileAsset` por paciente (apenas metadados de jornada). */
   clientFileCount?: number;
+  postalCode?: string | null;
+  addressLine?: string | null;
+  addressNumber?: string | null;
+  addressComp?: string | null;
+  neighborhood?: string | null;
+  city?: string | null;
+  state?: string | null;
+  isMinor?: boolean;
+  guardianName?: string | null;
+  guardianDocumentId?: string | null;
+  guardianPhone?: string | null;
 };
 
 export type TenantSeed = {

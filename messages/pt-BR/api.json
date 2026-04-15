@@ -41,6 +41,7 @@
     "accountInvalid": "Conta inválida ou desativada.",
     "sessionInvalid": "Sessão ausente ou inválida.",
     "dbUnavailable": "Não foi possível conectar ao banco.",
+    "databaseSchemaOutdated": "Base de dados ainda em atualização em relação ao app. Tente de novo em instantes; se persistir, avise o suporte.",
     "noLocalPassword": "Conta sem senha local; use o fluxo de convite ou provedor.",
     "wrongCurrentPassword": "Senha atual incorreta.",
     "forbiddenTenantAccess": "Sem acesso a este tenant.",

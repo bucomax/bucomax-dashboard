@@ -56,6 +56,7 @@ export async function POST(request: Request) {
     tenantId,
     originalFileName: parsed.data.fileName,
     clientId: parsed.data.clientId,
+    category: parsed.data.purpose === "avatar" ? "avatars" : undefined,
   });
   const uploadUrl = await presignPutObject(key, parsed.data.mimeType);
 
