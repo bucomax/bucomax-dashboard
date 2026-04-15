@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
 import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import {
@@ -16,6 +17,9 @@ import {
 import { postFileRegisterBodySchema } from "@/lib/validators/file";
 
 export const dynamic = "force-dynamic";
+
+/** Evita que leitura/hash no GCS trave a função serverless (Vercel) indefinidamente → 500/504. */
+const GCS_SHA256_REGISTER_TIMEOUT_MS = 20_000;
 
 /**
  * Registra metadados após upload via URL pré-assinada (`POST /files/presign`).
@@ -65,50 +69,68 @@ export async function POST(request: Request) {
     }
   }
 
-  const sha256Hash = await computeSha256HexForGcsObjectKey(parsed.data.key);
+  try {
+    let sha256Hash: string | null = null;
+    try {
+      sha256Hash = await Promise.race([
+        computeSha256HexForGcsObjectKey(parsed.data.key),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), GCS_SHA256_REGISTER_TIMEOUT_MS)),
+      ]);
+    } catch {
+      sha256Hash = null;
+    }
 
-  const asset = await prisma.fileAsset.create({
-    data: {
-      tenantId,
-      r2Key: parsed.data.key,
-      fileName: parsed.data.fileName,
-      mimeType: parsed.data.mimeType,
-      sizeBytes: parsed.data.sizeBytes,
-      uploadedById: userId,
-      clientId: parsed.data.clientId ?? null,
-      sha256Hash,
-    },
-    select: {
-      id: true,
-      r2Key: true,
-      fileName: true,
-      mimeType: true,
-      sizeBytes: true,
-      sha256Hash: true,
-      clientId: true,
-      createdAt: true,
-    },
-  });
-
-  if (asset.clientId) {
-    await recordAuditEvent(prisma, {
-      tenantId,
-      clientId: asset.clientId,
-      patientPathwayId: null,
-      actorUserId: userId,
-      type: AuditEventType.FILE_UPLOADED_TO_CLIENT,
-      payload: { fileAssetId: asset.id, mimeType: asset.mimeType },
-    });
-  }
-
-  return jsonSuccess(
-    {
-      file: {
-        ...asset,
-        publicUrl: publicUrlForKey(asset.r2Key),
-        createdAt: asset.createdAt.toISOString(),
+    const asset = await prisma.fileAsset.create({
+      data: {
+        tenantId,
+        r2Key: parsed.data.key,
+        fileName: parsed.data.fileName,
+        mimeType: parsed.data.mimeType,
+        sizeBytes: parsed.data.sizeBytes,
+        uploadedById: userId,
+        clientId: parsed.data.clientId ?? null,
+        sha256Hash,
       },
-    },
-    { status: 201 },
-  );
+      select: {
+        id: true,
+        r2Key: true,
+        fileName: true,
+        mimeType: true,
+        sizeBytes: true,
+        sha256Hash: true,
+        clientId: true,
+        createdAt: true,
+      },
+    });
+
+    if (asset.clientId) {
+      await recordAuditEvent(prisma, {
+        tenantId,
+        clientId: asset.clientId,
+        patientPathwayId: null,
+        actorUserId: userId,
+        type: AuditEventType.FILE_UPLOADED_TO_CLIENT,
+        payload: { fileAssetId: asset.id, mimeType: asset.mimeType },
+      });
+    }
+
+    return jsonSuccess(
+      {
+        file: {
+          ...asset,
+          publicUrl: publicUrlForKey(asset.r2Key),
+          createdAt: asset.createdAt.toISOString(),
+        },
+      },
+      { status: 201 },
+    );
+  } catch (err) {
+    console.error("[POST /api/v1/files]", err);
+    if (err instanceof Prisma.PrismaClientKnownRequestError) {
+      if (err.code === "P2002") {
+        return jsonError("CONFLICT", apiT("errors.fileAlreadyRegistered"), 409);
+      }
+    }
+    return jsonError("INTERNAL_ERROR", apiT("errors.internalError"), 500);
+  }
 }

@@ -1,5 +1,6 @@
 {
   "errors": {
+    "internalError": "Erro interno ao processar o pedido. Tente de novo em instantes.",
     "invalidJson": "Corpo JSON inválido.",
     "pathwayNotFound": "Jornada não encontrada.",
     "pathwayVersionNotFound": "Versão não encontrada.",

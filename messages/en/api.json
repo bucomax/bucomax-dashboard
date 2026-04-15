@@ -1,5 +1,6 @@
 {
   "errors": {
+    "internalError": "Something went wrong. Please try again shortly.",
     "invalidJson": "Invalid JSON body.",
     "pathwayNotFound": "Care pathway not found.",
     "pathwayVersionNotFound": "Version not found.",
