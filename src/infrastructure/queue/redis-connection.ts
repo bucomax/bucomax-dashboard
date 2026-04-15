@@ -60,7 +60,7 @@ function createConnection(): IORedis {
     maxRetriesPerRequest: null,
     enableReadyCheck: true,
     lazyConnect: true,
-    enableOfflineQueue: false,
+    enableOfflineQueue: true,
     connectTimeout: 5_000,
     retryStrategy(times) {
       const cap = 8;
@@ -76,7 +76,7 @@ function createConnection(): IORedis {
     },
   });
   conn.on("error", () => {
-    /* Evita "Unhandled error event" do ioredis com enableOfflineQueue: false; reconexão via retryStrategy. */
+    /* Evita "Unhandled error event" do ioredis; reconexão via retryStrategy. */
   });
   return conn;
 }
@@ -93,6 +93,8 @@ function getOrCreate(slot: ConnectionSlot): IORedis {
   let conn = pool.get(slot);
   if (!conn) {
     conn = createConnection();
+    // lazyConnect: true — initiate connection on first use, not on import
+    conn.connect().catch(() => {});
     pool.set(slot, conn);
   }
   return conn;
@@ -114,6 +116,7 @@ export function getWorkerRedisConnection(): IORedis | null {
 export function createSubscriberConnection(): IORedis | null {
   if (!isRedisEnabled() || isRedisCircuitOpen()) return null;
   const conn = createConnection();
+  conn.connect().catch(() => {});
   standaloneSubscribers.add(conn);
   conn.once("end", () => standaloneSubscribers.delete(conn));
   return conn;

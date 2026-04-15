@@ -611,7 +611,7 @@
         ],
         "responses": {
           "200": {
-            "description": "`data[]`: id, fileName, mimeType, sizeBytes, createdAt, `sha256Hash` (hex ou null), patientPortalReviewStatus, uploadedBy opcional; + `pagination`"
+            "description": "`data[]`: id, fileName, mimeType, sizeBytes, createdAt, `sha256Hash` (hex ou null), patientPortalReviewStatus, `patientPortalRejectReason` (texto do audit quando REJECTED; senão null), uploadedBy opcional; + `pagination`"
           },
           "404": { "description": "Paciente não encontrado" },
           "422": { "description": "Query inválida" }

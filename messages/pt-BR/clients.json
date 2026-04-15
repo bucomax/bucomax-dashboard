@@ -289,6 +289,11 @@
       "uploadedByPortal": "Enviado pelo portal do paciente",
       "statusPending": "Aguardando validação da clínica",
       "statusRejected": "Recusado na validação",
+      "rejectReasonTooltip": "Ver motivo da recusa",
+      "rejectReasonDialogTitle": "Motivo da recusa",
+      "rejectReasonDialogDescription": "Documento «{fileName}»",
+      "rejectReasonEmpty": "Nenhum motivo foi informado ao recusar este documento.",
+      "rejectReasonClose": "Fechar",
       "approve": "Aceitar",
       "reject": "Recusar",
       "rejectDialogTitle": "Recusar documento",
@@ -299,10 +304,7 @@
       "reviewRejectSuccess": "Documento recusado.",
       "range": "Mostrando {from}–{to} de {total}",
       "prev": "Anterior",
-      "next": "Próxima",
-      "sha256Integrity": "SHA-256",
-      "copySha256": "Copiar hash SHA-256 completo",
-      "sha256Copied": "Hash copiado."
+      "next": "Próxima"
     },
     "sla": {
       "ok": "No prazo",

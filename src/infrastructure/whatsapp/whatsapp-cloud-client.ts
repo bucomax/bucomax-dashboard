@@ -139,6 +139,33 @@ export async function sendInteractiveButtonMessage(
 }
 
 /**
+ * Send a plain text message.
+ * Returns the WhatsApp message ID (wamid).
+ */
+export async function sendTextMessage(
+  phoneNumberId: string,
+  accessToken: string,
+  to: string,
+  text: string,
+): Promise<string> {
+  const url = `${BASE_URL}/${phoneNumberId}/messages`;
+  const payload = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to,
+    type: "text",
+    text: { preview_url: false, body: text },
+  };
+
+  const data = await metaFetch<SendMessageResponse>(url, accessToken, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+
+  return data.messages[0].id;
+}
+
+/**
  * Fetches phone number info — useful to validate credentials.
  */
 export async function getPhoneNumberInfo(

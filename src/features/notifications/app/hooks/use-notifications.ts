@@ -16,6 +16,47 @@ const SSE_RECONNECT_MS = 5_000;
 const POLL_INTERVAL_MS = 30_000;
 const MAX_SSE_FAILURES = 3;
 
+function resolveNotificationUrl(type: string, metadata: Record<string, unknown> | null): string | null {
+  const clientId = metadata?.clientId as string | undefined;
+  if (!clientId) return null;
+  if (type === "patient_portal_file_pending") return `/dashboard/clients/${clientId}?tab=files`;
+  return `/dashboard/clients/${clientId}`;
+}
+
+function alertUserOfNotification(notification: NotificationDto): void {
+  // 1. Toast in-app (sempre)
+  const meta = notification.metadata as Record<string, unknown> | null;
+  const url = resolveNotificationUrl(notification.type, meta);
+  if (url) {
+    toast(notification.title, {
+      description: notification.body ?? undefined,
+      action: { label: "Ver", onClick: () => { window.location.href = url; } },
+    });
+  } else {
+    toast(notification.title, {
+      description: notification.body ?? undefined,
+    });
+  }
+
+  // 2. Browser Notification (se permissão concedida)
+  if (typeof window === "undefined" || !("Notification" in window)) return;
+  if (Notification.permission !== "granted") return;
+
+  try {
+    const n = new Notification(notification.title, {
+      body: notification.body ?? undefined,
+      icon: "/icon-192x192.png",
+      tag: notification.id,
+    });
+    if (url) {
+      n.onclick = () => {
+        window.focus();
+        window.location.href = url;
+      };
+    }
+  } catch { /* silent — browser may block */ }
+}
+
 export function useNotifications() {
   const t = useTranslations("notifications.bell");
   const [unreadCount, setUnreadCount] = useState(0);
@@ -30,10 +71,29 @@ export function useNotifications() {
   const sseFailuresRef = useRef(0);
   const usingPollingRef = useRef(false);
 
+  const prevUnreadRef = useRef(-1);
+
   const fetchUnreadCount = useCallback(async () => {
     try {
       const count = await getUnreadCount();
+      const prev = prevUnreadRef.current;
+      prevUnreadRef.current = count;
       setUnreadCount(count);
+
+      // Se o count aumentou durante polling (ignora a primeira carga com prev === -1)
+      if (prev >= 0 && count > prev) {
+        try {
+          const result = await getNotifications({ limit: 1 });
+          const newest = result.data[0];
+          if (newest && !newest.readAt) {
+            setItems((current) => {
+              if (current.some((n) => n.id === newest.id)) return current;
+              return [newest, ...current];
+            });
+            alertUserOfNotification(newest);
+          }
+        } catch { /* silent */ }
+      }
     } catch { /* silent */ }
   }, []);
 
@@ -67,6 +127,7 @@ export function useNotifications() {
       try {
         const data = JSON.parse(e.data) as { count: number };
         setUnreadCount(data.count);
+        prevUnreadRef.current = data.count;
         sseFailuresRef.current = 0;
       } catch { /* ignore */ }
     });
@@ -77,6 +138,7 @@ export function useNotifications() {
         setUnreadCount((prev) => prev + 1);
         setItems((prev) => [notification, ...prev]);
         sseFailuresRef.current = 0;
+        alertUserOfNotification(notification);
       } catch { /* ignore */ }
     });
 

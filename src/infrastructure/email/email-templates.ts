@@ -316,3 +316,64 @@ export function getPatientPortalOtpHtml(params: {
   `;
   return baseLayout(content, `Código do portal — ${escapeHtmlText(params.clinicName)}`);
 }
+
+/** Paciente: resultado da revisao de arquivo enviado pelo portal (aprovado ou rejeitado). */
+export function getFileReviewResultPatientHtml(params: {
+  patientName: string;
+  clinicName: string;
+  fileName: string;
+  decision: "approve" | "reject";
+  rejectReason?: string;
+  portalUrl: string;
+}): string {
+  const first = params.patientName.trim().split(/\s+/)[0] || params.patientName.trim();
+  const greeting = escapeHtmlText(first);
+  const clinic = escapeHtmlText(params.clinicName);
+  const file = escapeHtmlText(params.fileName);
+
+  const isApproved = params.decision === "approve";
+  const title = isApproved
+    ? "Documento aprovado"
+    : "Documento precisa de ajustes";
+  const preheader = isApproved
+    ? `Documento aprovado — ${clinic}`
+    : `Documento precisa de ajustes — ${clinic}`;
+
+  const statusBlock = isApproved
+    ? `<p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+        Seu documento <strong>${file}</strong> foi <strong style="color: #22c55e;">aprovado</strong> pela equipe da <strong>${clinic}</strong>.
+      </p>`
+    : `<p style="margin: 0 0 8px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+        Seu documento <strong>${file}</strong> foi <strong style="color: #ef4444;">devolvido para ajustes</strong> pela equipe da <strong>${clinic}</strong>.
+      </p>
+      ${
+        params.rejectReason?.trim()
+          ? `<p style="margin: 0 0 16px; font-size: 14px; color: ${BRAND.textMuted}; line-height: 1.6; padding: 12px 16px; background-color: #18181b; border-radius: 8px; border: 1px solid ${BRAND.border};">
+              <strong style="color: ${BRAND.text};">Motivo:</strong> ${escapeHtmlText(params.rejectReason.trim())}
+            </p>`
+          : ""
+      }`;
+
+  const ctaLabel = isApproved ? "Abrir portal do paciente" : "Enviar documento corrigido";
+
+  const content = `
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND.text}; line-height: 1.3;">
+      ${title}
+    </h1>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      Ola, ${greeting}!
+    </p>
+    ${statusBlock}
+    ${ctaButton(params.portalUrl, ctaLabel)}
+    <p style="margin: 16px 0 0; font-size: 13px; color: ${BRAND.textMuted}; line-height: 1.5;">
+      Ou copie o link:
+    </p>
+    <p style="margin: 4px 0 0; font-size: 12px; color: ${BRAND.textMuted}; word-break: break-all;">
+      <a href="${params.portalUrl}" style="color: ${BRAND.link}; text-decoration: underline;">${params.portalUrl}</a>
+    </p>
+    <p style="margin: 24px 0 0; padding-top: 20px; border-top: 1px solid ${BRAND.border}; font-size: 12px; color: ${BRAND.textMuted}; line-height: 1.5;">
+      Este e-mail foi enviado porque voce enviou um documento pelo portal da clinica no Bucomax. Se nao reconhece esta acao, ignore esta mensagem.
+    </p>
+  `;
+  return baseLayout(content, preheader);
+}

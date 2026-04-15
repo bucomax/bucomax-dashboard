@@ -1,6 +1,7 @@
 "use client";
 
 import { NotificationBell } from "@/features/notifications/app/components/notification-bell";
+import { NotificationPermissionBanner } from "@/features/notifications/app/components/notification-permission-banner";
 import { DashboardBreadcrumb } from "@/shared/components/layout/dashboard-breadcrumb";
 import { LocaleSwitcher } from "@/shared/components/layout/locale-switcher";
 import { Separator } from "@/shared/components/ui/separator";
@@ -40,6 +41,7 @@ export function AppShell({ children, user }: AppShellProps) {
             <ThemeToggle />
           </div>
         </header>
+        <NotificationPermissionBanner />
         <div className="bg-muted/40 flex min-h-[calc(100svh-3.5rem)] flex-1 flex-col gap-4 p-4 md:p-6 dark:bg-muted/25">
           {children}
         </div>

@@ -17,6 +17,11 @@ export type ClientFileListItemDto = {
   /** Hex SHA-256 do objeto no GCS após upload; null se não calculado (ex.: storage indisponível). */
   sha256Hash: string | null;
   patientPortalReviewStatus: PatientPortalFileReviewStatusDto;
+  /**
+   * Motivo opcional gravado na recusa (payload do último `PATIENT_PORTAL_FILE_REJECTED` no audit).
+   * Só é buscado quando o status é `REJECTED`; caso contrário `null`.
+   */
+  patientPortalRejectReason: string | null;
   uploadedBy: { id: string; name: string | null; email: string } | null;
 };
 

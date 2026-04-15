@@ -289,6 +289,11 @@
       "uploadedByPortal": "Uploaded via patient portal",
       "statusPending": "Awaiting clinic validation",
       "statusRejected": "Rejected in review",
+      "rejectReasonTooltip": "See rejection reason",
+      "rejectReasonDialogTitle": "Rejection reason",
+      "rejectReasonDialogDescription": "File «{fileName}»",
+      "rejectReasonEmpty": "No reason was provided when this document was rejected.",
+      "rejectReasonClose": "Close",
       "approve": "Accept",
       "reject": "Reject",
       "rejectDialogTitle": "Reject document",
@@ -299,10 +304,7 @@
       "reviewRejectSuccess": "Document rejected.",
       "range": "Showing {from}–{to} of {total}",
       "prev": "Previous",
-      "next": "Next",
-      "sha256Integrity": "SHA-256",
-      "copySha256": "Copy full SHA-256 hash",
-      "sha256Copied": "Hash copied."
+      "next": "Next"
     },
     "sla": {
       "ok": "On track",

@@ -11,7 +11,6 @@ import { listTenants, setActiveTenant } from "@/shared/services/tenant.service";
 import type { TenantListItem } from "@/shared/types/tenant";
 import { Building2, Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 type TenantSwitcherProps = {
@@ -20,7 +19,6 @@ type TenantSwitcherProps = {
 
 export function TenantSwitcher({ activeTenantId }: TenantSwitcherProps) {
   const { update } = useSession();
-  const router = useRouter();
   const [tenants, setTenants] = useState<TenantListItem[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -50,7 +48,8 @@ export function TenantSwitcher({ activeTenantId }: TenantSwitcherProps) {
     try {
       await setActiveTenant(tenantId);
       await update();
-      router.refresh();
+      // Hard reload para descartar todo estado client-side do tenant anterior
+      window.location.replace("/dashboard");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Falha ao trocar tenant";
       setLoadError(msg);

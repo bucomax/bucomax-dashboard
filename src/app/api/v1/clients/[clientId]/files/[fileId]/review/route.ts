@@ -1,6 +1,7 @@
 import { AuditEventType, PatientPortalFileReviewStatus } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
 import { recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
+import { notifyPatientFileReviewed } from "@/infrastructure/email/notify-patient-file-reviewed";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
@@ -52,6 +53,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     where: { id: fileId, clientId, tenantId },
     select: {
       id: true,
+      fileName: true,
       mimeType: true,
       patientPortalReviewStatus: true,
     },
@@ -95,6 +97,15 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
             },
     });
   });
+
+  // Fire-and-forget: notifica paciente por e-mail e/ou WhatsApp
+  notifyPatientFileReviewed({
+    tenantId,
+    clientId,
+    fileName: asset.fileName,
+    decision: parsed.data.decision,
+    rejectReason: parsed.data.decision === "reject" ? parsed.data.rejectReason : undefined,
+  }).catch((err) => console.error("[file-review] notify patient failed:", err));
 
   return jsonSuccess({
     fileId: asset.id,

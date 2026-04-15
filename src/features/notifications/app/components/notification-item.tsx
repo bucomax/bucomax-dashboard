@@ -55,6 +55,16 @@ type NotificationItemProps = {
   onPanelClose?: () => void;
 };
 
+function resolveActionUrl(type: string, metadata: Record<string, unknown> | null): string | null {
+  const clientId = metadata?.clientId as string | undefined;
+  if (!clientId) return null;
+
+  if (type === "patient_portal_file_pending") {
+    return `/dashboard/clients/${clientId}?tab=files`;
+  }
+  return `/dashboard/clients/${clientId}`;
+}
+
 export function NotificationItem({ notification, onMarkRead, onPanelClose }: NotificationItemProps) {
   const t = useTranslations("notifications");
   const isUnread = !notification.readAt;
@@ -62,10 +72,9 @@ export function NotificationItem({ notification, onMarkRead, onPanelClose }: Not
   const iconColor = TYPE_COLORS[notification.type] ?? "text-muted-foreground";
   const relativeTime = useRelativeTime(notification.createdAt);
   const metadata = notification.metadata as Record<string, unknown> | null;
-  const clientId = metadata?.clientId as string | undefined;
-  const isNewPatient = notification.type === "new_patient";
-  const showNewPatientLinkButton = isNewPatient && Boolean(clientId);
-  const wrapFullRowInClientLink = Boolean(clientId) && !isNewPatient;
+  const actionUrl = resolveActionUrl(notification.type, metadata);
+  const showActionButton = Boolean(actionUrl);
+  const wrapFullRowInLink = Boolean(actionUrl) && !showActionButton;
 
   const handleMarkRead = () => {
     if (isUnread) onMarkRead(notification.id);
@@ -80,10 +89,10 @@ export function NotificationItem({ notification, onMarkRead, onPanelClose }: Not
       )}
       onClick={handleMarkRead}
       onKeyDown={
-        showNewPatientLinkButton ? undefined : (e) => e.key === "Enter" && handleMarkRead()
+        showActionButton ? undefined : (e) => e.key === "Enter" && handleMarkRead()
       }
-      role={showNewPatientLinkButton ? undefined : "button"}
-      tabIndex={showNewPatientLinkButton ? undefined : 0}
+      role={showActionButton ? undefined : "button"}
+      tabIndex={showActionButton ? undefined : 0}
     >
       <div className={cn("mt-0.5 shrink-0", iconColor)}>
         <Icon className="h-4 w-4" />
@@ -99,9 +108,9 @@ export function NotificationItem({ notification, onMarkRead, onPanelClose }: Not
         )}
         <p className="text-muted-foreground mt-1 text-[11px]">{relativeTime}</p>
       </div>
-      {showNewPatientLinkButton && clientId ? (
+      {showActionButton && actionUrl ? (
         <Link
-          href={`/dashboard/clients/${clientId}`}
+          href={actionUrl}
           aria-label={t("bell.openPatient")}
           className={cn(
             buttonVariants({ variant: "ghost", size: "icon" }),
@@ -122,9 +131,9 @@ export function NotificationItem({ notification, onMarkRead, onPanelClose }: Not
     </div>
   );
 
-  if (wrapFullRowInClientLink && clientId) {
+  if (wrapFullRowInLink && actionUrl) {
     return (
-      <Link href={`/dashboard/clients/${clientId}`} className="block" onClick={handleMarkRead}>
+      <Link href={actionUrl} className="block" onClick={handleMarkRead}>
         {content}
       </Link>
     );

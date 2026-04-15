@@ -7,7 +7,6 @@ import { deleteClientFile, reviewPatientPortalClientFile } from "@/features/clie
 import { toast } from "@/lib/toast";
 import { displayFileBaseName } from "@/lib/utils/filename-display";
 import { formatFileSize } from "@/lib/utils/format-bytes";
-import { formatSha256Short } from "@/lib/utils/format-hash";
 import { formatListUpdatedAt } from "@/lib/utils/format-list-updated-at";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
@@ -19,12 +18,12 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  Copy,
   ExternalLink,
   FolderOpen,
   Info,
   Loader2,
   RefreshCw,
+  ScrollText,
   Trash2,
   X,
   XCircle,
@@ -49,6 +48,10 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [rejectTarget, setRejectTarget] = useState<{ id: string; fileName: string } | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [rejectReasonInsight, setRejectReasonInsight] = useState<{
+    fileName: string;
+    reason: string | null;
+  } | null>(null);
 
   async function handleOpenDownload(fileId: string) {
     try {
@@ -191,8 +194,10 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
               <li
                 key={f.id}
                 className={cn(
-                  "border-border/80 bg-card/50 flex flex-col gap-3 rounded-xl border px-3.5 py-3 shadow-sm backdrop-blur-sm transition-colors sm:flex-row sm:items-start sm:justify-between",
-                  "hover:border-primary/20 hover:bg-muted/25",
+                  "flex flex-col gap-3 rounded-xl border px-3.5 py-3 shadow-sm backdrop-blur-sm transition-colors sm:flex-row sm:items-start sm:justify-between",
+                  f.patientPortalReviewStatus === "REJECTED"
+                    ? "border-destructive/45 bg-destructive/[0.06] hover:border-destructive/60 hover:bg-destructive/[0.09] dark:border-destructive/50 dark:bg-destructive/15 dark:hover:bg-destructive/20"
+                    : "border-border/80 bg-card/50 hover:border-primary/20 hover:bg-muted/25",
                 )}
               >
                 <div className="min-w-0 flex-1 space-y-1.5">
@@ -208,33 +213,23 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
                       : t("uploadedByPortal")}
                   </p>
                   {f.patientPortalReviewStatus === "PENDING" ? (
-                    <p className="text-amber-600 dark:text-amber-400 text-xs font-medium">{t("statusPending")}</p>
+                    <Alert variant="info" className="border-border/60 bg-muted/25">
+                      <Info className="size-4 shrink-0" aria-hidden />
+                      <AlertDescription className="text-muted-foreground text-sm leading-snug">
+                        {t("statusPending")}
+                      </AlertDescription>
+                    </Alert>
                   ) : null}
                   {f.patientPortalReviewStatus === "REJECTED" ? (
-                    <p className="text-muted-foreground text-xs">{t("statusRejected")}</p>
-                  ) : null}
-                  {f.sha256Hash ? (
-                    <div className="border-border/50 bg-muted/30 flex max-w-full flex-wrap items-center gap-1.5 rounded-md border px-2 py-1.5">
-                      <span className="text-muted-foreground shrink-0 text-[11px] font-medium uppercase tracking-wide">
-                        {t("sha256Integrity")}
-                      </span>
-                      <code className="font-mono text-muted-foreground max-w-[min(100%,16rem)] truncate text-[11px]">
-                        {formatSha256Short(f.sha256Hash)}
-                      </code>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="size-7 shrink-0"
-                        aria-label={t("copySha256")}
-                        onClick={() => {
-                          void navigator.clipboard.writeText(f.sha256Hash!);
-                          toast.success(t("sha256Copied"));
-                        }}
-                      >
-                        <Copy className="size-3.5" />
-                      </Button>
-                    </div>
+                    <Alert
+                      variant="destructive"
+                      className="border-destructive/40 bg-destructive/10 dark:bg-destructive/20"
+                    >
+                      <XCircle className="size-4 shrink-0" aria-hidden />
+                      <AlertDescription className="text-destructive text-sm font-medium leading-snug">
+                        {t("statusRejected")}
+                      </AlertDescription>
+                    </Alert>
                   ) : null}
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
@@ -309,6 +304,33 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
                     />
                     <TooltipContent side="top">{t("openAria")}</TooltipContent>
                   </Tooltip>
+                  {f.patientPortalReviewStatus === "REJECTED" ? (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <span className="inline-flex">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon-sm"
+                              className="border-destructive/40 text-destructive hover:bg-destructive/15 dark:hover:bg-destructive/25"
+                              disabled={downloadingId === f.id || deletingId === f.id}
+                              aria-label={t("rejectReasonTooltip")}
+                              onClick={() =>
+                                setRejectReasonInsight({
+                                  fileName: f.fileName,
+                                  reason: f.patientPortalRejectReason,
+                                })
+                              }
+                            >
+                              <ScrollText className="size-4" aria-hidden />
+                            </Button>
+                          </span>
+                        }
+                      />
+                      <TooltipContent side="top">{t("rejectReasonTooltip")}</TooltipContent>
+                    </Tooltip>
+                  ) : null}
                   <Tooltip>
                     <TooltipTrigger
                       render={
@@ -436,6 +458,36 @@ export function ClientDetailFilesCard({ clientId, onFilesMutated }: ClientDetail
               "border-input bg-transparent placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex w-full resize-none rounded-lg border px-2.5 py-2 text-sm transition-colors outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30",
             )}
           />
+        </StandardDialogContent>
+      </Dialog>
+
+      <Dialog
+        open={rejectReasonInsight !== null}
+        onOpenChange={(open) => {
+          if (!open) setRejectReasonInsight(null);
+        }}
+      >
+        <StandardDialogContent
+          size="sm"
+          title={t("rejectReasonDialogTitle")}
+          description={
+            rejectReasonInsight
+              ? t("rejectReasonDialogDescription", {
+                  fileName: displayFileBaseName(rejectReasonInsight.fileName),
+                })
+              : undefined
+          }
+          footer={
+            <Button type="button" variant="outline" size="sm" onClick={() => setRejectReasonInsight(null)}>
+              {t("rejectReasonClose")}
+            </Button>
+          }
+        >
+          <p className="text-foreground text-sm whitespace-pre-wrap">
+            {rejectReasonInsight?.reason && rejectReasonInsight.reason.trim() !== ""
+              ? rejectReasonInsight.reason
+              : t("rejectReasonEmpty")}
+          </p>
         </StandardDialogContent>
       </Dialog>
 

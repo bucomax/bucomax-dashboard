@@ -1,3 +1,4 @@
+import { AuditEventType, PatientPortalFileReviewStatus } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
@@ -8,6 +9,7 @@ import {
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
+import { latestRejectReasonByFileAssetId } from "@/lib/clients/audit-portal-file-reject-reason";
 import { clientDetailQuerySchema } from "@/lib/validators/client-detail-query";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +68,21 @@ export async function GET(request: Request, ctx: RouteCtx) {
     }),
   ]);
 
+  const hasRejected = rows.some((r) => r.patientPortalReviewStatus === PatientPortalFileReviewStatus.REJECTED);
+  const rejectReasonByFileId = hasRejected
+    ? latestRejectReasonByFileAssetId(
+        await prisma.auditEvent.findMany({
+          where: {
+            tenantId: tenantCtx.tenantId,
+            clientId,
+            type: AuditEventType.PATIENT_PORTAL_FILE_REJECTED,
+          },
+          orderBy: { createdAt: "desc" },
+          select: { payload: true },
+        }),
+      )
+    : new Map<string, string | null>();
+
   return jsonSuccess({
     data: rows.map((r) => ({
       id: r.id,
@@ -75,6 +92,10 @@ export async function GET(request: Request, ctx: RouteCtx) {
       sha256Hash: r.sha256Hash,
       createdAt: r.createdAt.toISOString(),
       patientPortalReviewStatus: r.patientPortalReviewStatus,
+      patientPortalRejectReason:
+        r.patientPortalReviewStatus === PatientPortalFileReviewStatus.REJECTED
+          ? (rejectReasonByFileId.get(r.id) ?? null)
+          : null,
       uploadedBy: r.uploadedBy
         ? {
             id: r.uploadedBy.id,
