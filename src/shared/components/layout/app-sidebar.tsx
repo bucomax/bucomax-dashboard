@@ -22,6 +22,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
+  useSidebar,
 } from "@/shared/components/ui/sidebar";
 import type { AppShellUser } from "@/shared/types/layout";
 import {
@@ -38,6 +39,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { signOut } from "next-auth/react";
+import { useEffect } from "react";
 
 type NavItem = {
   href: string;
@@ -90,16 +92,26 @@ type AppSidebarProps = {
 
 export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
   const t = useTranslations("dashboard");
   const tBrand = useTranslations("global");
   const tShell = useTranslations("dashboard.shell");
   const loginCallback = "/login";
+
+  function closeMobileNav() {
+    if (isMobile) setOpenMobile(false);
+  }
+
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-sidebar-border flex h-14 shrink-0 flex-row items-center border-b px-2 py-0">
         <Link
           href="/dashboard"
+          onClick={closeMobileNav}
           className="flex h-14 w-full items-center gap-2 rounded-md px-2 text-sm font-semibold outline-none ring-sidebar-ring focus-visible:ring-2"
         >
           <Stethoscope className="size-5 shrink-0 text-sidebar-primary" />
@@ -119,7 +131,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
                       <SidebarMenuButton
                         tooltip={label}
                         isActive={item.match(pathname)}
-                        render={<Link href={item.href} />}
+                        render={<Link href={item.href} onClick={closeMobileNav} />}
                       >
                         <item.icon />
                         <span>{label}</span>
@@ -149,7 +161,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
           <DropdownMenuContent side="top" align="start" className="min-w-[14rem]">
             <DropdownMenuItem
               className="cursor-pointer"
-              render={<Link href="/dashboard/settings#account" />}
+              render={<Link href="/dashboard/settings#account" onClick={closeMobileNav} />}
             >
               <UserPen className="size-4" />
               {tShell("editAccount")}
