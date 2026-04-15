@@ -10,7 +10,7 @@ const authMiddleware = withAuth(
     return intlMiddleware(req);
   },
   {
-    callbacks: { authorized: ({ token }) => !!token },
+    callbacks: { authorized: ({ token }) => !!token && token.invalid !== true },
     pages: { signIn: "/login" },
   },
 );

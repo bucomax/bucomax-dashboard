@@ -1,28 +1,33 @@
 "use client";
 
 import { FullScreenLoading } from "@/shared/components/feedback/full-screen-loading";
-import { useSession } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useEffect } from "react";
 
 /**
- * Evita redirect no servidor em /login: em produção, RSC pode “ver” sessão e mandar para
- * /dashboard enquanto o cookie ainda não acompanha o fetch RSC seguinte — loop 307.
- * Com navegação só no cliente após `useSession` estável, o browser envia cookies de forma consistente.
+ * Evita redirect no servidor em /login: em producao, RSC pode "ver" sessao e mandar para
+ * /dashboard enquanto o cookie ainda nao acompanha o fetch RSC seguinte - loop 307.
+ * Com navegacao so no cliente apos `useSession` estavel, o browser envia cookies de forma consistente.
  *
- * Enquanto `status` é `loading` ou `authenticated` (antes do replace), cobre a tela com o mesmo
- * texto do portal na rota /enter (`patientPortal.enter.validating`) — mesma árvore de mensagens
- * já usada no portal e evita chave em `auth` que falhava em runtime (MISSING_MESSAGE).
+ * Quando a sessao esta expirada (ex.: DB resetado), forca signOut para limpar o cookie JWT
+ * e evitar loop de redirect.
  */
 export function RedirectIfAuthenticated({ to = "/dashboard" }: { to?: string }) {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const t = useTranslations("patientPortal");
 
   useEffect(() => {
     if (status === "authenticated") {
+      const isExpired =
+        session?.expires && new Date(session.expires).getTime() < Date.now();
+      if (isExpired) {
+        signOut({ redirect: false });
+        return;
+      }
       window.location.replace(to);
     }
-  }, [status, to]);
+  }, [status, session, to]);
 
   if (status === "loading" || status === "authenticated") {
     return <FullScreenLoading message={t("enter.validating")} />;
