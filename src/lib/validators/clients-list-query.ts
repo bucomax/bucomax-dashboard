@@ -22,7 +22,7 @@ export const clientsListQuerySchema = z.object({
   pathwayId: optionalId,
   stageId: optionalId,
   status: z.enum(["ok", "warning", "danger", "completed"]).optional(),
-  /** `1` ou `true`: ignora `unstable_cache` e lê o banco (p.ex. após excluir paciente). */
+  /** Legado: antes forçava bypass do cache; a listagem já lê sempre do banco. */
   fresh: z
     .string()
     .optional()

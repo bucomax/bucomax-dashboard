@@ -1,8 +1,5 @@
 import { prisma } from "@/infrastructure/database/prisma";
-import {
-  getCachedClientsListPage,
-  getClientsListPageWithoutCache,
-} from "@/infrastructure/cache/cached-clients-list";
+import { getClientsListPageWithoutCache } from "@/infrastructure/cache/cached-clients-list";
 import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-tenant-lists";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
@@ -63,7 +60,7 @@ export async function GET(request: Request) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const { limit, page, q, pathwayId, stageId, status: statusFilter, fresh: freshList } = parsed.data;
+  const { limit, page, q, pathwayId, stageId, status: statusFilter } = parsed.data;
   const offset = (page - 1) * limit;
   const now = new Date();
 
@@ -121,9 +118,9 @@ export async function GET(request: Request) {
     stageId,
   };
 
-  const { items, total } = freshList
-    ? await getClientsListPageWithoutCache(listArgs)
-    : await getCachedClientsListPage(listArgs);
+  // Sem `unstable_cache` aqui: em Vercel/serverless o cache incremental pode falhar ou serializar
+  // mal o payload Prisma → 500 na listagem. A consulta já é leve com índices em `tenantId`.
+  const { items, total } = await getClientsListPageWithoutCache(listArgs);
 
   return jsonSuccess({
     data: items.map((c) => serializeClientListItem(c, now)),

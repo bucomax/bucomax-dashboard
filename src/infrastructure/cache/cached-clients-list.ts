@@ -60,9 +60,8 @@ export async function getClientsListPageWithoutCache(args: CachedClientsListArgs
 }
 
 /**
- * Listagem paginada de clientes com `unstable_cache`:
- * - várias requisições com a mesma chave no TTL fazem **single-flight** (mitiga stampede no miss);
- * - SLA (`daysInStage` / status) é recalculado na resposta com `now` atual após reidratar `Date`.
+ * Listagem com `unstable_cache` (não usada em `GET /api/v1/clients` na Vercel — ver rota).
+ * Mantida para testes locais ou reativação futura com cuidado com serialização pós-cache.
  *
  * O filtro `status` (SLA em memória) **não** passa por aqui — continua sem cache no route.
  */

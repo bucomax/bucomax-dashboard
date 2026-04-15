@@ -35,47 +35,18 @@ gsutil ls -p bucomax
 
 O upload usa URL pré-assinada (v4); o browser faz **PUT** na URL do GCS. As origens permitidas ficam na configuração **CORS** do bucket.
 
-### Produção (estado atual)
+### Produção (referência no repo)
 
-Consulta: `gsutil cors get gs://bucomax-prod-files`
+Arquivo versionado: `scripts/gcs/cors-bucomax-prod-files.json` (origens: `bucomax.com.br`, wildcard `*.bucomax.com.br`, `https://bucomax-dashboard.vercel.app`).
 
-```json
-[
-  {
-    "maxAgeSeconds": 3600,
-    "method": ["GET", "PUT", "HEAD"],
-    "origin": [
-      "https://*.bucomax.com.br",
-      "https://bucomax.com.br"
-    ],
-    "responseHeader": ["Content-Type", "Content-Length", "x-goog-resumable"]
-  }
-]
-```
+Consulta atual: `gsutil cors get gs://bucomax-prod-files`
 
-**Vercel:** se o app em produção for servido em `https://<projeto>.vercel.app` ou em outro host que **não** esteja na lista acima, é necessário **incluir essa origem** no CORS do bucket de prod; caso contrário o PUT do upload pode falhar por CORS.
+**Vercel:** o host do app precisa estar em `origin` ou o **upload direto** (PUT na URL pré-assinada) falha por CORS no browser. Isso **não** corrige erro HTTP 500 em rotas API do Next (ex.: listagem de pacientes), que é outro fluxo.
 
-Exemplo de arquivo `cors.json` (ajuste `origin` ao seu caso):
-
-```json
-[
-  {
-    "maxAgeSeconds": 3600,
-    "method": ["GET", "PUT", "HEAD"],
-    "origin": [
-      "https://bucomax.com.br",
-      "https://*.bucomax.com.br",
-      "https://SEU-APP.vercel.app"
-    ],
-    "responseHeader": ["Content-Type", "Content-Length", "x-goog-resumable"]
-  }
-]
-```
-
-Aplicar:
+Aplicar / atualizar:
 
 ```bash
-gsutil cors set cors.json gs://bucomax-prod-files
+gsutil cors set scripts/gcs/cors-bucomax-prod-files.json gs://bucomax-prod-files
 ```
 
 ### Desenvolvimento (referência)
