@@ -1,32 +1,13 @@
 import { resolvePublishedPathwayVersion } from "@/infrastructure/database/pathway-published";
-import { prisma } from "@/infrastructure/database/prisma";
-import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { buildKanbanClientWhereForSession } from "@/lib/auth/client-visibility";
+import { buildKanbanClientWhereForSession } from "@/application/use-cases/shared/load-client-visibility-scope";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
-import { computeSlaHealthStatus } from "@/lib/pathway/sla-health";
 import { kanbanColumnPatientsQuerySchema } from "@/lib/validators/kanban";
-import type { Prisma } from "@prisma/client";
+import { loadKanbanColumnPatientsPage } from "@/application/use-cases/pathway/load-kanban-column-patients";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ pathwayId: string; stageId: string }> };
-
-const patientInclude = {
-  client: { select: { id: true, name: true, phone: true } },
-  currentStage: {
-    select: {
-      id: true,
-      stageKey: true,
-      name: true,
-      sortOrder: true,
-      alertWarningDays: true,
-      alertCriticalDays: true,
-    },
-  },
-  currentStageAssignee: { select: { id: true, name: true, email: true } },
-} satisfies Prisma.PatientPathwayInclude;
 
 /** Paginação por página (`page` 1-based). Sem filtro `status` — use o Kanban agregado para filtrar por SLA. */
 export async function GET(request: Request, ctx: RouteCtx) {
@@ -51,7 +32,6 @@ export async function GET(request: Request, ctx: RouteCtx) {
   }
   const { search: searchRaw, limit, page, opmeSupplierId } = parsed.data;
   const search = searchRaw ?? "";
-  const offset = (page - 1) * limit;
 
   const resolved = await resolvePublishedPathwayVersion(tenantCtx.tenantId, pathwayId);
   if (resolved.outcome === "PATHWAY_NOT_FOUND") {
@@ -62,13 +42,6 @@ export async function GET(request: Request, ctx: RouteCtx) {
   }
   const { version } = resolved;
 
-  const stage = version.stages.find((s) => s.id === stageId);
-  if (!stage) {
-    return jsonError("NOT_FOUND", apiT("errors.stageNotInPublishedVersion"), 404);
-  }
-
-  const now = new Date();
-
   const clientWhere = await buildKanbanClientWhereForSession(
     auth.session!,
     tenantCtx.tenantId,
@@ -76,47 +49,22 @@ export async function GET(request: Request, ctx: RouteCtx) {
     opmeSupplierId,
   );
 
-  const listWhere: Prisma.PatientPathwayWhereInput = {
+  const result = await loadKanbanColumnPatientsPage({
     tenantId: tenantCtx.tenantId,
     pathwayId,
-    pathwayVersionId: version.id,
-    currentStageId: stageId,
-    completedAt: null,
-    client: clientWhere,
-  };
+    stageId,
+    version,
+    clientWhere,
+    page,
+    limit,
+  });
 
-  const [totalItems, raw] = await Promise.all([
-    prisma.patientPathway.count({ where: listWhere }),
-    prisma.patientPathway.findMany({
-      where: listWhere,
-      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-      skip: offset,
-      take: limit,
-      include: patientInclude,
-    }),
-  ]);
+  if (!result.ok) {
+    return jsonError("NOT_FOUND", apiT("errors.stageNotInPublishedVersion"), 404);
+  }
 
   return jsonSuccess({
-    data: raw.map((pp) => ({
-      id: pp.id,
-      enteredStageAt: pp.enteredStageAt.toISOString(),
-      slaStatus: computeSlaHealthStatus(
-        pp.enteredStageAt,
-        now,
-        pp.currentStage.alertWarningDays,
-        pp.currentStage.alertCriticalDays,
-      ),
-      client: pp.client,
-      currentStage: pp.currentStage,
-      currentStageAssignee: pp.currentStageAssignee
-        ? {
-            id: pp.currentStageAssignee.id,
-            name: pp.currentStageAssignee.name,
-            email: pp.currentStageAssignee.email,
-          }
-        : null,
-      updatedAt: pp.updatedAt.toISOString(),
-    })),
-    pagination: buildPagination(page, limit, totalItems),
+    data: result.data,
+    pagination: result.pagination,
   });
 }

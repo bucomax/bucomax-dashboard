@@ -23,6 +23,18 @@ export function formatDateShort(iso: string, locale = "pt-BR"): string {
   }).format(date);
 }
 
+export function formatDateTimeShort(iso: string, locale = "pt-BR"): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
+
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
+
 export function calendarDaysFromNow(iso: string): number {
   const source = new Date(iso);
   if (Number.isNaN(source.getTime())) {

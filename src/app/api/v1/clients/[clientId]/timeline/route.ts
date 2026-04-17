@@ -1,18 +1,16 @@
-import { prisma } from "@/infrastructure/database/prisma";
-import { buildClientTimelinePage } from "@/lib/clients/client-timeline";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
+import { findTenantClientVisibleToSession } from "@/application/use-cases/shared/load-client-visibility-scope";
+import { loadStaffClientTimelinePage } from "@/application/use-cases/client/load-staff-client-timeline-page";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
 import { clientTimelineQuerySchema } from "@/lib/validators/client-timeline-query";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ clientId: string }> };
 
 export async function GET(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);
@@ -47,7 +45,11 @@ export async function GET(request: Request, ctx: RouteCtx) {
   const categoryFilter =
     categories != null && categories.length > 0 ? new Set(categories) : null;
 
-  const data = await buildClientTimelinePage(prisma, tenantCtx.tenantId, clientId, page, limit, {
+  const data = await loadStaffClientTimelinePage({
+    tenantId: tenantCtx.tenantId,
+    clientId,
+    page,
+    limit,
     categoryFilter,
   });
   return jsonSuccess(data);

@@ -6,6 +6,20 @@ import type {
 } from "@/types/api/clients-v1";
 import type { PatientPortalFileReviewStatusDto } from "@/types/api/files-v1";
 
+/** Campos mínimos do Client para lookup no login público do portal (CPF ou e-mail). */
+export type PortalClientForLogin = {
+  id: string;
+  email: string | null;
+  phone: string;
+  name: string;
+  documentId: string | null;
+  isMinor: boolean;
+  guardianPhone: string | null;
+  guardianEmail: string | null;
+  portalPasswordHash: string | null;
+  portalPasswordChangedAt: Date | null;
+};
+
 /** `GET /api/v1/patient/detail` — mesma forma que a ficha interna; campos operacionais da equipe vêm nulos + contexto da clínica. */
 export type PatientPortalDetailResponseData = ClientDetailResponseData & {
   tenant: { name: string };

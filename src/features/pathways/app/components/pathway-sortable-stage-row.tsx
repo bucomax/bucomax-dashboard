@@ -9,7 +9,7 @@ import { PathwayStageChecklistBlock } from "@/features/pathways/app/components/p
 import { PathwayStageDefaultAssigneesField } from "@/features/pathways/app/components/pathway-stage-default-assignees-field";
 import { PathwayStageDocumentsBlock } from "@/features/pathways/app/components/pathway-stage-documents-block";
 import type { PathwaySortableStageRowProps } from "@/features/pathways/app/types/column-editor";
-import { normalizeStageDefaultAssigneeUserIds } from "@/lib/pathway/graph";
+import { normalizeStageDefaultAssigneeUserIds } from "@/domain/pathway/graph-normalizer";
 import { cn } from "@/lib/utils";
 import { Button } from "@/shared/components/ui/button";
 import { Field, FieldLabel } from "@/shared/components/ui/field";

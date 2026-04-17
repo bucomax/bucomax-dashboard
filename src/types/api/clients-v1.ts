@@ -1,6 +1,6 @@
 import type { GuardianRelationship, PatientPreferredChannel } from "@prisma/client";
 import type { ApiPagination } from "@/lib/api/pagination";
-import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
+import type { SlaHealthStatus } from "@/domain/pathway/sla-health";
 import {
   patchClientBodySchema,
   postClientBodySchema,
@@ -291,6 +291,33 @@ export type ClientTimelineLegacyItemDto = ClientTimelineLegacyTransitionDto & {
 };
 
 export type ClientTimelineItemDto = ClientTimelineAuditItemDto | ClientTimelineLegacyItemDto;
+
+/** Linhas brutas para `mergeClientTimelinePage` (fetch no repositório). */
+export type ClientTimelineMergeAuditRow = {
+  id: string;
+  type: ClientTimelineAuditEventType;
+  createdAt: Date;
+  payload: unknown;
+  patientPathwayId: string | null;
+  actor: { id: string; name: string | null; email: string } | null;
+};
+
+export type ClientTimelineMergeTransitionRow = {
+  id: string;
+  patientPathwayId: string;
+  createdAt: Date;
+  note: string | null;
+  ruleOverrideReason: string | null;
+  fromStage: { id: string; name: string; stageKey: string } | null;
+  toStage: { id: string; name: string; stageKey: string };
+  actor: { id: string; name: string | null; email: string };
+  forcedByUser: { id: string; name: string | null; email: string } | null;
+};
+
+export type ClientTimelineMergeSources = {
+  audits: ClientTimelineMergeAuditRow[];
+  transitions: ClientTimelineMergeTransitionRow[];
+};
 
 /** `GET /api/v1/clients/:id/timeline` — `AuditEvent` + `StageTransition` deduplicados por `transitionId`. */
 export type ClientTimelineResponseData = {

@@ -1,15 +1,11 @@
-import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { prisma } from "@/infrastructure/database/prisma";
-import { isGcsConfigured, presignGetObject } from "@/infrastructure/storage/gcs-storage";
+import { isGcsConfigured } from "@/infrastructure/storage/gcs-storage";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { requireActivePatientPortalClient } from "@/lib/auth/patient-portal-request";
-import { patientPortalFileIsDownloadableByPatient } from "@/lib/clients/patient-portal-file-access";
+import { runPresignPatientPortalFileDownload } from "@/application/use-cases/patient-portal/presign-patient-portal-file-download";
 import { patientPortalFileDownloadPresignBodySchema } from "@/lib/validators/patient-portal-files";
 
 export const dynamic = "force-dynamic";
-
-const DOWNLOAD_URL_TTL_SECONDS = 300;
 
 export async function POST(request: Request) {
   const apiT = await getApiT(request);
@@ -34,31 +30,21 @@ export async function POST(request: Request) {
 
   const { tenantId, clientId } = portalCtx.data.portal;
 
-  const asset = await prisma.fileAsset.findFirst({
-    where: { id: parsed.data.fileId, tenantId, clientId },
-    select: { id: true, r2Key: true, patientPortalReviewStatus: true },
+  const result = await runPresignPatientPortalFileDownload({
+    tenantId,
+    clientId,
+    fileId: parsed.data.fileId,
   });
-  if (!asset) {
-    return jsonError("NOT_FOUND", apiT("errors.fileNotFound"), 404);
-  }
 
-  if (!patientPortalFileIsDownloadableByPatient(asset.patientPortalReviewStatus)) {
+  if (!result.ok) {
+    if (result.code === "NOT_FOUND") {
+      return jsonError("NOT_FOUND", apiT("errors.fileNotFound"), 404);
+    }
     return jsonError("FORBIDDEN", apiT("errors.patientPortalFileNotAvailable"), 403);
   }
 
-  const downloadUrl = await presignGetObject(asset.r2Key, DOWNLOAD_URL_TTL_SECONDS);
-
-  await recordAuditEvent(prisma, {
-    tenantId,
-    clientId,
-    patientPathwayId: null,
-    actorUserId: null,
-    type: AuditEventType.FILE_DOWNLOADED_BY_PATIENT,
-    payload: { fileAssetId: asset.id, clientId },
-  });
-
   return jsonSuccess({
-    downloadUrl,
-    expiresInSeconds: DOWNLOAD_URL_TTL_SECONDS,
+    downloadUrl: result.downloadUrl,
+    expiresInSeconds: result.expiresInSeconds,
   });
 }

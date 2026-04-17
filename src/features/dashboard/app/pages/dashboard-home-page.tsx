@@ -1,6 +1,7 @@
 import { DashboardWeeklyActivityChart } from "@/features/dashboard/app/components/dashboard-weekly-activity-chart";
 import { DashboardPipelineSection } from "@/features/dashboard/app/components/dashboard-pipeline-section";
-import { prisma } from "@/infrastructure/database/prisma";
+import { getDashboardHomeMetrics } from "@/application/use-cases/dashboard/get-dashboard-home-metrics";
+import { dashboardHomePrismaRepository } from "@/infrastructure/repositories/dashboard-home.repository";
 import { DashboardPage } from "@/shared/components/layout/dashboard-page";
 import type { AppShellUser } from "@/shared/types/layout";
 import { Skeleton } from "@/shared/components/ui/skeleton";
@@ -13,11 +14,8 @@ import {
   Users,
 } from "lucide-react";
 import {
-  calendarDayKeyInTimeZone,
   DASHBOARD_CHART_TIMEZONE,
   formatCalendarDayLongLabel,
-  lastNCalendarDaysInTimeZone,
-  startOfSaoPauloCalendarDay,
 } from "@/lib/utils/dashboard-chart-calendar";
 import { InfoTooltip } from "@/shared/components/ui/info-tooltip";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -33,155 +31,36 @@ export async function DashboardHomePage({ user }: DashboardHomePageProps) {
   const weekdayLocale = locale === "en" ? "en-US" : "pt-BR";
   const tenantId = user.tenantId ?? null;
 
-  const now = new Date();
-  const todayKeySp = calendarDayKeyInTimeZone(now, DASHBOARD_CHART_TIMEZONE);
-  const startTodaySp = startOfSaoPauloCalendarDay(todayKeySp);
-  const staleThreshold = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-  const transitionsQueryFrom = new Date(now.getTime() - 10 * 86_400_000);
-
   function weekdayShortFromDayKey(dayKeyYmd: string): string {
     const [y, m, d] = dayKeyYmd.split("-").map(Number);
     const noonUtc = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
     return new Intl.DateTimeFormat(weekdayLocale, { weekday: "short" }).format(noonUtc).replace(/\./g, "");
   }
 
-  const pathwayOptions = tenantId
-    ? await prisma.carePathway.findMany({
-        where: { tenantId },
-        orderBy: { name: "asc" },
-        select: {
-          id: true,
-          name: true,
-          versions: {
-            where: { published: true },
-            orderBy: { version: "desc" },
-            take: 1,
-            select: { id: true, version: true },
-          },
-        },
-      })
-    : [];
-
-  const pipelinePathways = pathwayOptions.map((p) => ({
-    id: p.id,
-    name: p.name,
-    publishedVersion: p.versions[0] ?? null,
-  }));
-
-  const metrics = tenantId
-    ? await (async () => {
-        const [
-          pathwaysActive,
-          transitionsToday,
-          awaitingAction,
-          pathwaysCompletedToday,
-          transitionsLast7Days,
-          pathwayCompletionTimestamps,
-          pathwayStartTimestamps,
-        ] = await Promise.all([
-          prisma.patientPathway.count({
-            where: { tenantId, completedAt: null },
-          }),
-          prisma.stageTransition.count({
-            where: {
-              createdAt: { gte: startTodaySp },
-              patientPathway: { tenantId },
-            },
-          }),
-          prisma.patientPathway.count({
-            where: {
-              tenantId,
-              completedAt: null,
-              updatedAt: { lte: staleThreshold },
-            },
-          }),
-          prisma.patientPathway.count({
-            where: {
-              tenantId,
-              completedAt: { gte: startTodaySp },
-            },
-          }),
-          prisma.stageTransition.findMany({
-            where: {
-              createdAt: { gte: transitionsQueryFrom },
-              patientPathway: { tenantId },
-            },
-            select: { patientPathwayId: true, createdAt: true },
-          }),
-          prisma.patientPathway.findMany({
-            where: {
-              tenantId,
-              completedAt: { gte: transitionsQueryFrom },
-            },
-            select: { completedAt: true },
-          }),
-          prisma.patientPathway.findMany({
-            where: {
-              tenantId,
-              createdAt: { gte: transitionsQueryFrom },
-            },
-            select: { createdAt: true },
-          }),
-        ]);
-
-        const calendarKeys7 = new Set(lastNCalendarDaysInTimeZone(now, 7, DASHBOARD_CHART_TIMEZONE));
-        const touchedLast7Days = new Set(
-          transitionsLast7Days
-            .filter((row) =>
-              calendarKeys7.has(calendarDayKeyInTimeZone(row.createdAt, DASHBOARD_CHART_TIMEZONE)),
-            )
-            .map((row) => row.patientPathwayId),
-        ).size;
-        const conversionRate =
-          pathwaysActive > 0 ? Math.round((touchedLast7Days / pathwaysActive) * 100) : 0;
-
-        return {
-          pathwaysActive,
-          transitionsToday,
-          awaitingAction,
-          pathwaysCompletedToday,
-          conversionRate,
-          transitionsLast7Days,
-          pathwayCompletionTimestamps,
-          pathwayStartTimestamps,
-        };
-      })()
+  const { pathwayOptions: pipelinePathways, metrics } = tenantId
+    ? await getDashboardHomeMetrics(tenantId, dashboardHomePrismaRepository)
     : {
-        pathwaysActive: 0,
-        transitionsToday: 0,
-        awaitingAction: 0,
-        pathwaysCompletedToday: 0,
-        conversionRate: 0,
-        transitionsLast7Days: [] as { patientPathwayId: string; createdAt: Date }[],
-        pathwayCompletionTimestamps: [] as { completedAt: Date }[],
-        pathwayStartTimestamps: [] as { createdAt: Date }[],
+        pathwayOptions: [],
+        metrics: {
+          pathwaysActive: 0,
+          transitionsToday: 0,
+          awaitingAction: 0,
+          pathwaysCompletedToday: 0,
+          conversionRate: 0,
+          transitionCountsByDay: new Map<string, number>(),
+          completionsByDay: new Map<string, number>(),
+          startsByDay: new Map<string, number>(),
+          dayKeys7: [] as string[],
+        },
       };
 
-  const dayKeys7 = lastNCalendarDaysInTimeZone(now, 7, DASHBOARD_CHART_TIMEZONE);
-  const transitionCountsByDay = new Map<string, number>();
-  for (const row of metrics.transitionsLast7Days) {
-    const k = calendarDayKeyInTimeZone(row.createdAt, DASHBOARD_CHART_TIMEZONE);
-    transitionCountsByDay.set(k, (transitionCountsByDay.get(k) ?? 0) + 1);
-  }
-  const completionsByDay = new Map<string, number>();
-  for (const row of metrics.pathwayCompletionTimestamps) {
-    const at = row.completedAt;
-    if (!at) continue;
-    const k = calendarDayKeyInTimeZone(at, DASHBOARD_CHART_TIMEZONE);
-    completionsByDay.set(k, (completionsByDay.get(k) ?? 0) + 1);
-  }
-  const startsByDay = new Map<string, number>();
-  for (const row of metrics.pathwayStartTimestamps) {
-    const k = calendarDayKeyInTimeZone(row.createdAt, DASHBOARD_CHART_TIMEZONE);
-    startsByDay.set(k, (startsByDay.get(k) ?? 0) + 1);
-  }
-  const weeklyActivityDays = dayKeys7.map((dayKey) => ({
+  const weeklyActivityDays = metrics.dayKeys7.map((dayKey) => ({
     dayKey,
     label: weekdayShortFromDayKey(dayKey),
     dateLong: formatCalendarDayLongLabel(dayKey, locale, DASHBOARD_CHART_TIMEZONE),
-    transitions: transitionCountsByDay.get(dayKey) ?? 0,
-    newPathways: startsByDay.get(dayKey) ?? 0,
-    completions: completionsByDay.get(dayKey) ?? 0,
+    transitions: metrics.transitionCountsByDay.get(dayKey) ?? 0,
+    newPathways: metrics.startsByDay.get(dayKey) ?? 0,
+    completions: metrics.completionsByDay.get(dayKey) ?? 0,
   }));
   const weeklyActivityTotal = weeklyActivityDays.reduce(
     (s, d) => s + d.transitions + d.newPathways + d.completions,

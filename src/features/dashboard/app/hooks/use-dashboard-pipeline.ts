@@ -10,7 +10,7 @@ import { usePipelineUrlFilters } from "@/features/dashboard/app/hooks/use-pipeli
 import { listOpmeSuppliers } from "@/features/settings/app/services/tenant-settings.service";
 import { transitionPatientStage } from "@/features/pathways/app/services/patient-pathways.service";
 import { toast } from "@/lib/toast";
-import { computeSlaHealthStatus, type SlaHealthStatus } from "@/lib/pathway/sla-health";
+import { computeSlaHealthStatus, type SlaHealthStatus } from "@/domain/pathway/sla-health";
 import type {
   DashboardAlertRow,
   DashboardPathwayOption,

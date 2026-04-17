@@ -1,10 +1,7 @@
-import bcrypt from "bcryptjs";
-import { AuthTokenPurpose } from "@prisma/client";
-import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { resetPasswordSchema } from "@/lib/validators/auth";
+import { runResetPasswordWithToken } from "@/application/use-cases/auth/reset-password-with-token";
 
 export const dynamic = "force-dynamic";
 
@@ -28,61 +25,16 @@ export async function POST(request: Request) {
 
   const { token, newPassword } = parsed.data;
 
-  const row = await prisma.userAuthToken.findUnique({
-    where: { token },
-    include: { user: true },
-  });
+  const result = await runResetPasswordWithToken({ token, newPassword });
 
-  if (
-    !row ||
-    row.usedAt ||
-    (row.purpose !== AuthTokenPurpose.PASSWORD_RESET &&
-      row.purpose !== AuthTokenPurpose.INVITE_SET_PASSWORD)
-  ) {
+  if (!result.ok) {
+    if (result.code === "TOKEN_EXPIRED") {
+      return jsonError("TOKEN_EXPIRED", apiT("errors.linkExpired"), 400);
+    }
+    if (result.code === "USE_INVITE_FOR_FIRST_PASSWORD") {
+      return jsonError("INVALID_TOKEN", apiT("errors.useInviteForFirstPassword"), 400);
+    }
     return jsonError("INVALID_TOKEN", apiT("errors.invalidLinkOrUsed"), 400);
-  }
-
-  if (row.expiresAt < new Date()) {
-    return jsonError("TOKEN_EXPIRED", apiT("errors.linkExpired"), 400);
-  }
-
-  if (row.purpose === AuthTokenPurpose.PASSWORD_RESET && !row.user.passwordHash) {
-    return jsonError("INVALID_TOKEN", apiT("errors.useInviteForFirstPassword"), 400);
-  }
-
-  const passwordHash = await bcrypt.hash(newPassword, 12);
-
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: row.userId },
-      data: {
-        passwordHash,
-        ...(row.tenantId ? { activeTenantId: row.tenantId } : {}),
-      },
-    }),
-    prisma.userAuthToken.update({
-      where: { id: row.id },
-      data: { usedAt: new Date() },
-    }),
-  ]);
-
-  let auditTenantId = row.tenantId;
-  if (!auditTenantId) {
-    const m = await prisma.tenantMembership.findFirst({
-      where: { userId: row.userId },
-      select: { tenantId: true },
-    });
-    auditTenantId = m?.tenantId ?? null;
-  }
-  if (auditTenantId) {
-    await recordAuditEvent(prisma, {
-      tenantId: auditTenantId,
-      clientId: null,
-      patientPathwayId: null,
-      actorUserId: row.userId,
-      type: AuditEventType.STAFF_PASSWORD_RESET,
-      payload: { userId: row.userId },
-    });
   }
 
   return jsonSuccess({

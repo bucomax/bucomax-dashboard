@@ -1,14 +1,12 @@
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
-import { runPathwayPublishPreflight } from "@/lib/pathway/pathway-publish-preflight";
 import { postPathwayPublishPreviewBodySchema } from "@/lib/validators/pathway";
+import { runPathwayPublishPreview } from "@/application/use-cases/pathway/run-pathway-publish-preview";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ pathwayId: string; versionId: string }> };
 
 /**
  * Pré-visualização da publicação (mesmas regras do POST `…/publish`, sem efeitos).
@@ -40,30 +38,20 @@ export async function POST(request: Request, ctx: RouteCtx) {
     );
   }
 
-  const pathway = await prisma.carePathway.findFirst({
-    where: { id: pathwayId, tenantId: tenantCtx.tenantId },
-    select: { id: true },
-  });
-  if (!pathway) {
-    return jsonError("NOT_FOUND", apiT("errors.pathwayNotFound"), 404);
-  }
-
-  const version = await prisma.pathwayVersion.findFirst({
-    where: { id: versionId, pathwayId },
-  });
-  if (!version) {
-    return jsonError("NOT_FOUND", apiT("errors.pathwayVersionNotFound"), 404);
-  }
-
-  const graphJson = parsed.data.graphJson !== undefined ? parsed.data.graphJson : version.graphJson;
-
-  const preflight = await runPathwayPublishPreflight(prisma, {
+  const result = await runPathwayPublishPreview({
     tenantId: tenantCtx.tenantId,
     pathwayId,
     versionId,
-    graphJson,
-    apiT: apiT as (key: string, params?: Record<string, string>) => string,
+    graphJsonOverride: parsed.data.graphJson,
+    apiT,
   });
 
-  return jsonSuccess({ preview: preflight });
+  if (!result.ok) {
+    if (result.code === "PATHWAY_NOT_FOUND") {
+      return jsonError("NOT_FOUND", apiT("errors.pathwayNotFound"), 404);
+    }
+    return jsonError("NOT_FOUND", apiT("errors.pathwayVersionNotFound"), 404);
+  }
+
+  return jsonSuccess({ preview: result.preview });
 }

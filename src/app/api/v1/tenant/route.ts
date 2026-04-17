@@ -1,4 +1,3 @@
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import {
@@ -8,20 +7,15 @@ import {
   requireSessionOr401,
 } from "@/lib/auth/guards";
 import { patchTenantClinicBodySchema } from "@/lib/validators/tenant-clinic";
+import {
+  getTenantClinicProfile,
+  updateTenantClinicProfile,
+  type TenantClinicDto,
+} from "@/application/use-cases/tenant/tenant-clinic-profile";
 
 export const dynamic = "force-dynamic";
 
-function toTenantClinicDto(tenant: {
-  id: string;
-  name: string;
-  slug: string;
-  taxId: string | null;
-  phone: string | null;
-  addressLine: string | null;
-  city: string | null;
-  postalCode: string | null;
-  affiliatedHospitals: string | null;
-}) {
+function toTenantClinicDto(tenant: TenantClinicDto) {
   return {
     id: tenant.id,
     name: tenant.name,
@@ -46,20 +40,7 @@ export async function GET(request: Request) {
   const forbidden = await assertActiveTenantMembership(auth.session!, tenantCtx.tenantId, request, apiT);
   if (forbidden) return forbidden;
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantCtx.tenantId },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      taxId: true,
-      phone: true,
-      addressLine: true,
-      city: true,
-      postalCode: true,
-      affiliatedHospitals: true,
-    },
-  });
+  const tenant = await getTenantClinicProfile(tenantCtx.tenantId);
 
   if (!tenant) {
     return jsonError("NOT_FOUND", apiT("errors.tenantNotFound"), 404);
@@ -94,33 +75,17 @@ export async function PATCH(request: Request) {
   }
 
   const data = parsed.data;
-  const tenant = await prisma.tenant.update({
-    where: { id: tenantCtx.tenantId },
-    data: {
-      ...(data.name !== undefined ? { name: data.name.trim() } : {}),
-      ...(data.taxId !== undefined ? { taxId: data.taxId } : {}),
-      ...(data.phone !== undefined ? { phone: data.phone } : {}),
-      ...(data.addressLine !== undefined ? { addressLine: data.addressLine } : {}),
-      ...(data.city !== undefined ? { city: data.city } : {}),
-      ...(data.postalCode !== undefined ? { postalCode: data.postalCode } : {}),
-      ...(data.affiliatedHospitals !== undefined
-        ? { affiliatedHospitals: data.affiliatedHospitals }
-        : {}),
-    },
-    select: {
-      id: true,
-      name: true,
-      slug: true,
-      taxId: true,
-      phone: true,
-      addressLine: true,
-      city: true,
-      postalCode: true,
-      affiliatedHospitals: true,
-    },
+  const tenant = await updateTenantClinicProfile(tenantCtx.tenantId, {
+    ...(data.name !== undefined ? { name: data.name } : {}),
+    ...(data.taxId !== undefined ? { taxId: data.taxId } : {}),
+    ...(data.phone !== undefined ? { phone: data.phone } : {}),
+    ...(data.addressLine !== undefined ? { addressLine: data.addressLine } : {}),
+    ...(data.city !== undefined ? { city: data.city } : {}),
+    ...(data.postalCode !== undefined ? { postalCode: data.postalCode } : {}),
+    ...(data.affiliatedHospitals !== undefined ? { affiliatedHospitals: data.affiliatedHospitals } : {}),
   });
 
   return jsonSuccess({
-    tenant: toTenantClinicDto(tenant),
+    tenant: toTenantClinicDto(tenant!),
   });
 }

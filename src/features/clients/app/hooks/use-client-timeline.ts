@@ -1,6 +1,6 @@
 "use client";
 
-import { CLIENT_TIMELINE_EVENT_CATEGORIES } from "@/lib/clients/timeline-event-categories";
+import { CLIENT_TIMELINE_EVENT_CATEGORIES } from "@/domain/audit/event-category-mapper";
 import { getClientTimeline } from "@/features/clients/app/services/clients.service";
 import type { ClientTimelineEventCategory } from "@/types/api/clients-v1";
 import type { ClientTimelineResponseData } from "@/types/api/clients-v1";

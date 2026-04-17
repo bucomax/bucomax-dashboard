@@ -1,10 +1,9 @@
-import { randomBytes } from "crypto";
-import { prisma } from "@/infrastructure/database/prisma";
 import { buildPatientSelfRegisterUrl } from "@/infrastructure/email/resend.client";
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
+import { runCreatePatientSelfRegisterInvite } from "@/application/use-cases/client/create-patient-self-register-invite";
+import { findTenantClientVisibleToSession } from "@/application/use-cases/shared/load-client-visibility-scope";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
@@ -13,8 +12,6 @@ import {
 import { postPatientSelfRegisterInviteBodySchema } from "@/lib/validators/client";
 
 export const dynamic = "force-dynamic";
-
-const INVITE_TTL_MS = 48 * 60 * 60 * 1000;
 
 export async function POST(request: Request) {
   const apiT = await getApiT(request);
@@ -55,33 +52,21 @@ export async function POST(request: Request) {
     scopedClientId = client.id;
   }
 
-  const token = randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
-
-  await prisma.patientSelfRegisterInvite.create({
-    data: {
-      tenantId,
-      token,
-      expiresAt,
-      createdByUserId: auth.session!.user.id,
-      clientId: scopedClientId ?? null,
-    },
+  const result = await runCreatePatientSelfRegisterInvite({
+    tenantId,
+    createdByUserId: auth.session!.user.id,
+    clientId: scopedClientId ?? null,
   });
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { slug: true },
-  });
-  const tenantSlug = tenant?.slug ?? "";
-  if (!tenantSlug) {
+  if (!result.ok) {
     return jsonError("SERVICE_UNAVAILABLE", apiT("errors.tenantNotFound"), 503);
   }
 
   return jsonSuccess(
     {
-      token,
-      expiresAt: expiresAt.toISOString(),
-      registerUrl: buildPatientSelfRegisterUrl(token, tenantSlug),
+      token: result.token,
+      expiresAt: result.expiresAt.toISOString(),
+      registerUrl: buildPatientSelfRegisterUrl(result.token, result.tenantSlug),
     },
     { status: 201 },
   );

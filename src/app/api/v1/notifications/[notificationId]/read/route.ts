@@ -1,13 +1,13 @@
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
-import { assertNotificationVisibleToClientScope } from "@/lib/notifications/notification-client-scope";
-import type { NotificationDto } from "@/types/api/notification-v1";
+import { assertNotificationVisibleToClientScope } from "@/application/use-cases/notification/list-notifications-with-scope";
+import { runMarkNotificationRead } from "@/application/use-cases/notification/mark-notification-read";
+import { notificationPrismaRepository } from "@/infrastructure/repositories/notification.repository";
 
 export const dynamic = "force-dynamic";
 
-type RouteCtx = { params: Promise<{ notificationId: string }> };
+import type { RouteCtx } from "@/types/api/route-context";
 
 export async function PATCH(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);
@@ -20,10 +20,12 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
   const { notificationId } = await ctx.params;
   const userId = auth.session!.user.id;
 
-  const notification = await prisma.notification.findFirst({
-    where: { id: notificationId, userId, tenantId: tenantCtx.tenantId },
-  });
-  if (!notification) {
+  const row = await notificationPrismaRepository.findById(tenantCtx.tenantId, notificationId);
+  if (!row || typeof row !== "object") {
+    return jsonError("NOT_FOUND", apiT("errors.notificationNotFound"), 404);
+  }
+  const notification = row as { userId: string };
+  if (notification.userId !== userId) {
     return jsonError("NOT_FOUND", apiT("errors.notificationNotFound"), 404);
   }
 
@@ -31,26 +33,20 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     auth.session!,
     tenantCtx.tenantId,
     userId,
-    notification,
+    row,
   );
   if (!visible) {
     return jsonError("NOT_FOUND", apiT("errors.notificationNotFound"), 404);
   }
 
-  const updated = await prisma.notification.update({
-    where: { id: notificationId },
-    data: { readAt: notification.readAt ?? new Date() },
+  const result = await runMarkNotificationRead({
+    tenantId: tenantCtx.tenantId,
+    userId,
+    notificationId,
   });
+  if (!result.ok) {
+    return jsonError("NOT_FOUND", apiT("errors.notificationNotFound"), 404);
+  }
 
-  const dto: NotificationDto = {
-    id: updated.id,
-    type: updated.type,
-    title: updated.title,
-    body: updated.body,
-    metadata: updated.metadata as Record<string, unknown> | null,
-    readAt: updated.readAt?.toISOString() ?? null,
-    createdAt: updated.createdAt.toISOString(),
-  };
-
-  return jsonSuccess({ notification: dto });
+  return jsonSuccess({ notification: result.notification });
 }

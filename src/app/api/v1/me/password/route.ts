@@ -1,10 +1,8 @@
-import bcrypt from "bcryptjs";
-import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
 import { changePasswordBodySchema } from "@/lib/validators/profile";
+import { runChangeStaffPassword } from "@/application/use-cases/auth/change-staff-password";
 
 export const dynamic = "force-dynamic";
 
@@ -28,33 +26,19 @@ export async function POST(request: Request) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const user = await prisma.user.findFirst({
-    where: { id: auth.session!.user.id, deletedAt: null },
-    select: { id: true, passwordHash: true },
+  const result = await runChangeStaffPassword({
+    userId: auth.session!.user.id,
+    tenantId: tenantCtx.tenantId,
+    currentPassword: parsed.data.currentPassword,
+    newPassword: parsed.data.newPassword,
   });
-  if (!user?.passwordHash) {
-    return jsonError("FORBIDDEN", apiT("errors.noLocalPassword"), 403);
-  }
 
-  const ok = await bcrypt.compare(parsed.data.currentPassword, user.passwordHash);
-  if (!ok) {
+  if (!result.ok) {
+    if (result.code === "NO_LOCAL_PASSWORD") {
+      return jsonError("FORBIDDEN", apiT("errors.noLocalPassword"), 403);
+    }
     return jsonError("INVALID_CREDENTIALS", apiT("errors.wrongCurrentPassword"), 401);
   }
-
-  const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { passwordHash },
-  });
-
-  await recordAuditEvent(prisma, {
-    tenantId: tenantCtx.tenantId,
-    clientId: null,
-    patientPathwayId: null,
-    actorUserId: user.id,
-    type: AuditEventType.STAFF_PASSWORD_CHANGED,
-    payload: { userId: user.id },
-  });
 
   return jsonSuccess({ message: apiT("success.passwordUpdated") });
 }

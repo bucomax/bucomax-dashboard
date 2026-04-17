@@ -1,7 +1,3 @@
-import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-tenant-lists";
-import { prisma } from "@/infrastructure/database/prisma";
-import { recordAuditEvent, AuditEventType } from "@/infrastructure/audit/record-audit-event";
-import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -10,20 +6,14 @@ import {
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
-import { enqueueWhatsAppDispatch } from "@/infrastructure/whatsapp/whatsapp-dispatch-emitter";
 import {
-  buildStageDispatchStub,
-  getStageDocumentBundle,
-  type StageDocumentBundleItem,
-} from "@/lib/pathway/stage-document-bundle";
-import { resolvePathwayNotificationTargetUserIds } from "@/lib/notifications/resolve-pathway-notification-targets";
-import { listPendingRequiredChecklistItems } from "@/lib/pathway/pending-required-checklist";
-import { resolvePatientPathwayStageAssigneeUserId } from "@/lib/pathway/validate-stage-assignees";
-import { postStageTransitionBodySchema } from "@/lib/validators/pathway";
+  postStageTransitionBodySchema,
+  runTransitionPatientStage,
+} from "@/application/use-cases/pathway/transition-patient-stage";
 
 export const dynamic = "force-dynamic";
 
-type RouteCtx = { params: Promise<{ patientPathwayId: string }> };
+import type { RouteCtx } from "@/types/api/route-context";
 
 export async function POST(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);
@@ -54,219 +44,37 @@ export async function POST(request: Request, ctx: RouteCtx) {
     );
   }
 
-  const pp = await prisma.patientPathway.findFirst({
-    where: { id: patientPathwayId, tenantId: tenantCtx.tenantId },
-    include: {
-      client: { select: { id: true, name: true, phone: true, assignedToUserId: true } },
-      currentStage: { select: { id: true, name: true, stageKey: true } },
-    },
+  const outcome = await runTransitionPatientStage({
+    tenantId: tenantCtx.tenantId,
+    actorUserId,
+    patientPathwayId,
+    input: parsed.data,
   });
-  if (!pp) {
-    return jsonError("NOT_FOUND", apiT("errors.patientPathwayInstanceNotFound"), 404);
-  }
-  if (pp.completedAt) {
-    return jsonError("CONFLICT", apiT("errors.pathwayAlreadyCompleted"), 409);
-  }
 
-  const toStage = await prisma.pathwayStage.findFirst({
-    where: {
-      id: parsed.data.toStageId,
-      pathwayVersionId: pp.pathwayVersionId,
-    },
-  });
-  if (!toStage) {
-    return jsonError("NOT_FOUND", apiT("errors.invalidStageForVersion"), 404);
-  }
-
-  if (toStage.id === pp.currentStageId) {
-    return jsonError("VALIDATION_ERROR", apiT("errors.patientAlreadyInStage"), 422);
-  }
-
-  const { tryAcquire, releaseLock } = await import("@/lib/api/distributed-lock");
-  const lockKey = `lock:transition:${patientPathwayId}`;
-  const acquired = await tryAcquire(lockKey, 10);
-  if (!acquired) {
-    return jsonError("CONFLICT", "Transition already in progress.", 409);
-  }
-
-  let updated;
-  let blockedPending: { id: string; label: string }[] | null = null;
-  let whatsappEnqueue: {
-    transitionId: string;
-    documents: StageDocumentBundleItem[];
-  } | null = null;
-
-  try {
-    const txResult = await prisma.$transaction(async (tx) => {
-      const pendingRequired = await listPendingRequiredChecklistItems(
-        tx,
-        pp.id,
-        pp.currentStageId,
+  if (!outcome.ok) {
+    if (outcome.code === "CHECKLIST_BLOCKED") {
+      return jsonError(
+        "CHECKLIST_REQUIRED_INCOMPLETE",
+        apiT("errors.checklistRequiredIncomplete"),
+        422,
+        { pendingItems: outcome.pendingItems },
       );
-
-      if (pendingRequired.length > 0 && !parsed.data.force) {
-        return { outcome: "blocked" as const, pending: pendingRequired };
-      }
-
-      const overrideReasonTrimmed =
-        pendingRequired.length > 0 && parsed.data.force
-          ? (parsed.data.overrideReason?.trim() ?? "")
-          : null;
-
-      const documents = await getStageDocumentBundle(tx, toStage.id);
-
-      const currentStageAssigneeUserId = await resolvePatientPathwayStageAssigneeUserId(
-        tx,
-        tenantCtx.tenantId,
-        {
-          defaultAssigneeUserIds: toStage.defaultAssigneeUserIds,
-          defaultAssigneeUserId: toStage.defaultAssigneeUserId,
-        },
-        pp.client.assignedToUserId,
-      );
-
-      const createdTransition = await tx.stageTransition.create({
-        data: {
-          patientPathwayId: pp.id,
-          fromStageId: pp.currentStageId,
-          toStageId: toStage.id,
-          actorUserId,
-          note: parsed.data.note?.trim() || null,
-          ruleOverrideReason: overrideReasonTrimmed && overrideReasonTrimmed.length > 0 ? overrideReasonTrimmed : null,
-          forcedByUserId:
-            pendingRequired.length > 0 && parsed.data.force ? actorUserId : null,
-          dispatchStub: buildStageDispatchStub({
-            tenantId: tenantCtx.tenantId,
-            clientId: pp.clientId,
-            stageId: toStage.id,
-            stageName: toStage.name,
-            documents,
-          }),
-        },
-        select: { id: true },
-      });
-
-      const forcedOverride = pendingRequired.length > 0 && Boolean(parsed.data.force);
-      const auditOverrideReason =
-        overrideReasonTrimmed && overrideReasonTrimmed.length > 0 ? overrideReasonTrimmed : null;
-      await recordAuditEvent(tx, {
-        tenantId: tenantCtx.tenantId,
-        clientId: pp.clientId,
-        patientPathwayId: pp.id,
-        actorUserId,
-        type: AuditEventType.STAGE_TRANSITION,
-        payload: {
-          transitionId: createdTransition.id,
-          fromStageId: pp.currentStageId,
-          toStageId: toStage.id,
-          fromStageName: pp.currentStage?.name ?? null,
-          toStageName: toStage.name,
-          forcedOverride,
-          ...(auditOverrideReason ? { ruleOverrideReason: auditOverrideReason } : {}),
-        },
-      });
-
-      const nextPp = await tx.patientPathway.update({
-        where: { id: pp.id },
-        data: {
-          currentStageId: toStage.id,
-          enteredStageAt: new Date(),
-          currentStageAssigneeUserId,
-        },
-        include: {
-          currentStage: true,
-          currentStageAssignee: { select: { id: true, name: true, email: true } },
-        },
-      });
-
-      return {
-        outcome: "ok" as const,
-        patientPathway: nextPp,
-        transitionId: createdTransition.id,
-        documents,
-      };
-    });
-
-    if (txResult.outcome === "blocked") {
-      blockedPending = txResult.pending;
-    } else {
-      updated = txResult.patientPathway;
-      if (txResult.documents.length > 0 && pp.client.phone) {
-        whatsappEnqueue = {
-          transitionId: txResult.transitionId,
-          documents: txResult.documents,
-        };
-      }
     }
-  } finally {
-    await releaseLock(lockKey);
+    switch (outcome.code) {
+      case "PATIENT_PATHWAY_NOT_FOUND":
+        return jsonError("NOT_FOUND", apiT("errors.patientPathwayInstanceNotFound"), 404);
+      case "PATHWAY_ALREADY_COMPLETED":
+        return jsonError("CONFLICT", apiT("errors.pathwayAlreadyCompleted"), 409);
+      case "TARGET_STAGE_NOT_FOUND":
+        return jsonError("NOT_FOUND", apiT("errors.invalidStageForVersion"), 404);
+      case "ALREADY_IN_TARGET_STAGE":
+        return jsonError("VALIDATION_ERROR", apiT("errors.patientAlreadyInStage"), 422);
+      case "LOCK_CONFLICT":
+        return jsonError("CONFLICT", "Transition already in progress.", 409);
+      case "INTERNAL_AFTER_TX":
+        return jsonError("INTERNAL", apiT("errors.dbUnavailable"), 500);
+    }
   }
 
-  if (blockedPending) {
-    return jsonError(
-      "CHECKLIST_REQUIRED_INCOMPLETE",
-      apiT("errors.checklistRequiredIncomplete"),
-      422,
-      { pendingItems: blockedPending },
-    );
-  }
-
-  if (!updated) {
-    return jsonError("INTERNAL", apiT("errors.dbUnavailable"), 500);
-  }
-
-  const stageTransitionTargets = await resolvePathwayNotificationTargetUserIds({
-    tenantId: tenantCtx.tenantId,
-    type: "stage_transition",
-    currentStageAssigneeUserId: updated.currentStageAssigneeUserId,
-  });
-
-  notificationEmitter.emit({
-    tenantId: tenantCtx.tenantId,
-    type: "stage_transition",
-    title: `${pp.client.name} avançou para ${toStage.name}`,
-    targetUserIds: stageTransitionTargets,
-    correlationId: `${pp.id}:${toStage.id}`,
-    metadata: {
-      clientId: pp.clientId,
-      patientPathwayId: pp.id,
-      fromStageId: pp.currentStageId,
-      toStageId: toStage.id,
-      stageName: toStage.name,
-    },
-  }).catch((err) => console.error("[notification] stage_transition emit failed:", err));
-
-  // WhatsApp document dispatch (async, fire-and-forget)
-  if (whatsappEnqueue) {
-    enqueueWhatsAppDispatch({
-      tenantId: tenantCtx.tenantId,
-      stageTransitionId: whatsappEnqueue.transitionId,
-      clientId: pp.clientId,
-      recipientPhone: pp.client.phone!,
-      stageName: toStage.name,
-      documents: whatsappEnqueue.documents.map((d) => ({
-        fileName: d.file.fileName,
-        r2Key: d.file.r2Key,
-        mimeType: d.file.mimeType,
-      })),
-    }).catch((err) => console.error("[whatsapp] dispatch enqueue failed:", err));
-  }
-
-  revalidateTenantClientsList(tenantCtx.tenantId);
-
-  return jsonSuccess({
-    patientPathway: {
-      id: updated.id,
-      currentStage: updated.currentStage,
-      currentStageAssignee: updated.currentStageAssignee
-        ? {
-            id: updated.currentStageAssignee.id,
-            name: updated.currentStageAssignee.name,
-            email: updated.currentStageAssignee.email,
-          }
-        : null,
-      enteredStageAt: updated.enteredStageAt.toISOString(),
-      updatedAt: updated.updatedAt.toISOString(),
-    },
-  });
+  return jsonSuccess(outcome.data);
 }

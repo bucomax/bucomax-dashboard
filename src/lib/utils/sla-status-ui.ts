@@ -1,4 +1,4 @@
-import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
+import type { SlaHealthStatus } from "@/domain/pathway/sla-health";
 
 /**
  * Classes Tailwind para cartão de paciente no Kanban por `SlaHealthStatus`.

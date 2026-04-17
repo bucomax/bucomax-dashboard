@@ -9,7 +9,7 @@ import { patchPathwayVersionBodySchema } from "@/lib/validators/pathway";
 
 export const dynamic = "force-dynamic";
 
-type RouteCtx = { params: Promise<{ pathwayId: string; versionId: string }> };
+import type { RouteCtx } from "@/types/api/route-context";
 
 export async function GET(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);

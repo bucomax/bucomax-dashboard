@@ -1,10 +1,9 @@
 import { getCachedPathwaysList } from "@/infrastructure/cache/cached-pathways-list";
-import { revalidateTenantPathwaysList } from "@/infrastructure/cache/revalidate-tenant-lists";
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
 import { postPathwayBodySchema } from "@/lib/validators/pathway";
+import { runCreateCarePathway } from "@/application/use-cases/pathway/create-care-pathway";
 
 export const dynamic = "force-dynamic";
 
@@ -42,25 +41,15 @@ export async function POST(request: Request) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const row = await prisma.carePathway.create({
-    data: {
-      tenantId,
-      name: parsed.data.name.trim(),
-      description: parsed.data.description?.trim() || null,
-    },
+  const pathway = await runCreateCarePathway({
+    tenantId,
+    name: parsed.data.name,
+    description: parsed.data.description,
   });
-
-  revalidateTenantPathwaysList(tenantId);
 
   return jsonSuccess(
     {
-      pathway: {
-        id: row.id,
-        name: row.name,
-        description: row.description,
-        createdAt: row.createdAt.toISOString(),
-        updatedAt: row.updatedAt.toISOString(),
-      },
+      pathway,
     },
     { status: 201 },
   );

@@ -1,7 +1,7 @@
 import { getApiT } from "@/lib/api/i18n";
 import { jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
-import { markAllUnreadNotificationsReadWithClientScope } from "@/lib/notifications/notification-client-scope";
+import { markAllUnreadNotificationsReadWithClientScope } from "@/application/use-cases/notification/list-notifications-with-scope";
 
 export const dynamic = "force-dynamic";
 

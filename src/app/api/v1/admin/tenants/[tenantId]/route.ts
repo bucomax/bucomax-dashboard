@@ -1,12 +1,11 @@
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { requireSessionOr401, superAdminOr403 } from "@/lib/auth/guards";
 import { patchAdminTenantBodySchema } from "@/lib/validators/tenant";
+import { runPatchTenantActive } from "@/application/use-cases/admin/patch-tenant-active";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ tenantId: string }> };
 
 /** Ativa/desativa tenant globalmente. Apenas `super_admin`. Ao desativar, remove contexto ativo de usuários presos a este tenant. */
 export async function PATCH(request: Request, ctx: RouteCtx) {
@@ -31,30 +30,10 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const existing = await prisma.tenant.findUnique({ where: { id: tenantId } });
-  if (!existing) {
+  const tenant = await runPatchTenantActive({ tenantId, isActive: parsed.data.isActive });
+  if (!tenant) {
     return jsonError("NOT_FOUND", apiT("errors.tenantNotFound"), 404);
   }
-
-  const { isActive } = parsed.data;
-
-  await prisma.$transaction(async (tx) => {
-    await tx.tenant.update({
-      where: { id: tenantId },
-      data: { isActive },
-    });
-    if (!isActive) {
-      await tx.user.updateMany({
-        where: { activeTenantId: tenantId },
-        data: { activeTenantId: null },
-      });
-    }
-  });
-
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { id: true, name: true, slug: true, isActive: true },
-  });
 
   return jsonSuccess({ tenant });
 }

@@ -1,8 +1,9 @@
-import { prisma } from "@/infrastructure/database/prisma";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
+import { createClientNote } from "@/application/use-cases/client/create-client-note";
+import { listClientNotesPage } from "@/application/use-cases/client/list-client-notes-page";
+import { findTenantClientVisibleToSession } from "@/application/use-cases/shared/load-client-visibility-scope";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
@@ -11,10 +12,9 @@ import {
 import { postClientNoteBodySchema } from "@/lib/validators/client-note";
 import { clientDetailQuerySchema } from "@/lib/validators/client-detail-query";
 import type { Session } from "next-auth";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ clientId: string }> };
 
 async function ensureClientVisible(session: Session, clientId: string, tenantId: string) {
   return findTenantClientVisibleToSession(session, tenantId, clientId, { id: true });
@@ -41,7 +41,6 @@ export async function GET(request: Request, ctx: RouteCtx) {
   }
 
   const { page, limit } = parsedQuery.data;
-  const offset = (page - 1) * limit;
   const { clientId } = await ctx.params;
 
   const client = await ensureClientVisible(auth.session!, clientId, tenantCtx.tenantId);
@@ -49,29 +48,12 @@ export async function GET(request: Request, ctx: RouteCtx) {
     return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
   }
 
-  const where = { tenantId: tenantCtx.tenantId, clientId };
-  const [totalItems, rows] = await Promise.all([
-    prisma.patientNote.count({ where }),
-    prisma.patientNote.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: offset,
-      take: limit,
-      select: {
-        id: true,
-        content: true,
-        createdAt: true,
-        updatedAt: true,
-        author: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-      },
-    }),
-  ]);
+  const { totalItems, rows } = await listClientNotesPage({
+    tenantId: tenantCtx.tenantId,
+    clientId,
+    page,
+    limit,
+  });
 
   return jsonSuccess({
     data: rows.map((row) => ({
@@ -114,26 +96,11 @@ export async function POST(request: Request, ctx: RouteCtx) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const note = await prisma.patientNote.create({
-    data: {
-      tenantId: tenantCtx.tenantId,
-      clientId,
-      authorUserId: auth.session!.user.id,
-      content: parsed.data.content,
-    },
-    select: {
-      id: true,
-      content: true,
-      createdAt: true,
-      updatedAt: true,
-      author: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-    },
+  const note = await createClientNote({
+    tenantId: tenantCtx.tenantId,
+    clientId,
+    authorUserId: auth.session!.user.id,
+    content: parsed.data.content,
   });
 
   return jsonSuccess(

@@ -6,7 +6,7 @@ import { isRedisEnabled, tripRedisCircuit } from "@/infrastructure/queue/redis-c
 import {
   filterUserIdsWhoCanViewClient,
   getClientIdFromPlainMetadata,
-} from "@/lib/auth/client-visibility";
+} from "@/application/use-cases/shared/load-client-visibility-scope";
 
 const TYPE_TO_TENANT_FLAG: Record<NotificationType, keyof Pick<
   Prisma.TenantSelect,

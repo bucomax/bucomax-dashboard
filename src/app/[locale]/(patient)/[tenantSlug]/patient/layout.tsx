@@ -1,5 +1,5 @@
 import { PatientPortalTenantProvider } from "@/features/patient-portal/app/context/patient-portal-tenant-context";
-import { findActiveTenantBySlug } from "@/lib/tenants/resolve-public-tenant";
+import { findActiveTenantBySlug } from "@/application/use-cases/auth/resolve-public-tenant";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 

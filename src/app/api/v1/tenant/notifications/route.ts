@@ -1,4 +1,3 @@
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import {
@@ -8,24 +7,13 @@ import {
   requireSessionOr401,
 } from "@/lib/auth/guards";
 import { patchTenantNotificationsBodySchema } from "@/lib/validators/tenant-notifications";
+import {
+  getTenantNotificationSettings,
+  patchTenantNotificationSettings,
+  toTenantNotificationsDto,
+} from "@/application/use-cases/tenant/tenant-notification-settings";
 
 export const dynamic = "force-dynamic";
-
-function toTenantNotificationsDto(tenant: {
-  notifyCriticalAlerts: boolean;
-  notifySurgeryReminders: boolean;
-  notifyNewPatients: boolean;
-  notifyWeeklyReport: boolean;
-  notifyDocumentDelivery: boolean;
-}) {
-  return {
-    notifyCriticalAlerts: tenant.notifyCriticalAlerts,
-    notifySurgeryReminders: tenant.notifySurgeryReminders,
-    notifyNewPatients: tenant.notifyNewPatients,
-    notifyWeeklyReport: tenant.notifyWeeklyReport,
-    notifyDocumentDelivery: tenant.notifyDocumentDelivery,
-  };
-}
 
 export async function GET(request: Request) {
   const apiT = await getApiT(request);
@@ -38,16 +26,7 @@ export async function GET(request: Request) {
   const forbidden = await assertActiveTenantMembership(auth.session!, tenantCtx.tenantId, request, apiT);
   if (forbidden) return forbidden;
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantCtx.tenantId },
-    select: {
-      notifyCriticalAlerts: true,
-      notifySurgeryReminders: true,
-      notifyNewPatients: true,
-      notifyWeeklyReport: true,
-      notifyDocumentDelivery: true,
-    },
-  });
+  const tenant = await getTenantNotificationSettings(tenantCtx.tenantId);
 
   if (!tenant) {
     return jsonError("NOT_FOUND", apiT("errors.tenantNotFound"), 404);
@@ -81,16 +60,9 @@ export async function PATCH(request: Request) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const tenant = await prisma.tenant.update({
-    where: { id: tenantCtx.tenantId },
+  const tenant = await patchTenantNotificationSettings({
+    tenantId: tenantCtx.tenantId,
     data: parsed.data,
-    select: {
-      notifyCriticalAlerts: true,
-      notifySurgeryReminders: true,
-      notifyNewPatients: true,
-      notifyWeeklyReport: true,
-      notifyDocumentDelivery: true,
-    },
   });
 
   return jsonSuccess({

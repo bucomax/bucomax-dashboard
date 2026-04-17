@@ -1,5 +1,5 @@
 import type { ApiPagination } from "@/lib/api/pagination";
-import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
+import type { SlaHealthStatus } from "@/domain/pathway/sla-health";
 
 /** Filtro de status no pipeline (`""` = todos). */
 export type PipelineStatusFilter = "" | SlaHealthStatus;

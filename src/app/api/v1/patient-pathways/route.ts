@@ -1,21 +1,16 @@
 import { getCachedPatientPathwaysList } from "@/infrastructure/cache/cached-patient-pathways-list";
-import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-tenant-lists";
-import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { prisma } from "@/infrastructure/database/prisma";
-import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { findTenantClientVisibleToSession, loadTenantMembershipClientScope } from "@/lib/auth/client-visibility";
+import { loadTenantMembershipClientScope } from "@/application/use-cases/shared/load-client-visibility-scope";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
-import { enqueueWhatsAppDispatch } from "@/infrastructure/whatsapp/whatsapp-dispatch-emitter";
-import { buildStageDispatchStub, getStageDocumentBundle } from "@/lib/pathway/stage-document-bundle";
-import { resolvePathwayNotificationTargetUserIds } from "@/lib/notifications/resolve-pathway-notification-targets";
-import { resolvePatientPathwayStageAssigneeUserId } from "@/lib/pathway/validate-stage-assignees";
-import { postPatientPathwayBodySchema } from "@/lib/validators/pathway";
+import {
+  runCreatePatientPathway,
+  postPatientPathwayBodySchema,
+} from "@/application/use-cases/patient-pathway/create-patient-pathway";
 
 export const dynamic = "force-dynamic";
 
@@ -56,7 +51,6 @@ export async function POST(request: Request) {
   const { tenantId } = ctx;
   const forbidden = await assertActiveTenantMembership(auth.session!, tenantId, request, apiT);
   if (forbidden) return forbidden;
-  const actorUserId = auth.session!.user.id;
 
   let body: unknown;
   try {
@@ -72,162 +66,26 @@ export async function POST(request: Request) {
 
   const { clientId, pathwayId } = parsed.data;
 
-  const client = await findTenantClientVisibleToSession(auth.session!, tenantId, clientId, {
-    id: true,
-    assignedToUserId: true,
-  });
-  if (!client) {
-    return jsonError("NOT_FOUND", apiT("errors.patientNotFoundInTenant"), 404);
-  }
-
-  const activePathway = await prisma.patientPathway.findFirst({
-    where: { clientId, completedAt: null },
-    select: { id: true },
-  });
-  if (activePathway) {
-    return jsonError("CONFLICT", apiT("errors.patientAlreadyInJourney"), 409);
-  }
-
-  const pathway = await prisma.carePathway.findFirst({
-    where: { id: pathwayId, tenantId },
-    select: { id: true },
-  });
-  if (!pathway) {
-    return jsonError("NOT_FOUND", apiT("errors.pathwayNotFound"), 404);
-  }
-
-  const publishedVersion = await prisma.pathwayVersion.findFirst({
-    where: { pathwayId, published: true },
-    orderBy: { version: "desc" },
-    include: {
-      stages: { orderBy: { sortOrder: "asc" }, take: 1 },
-    },
-  });
-  if (!publishedVersion || publishedVersion.stages.length === 0) {
-    return jsonError("CONFLICT", apiT("errors.noPublishedVersionWithStages"), 409);
-  }
-
-  const firstStage = publishedVersion.stages[0]!;
-
-  const txResult = await prisma.$transaction(async (tx) => {
-    const now = new Date();
-    const currentStageAssigneeUserId = await resolvePatientPathwayStageAssigneeUserId(
-      tx,
-      tenantId,
-      {
-        defaultAssigneeUserIds: firstStage.defaultAssigneeUserIds,
-        defaultAssigneeUserId: firstStage.defaultAssigneeUserId,
-      },
-      client.assignedToUserId,
-    );
-    const pp = await tx.patientPathway.create({
-      data: {
-        tenantId,
-        clientId,
-        pathwayId,
-        pathwayVersionId: publishedVersion.id,
-        currentStageId: firstStage.id,
-        enteredStageAt: now,
-        currentStageAssigneeUserId,
-      },
-      include: {
-        currentStage: true,
-        pathway: { select: { id: true, name: true } },
-        client: { select: { id: true, name: true, phone: true } },
-        currentStageAssignee: { select: { id: true, name: true, email: true } },
-      },
-    });
-    const documents = await getStageDocumentBundle(tx, firstStage.id);
-
-    const createdTransition = await tx.stageTransition.create({
-      data: {
-        patientPathwayId: pp.id,
-        fromStageId: null,
-        toStageId: firstStage.id,
-        actorUserId,
-        dispatchStub: buildStageDispatchStub({
-          tenantId,
-          clientId,
-          stageId: firstStage.id,
-          stageName: firstStage.name,
-          documents,
-        }),
-      },
-      select: { id: true },
-    });
-
-    return { pp, transitionId: createdTransition.id, documents };
-  });
-
-  const result = txResult.pp;
-  const { transitionId, documents } = txResult;
-
-  const newPatientTargets = await resolvePathwayNotificationTargetUserIds({
+  const outcome = await runCreatePatientPathway({
     tenantId,
-    type: "new_patient",
-    currentStageAssigneeUserId: result.currentStageAssigneeUserId,
+    actorUserId: auth.session!.user.id,
+    session: auth.session!,
+    clientId,
+    pathwayId,
   });
 
-  notificationEmitter.emit({
-    tenantId,
-    type: "new_patient",
-    title: `Novo paciente: ${result.client.name}`,
-    body: `Jornada "${result.pathway.name}" iniciada na etapa ${result.currentStage.name}.`,
-    targetUserIds: newPatientTargets,
-    correlationId: result.id,
-    metadata: {
-      clientId: result.clientId,
-      patientPathwayId: result.id,
-      pathwayName: result.pathway.name,
-      stageName: result.currentStage.name,
-    },
-  }).catch((err) => console.error("[notification] new_patient emit failed:", err));
-
-  // WhatsApp document dispatch (async, fire-and-forget)
-  if (documents.length > 0 && result.client.phone) {
-    enqueueWhatsAppDispatch({
-      tenantId,
-      stageTransitionId: transitionId,
-      clientId: result.clientId,
-      recipientPhone: result.client.phone,
-      stageName: result.currentStage.name,
-      documents: documents.map((d) => ({
-        fileName: d.file.fileName,
-        r2Key: d.file.r2Key,
-        mimeType: d.file.mimeType,
-      })),
-    }).catch((err) => console.error("[whatsapp] dispatch enqueue failed:", err));
+  if (!outcome.ok) {
+    switch (outcome.code) {
+      case "CLIENT_NOT_FOUND":
+        return jsonError("NOT_FOUND", apiT("errors.patientNotFoundInTenant"), 404);
+      case "ACTIVE_PATHWAY_EXISTS":
+        return jsonError("CONFLICT", apiT("errors.patientAlreadyInJourney"), 409);
+      case "PATHWAY_NOT_FOUND":
+        return jsonError("NOT_FOUND", apiT("errors.pathwayNotFound"), 404);
+      case "NO_PUBLISHED_VERSION":
+        return jsonError("CONFLICT", apiT("errors.noPublishedVersionWithStages"), 409);
+    }
   }
 
-  revalidateTenantClientsList(tenantId);
-
-  await recordAuditEvent(prisma, {
-    tenantId,
-    clientId: result.clientId,
-    patientPathwayId: result.id,
-    actorUserId,
-    type: AuditEventType.PATIENT_PATHWAY_STARTED,
-    payload: { patientPathwayId: result.id, pathwayId },
-  });
-
-  return jsonSuccess(
-    {
-      patientPathway: {
-        id: result.id,
-        client: result.client,
-        pathway: result.pathway,
-        currentStage: result.currentStage,
-        currentStageAssignee: result.currentStageAssignee
-          ? {
-              id: result.currentStageAssignee.id,
-              name: result.currentStageAssignee.name,
-              email: result.currentStageAssignee.email,
-            }
-          : null,
-        enteredStageAt: result.enteredStageAt.toISOString(),
-        createdAt: result.createdAt.toISOString(),
-      },
-    },
-    { status: 201 },
-  );
+  return jsonSuccess(outcome.data, { status: 201 });
 }

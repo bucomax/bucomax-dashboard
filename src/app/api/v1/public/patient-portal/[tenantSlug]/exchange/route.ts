@@ -1,21 +1,16 @@
 import { createApiMeta } from "@/lib/api/envelope";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError } from "@/lib/api-response";
-import {
-  appendPatientPortalSessionCookie,
-  type PatientPortalSessionPayload,
-  portalPasswordVersionMs,
-} from "@/lib/auth/patient-portal-session";
-import { PATIENT_PORTAL_SESSION_MAX_AGE_SEC } from "@/lib/constants/patient-portal";
-import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { prisma } from "@/infrastructure/database/prisma";
-import { findActiveTenantBySlug } from "@/lib/tenants/resolve-public-tenant";
+import { appendPatientPortalSessionCookie } from "@/lib/auth/patient-portal-session";
+import { AuditEventType } from "@prisma/client";
+import { auditEventPrismaRepository } from "@/infrastructure/repositories/audit-event.repository";
+import { findActiveTenantBySlug } from "@/application/use-cases/auth/resolve-public-tenant";
+import { runExchangePatientPortalMagicLink } from "@/application/use-cases/patient-portal/exchange-patient-portal-magic-link";
 import { postPatientPortalExchangeBodySchema } from "@/lib/validators/patient-portal";
 import { NextResponse } from "next/server";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ tenantSlug: string }> };
 
 export async function POST(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);
@@ -38,42 +33,14 @@ export async function POST(request: Request, ctx: RouteCtx) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const row = await prisma.patientPortalLinkToken.findUnique({
-    where: { token: parsed.data.token },
-    include: {
-      client: { select: { id: true, tenantId: true, deletedAt: true, portalPasswordChangedAt: true } },
-    },
+  const result = await runExchangePatientPortalMagicLink({
+    tenant: { id: tenant.id, slug: tenant.slug },
+    token: parsed.data.token,
   });
 
-  const now = new Date();
-  if (
-    !row ||
-    row.expiresAt < now ||
-    row.client.deletedAt != null ||
-    row.client.tenantId !== tenant.id
-  ) {
+  if (!result.ok) {
     return jsonError("UNAUTHORIZED", apiT("errors.patientPortalInvalidToken"), 401);
   }
-
-  if (row.singleUse && row.usedAt != null) {
-    return jsonError("UNAUTHORIZED", apiT("errors.patientPortalInvalidToken"), 401);
-  }
-
-  if (row.singleUse) {
-    await prisma.patientPortalLinkToken.update({
-      where: { id: row.id },
-      data: { usedAt: now },
-    });
-  }
-
-  const exp = Math.floor(Date.now() / 1000) + PATIENT_PORTAL_SESSION_MAX_AGE_SEC;
-  const sessionPayload: PatientPortalSessionPayload = {
-    clientId: row.clientId,
-    tenantId: row.client.tenantId,
-    tenantSlug: tenant.slug,
-    exp,
-    pwdv: portalPasswordVersionMs(row.client.portalPasswordChangedAt),
-  };
 
   try {
     const res = NextResponse.json({
@@ -81,14 +48,14 @@ export async function POST(request: Request, ctx: RouteCtx) {
       data: { ok: true },
       meta: createApiMeta(),
     });
-    appendPatientPortalSessionCookie(res, sessionPayload);
-    await recordAuditEvent(prisma, {
-      tenantId: row.client.tenantId,
-      clientId: row.clientId,
+    appendPatientPortalSessionCookie(res, result.sessionPayload);
+    await auditEventPrismaRepository.recordCanonical({
+      tenantId: result.sessionPayload.tenantId,
+      clientId: result.sessionPayload.clientId,
       patientPathwayId: null,
       actorUserId: null,
-      type: AuditEventType.PATIENT_PORTAL_SESSION_CREATED,
-      payload: { clientId: row.clientId, method: "magic_link" },
+      eventType: AuditEventType.PATIENT_PORTAL_SESSION_CREATED,
+      payload: { clientId: result.sessionPayload.clientId, method: "magic_link" },
     });
     return res;
   } catch (e) {

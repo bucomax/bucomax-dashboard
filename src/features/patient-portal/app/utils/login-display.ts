@@ -1,4 +1,4 @@
-import { parsePortalLoginInput } from "@/lib/patient-portal/login-identifier";
+import { parsePortalLoginInput } from "@/domain/auth/patient-portal-login-identifier";
 import { formatCpfDisplay } from "@/lib/validators/cpf";
 
 export function formatLoginDisplay(login: string): string {

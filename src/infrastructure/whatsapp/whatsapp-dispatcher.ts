@@ -15,7 +15,7 @@ import {
   sendDocumentMessage,
   sendInteractiveButtonMessage,
 } from "@/infrastructure/whatsapp/whatsapp-cloud-client";
-import { recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
+import { auditEventPrismaRepository } from "@/infrastructure/repositories/audit-event.repository";
 
 /** Presigned URL TTL for documents sent via WhatsApp (30 minutes). */
 const PRESIGN_TTL_SECONDS = 30 * 60;
@@ -112,10 +112,12 @@ export const whatsappDispatcher: IWhatsAppDispatcher = {
       });
       dispatchIds.push(dispatch.id);
 
-      await recordAuditEvent(prisma, {
+      await auditEventPrismaRepository.recordCanonical({
         tenantId: input.tenantId,
         clientId: input.clientId,
-        type:
+        patientPathwayId: null,
+        actorUserId: null,
+        eventType:
           status === DispatchStatus.SENT
             ? AuditEventType.WHATSAPP_DISPATCH_SENT
             : AuditEventType.WHATSAPP_DISPATCH_FAILED,
@@ -232,10 +234,12 @@ export const whatsappDispatcher: IWhatsAppDispatcher = {
             ? AuditEventType.WHATSAPP_DISPATCH_READ
             : AuditEventType.WHATSAPP_DISPATCH_FAILED;
 
-    await recordAuditEvent(prisma, {
+    await auditEventPrismaRepository.recordCanonical({
       tenantId: dispatch.tenantId,
       clientId: dispatch.clientId,
-      type: auditType,
+      patientPathwayId: null,
+      actorUserId: null,
+      eventType: auditType,
       payload: {
         channelDispatchId: dispatch.id,
         externalMessageId: update.externalMessageId,
@@ -275,10 +279,12 @@ export const whatsappDispatcher: IWhatsAppDispatcher = {
       },
     });
 
-    await recordAuditEvent(prisma, {
+    await auditEventPrismaRepository.recordCanonical({
       tenantId: dispatch.tenantId,
       clientId: dispatch.clientId,
-      type: AuditEventType.WHATSAPP_PATIENT_CONFIRMED,
+      patientPathwayId: null,
+      actorUserId: null,
+      eventType: AuditEventType.WHATSAPP_PATIENT_CONFIRMED,
       payload: {
         channelDispatchId: dispatch.id,
         stageTransitionId: dispatch.stageTransitionId,

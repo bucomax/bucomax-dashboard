@@ -1,6 +1,7 @@
 "use client";
 
 import { createPatientSelfRegisterInvite } from "@/features/clients/app/services/clients.service";
+import { formatDateTimeShort } from "@/lib/utils/date";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
@@ -76,10 +77,7 @@ export function PatientSelfRegisterQrDialog({
 
   const expiryLabel =
     expiresAt != null
-      ? new Intl.DateTimeFormat(locale === "en" ? "en-US" : "pt-BR", {
-          dateStyle: "short",
-          timeStyle: "short",
-        }).format(new Date(expiresAt))
+      ? formatDateTimeShort(expiresAt, locale === "en" ? "en-US" : "pt-BR")
       : null;
 
   async function copyLink() {

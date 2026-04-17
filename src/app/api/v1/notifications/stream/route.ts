@@ -3,52 +3,18 @@ import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
 import {
   countUnreadNotificationsWithClientScope,
   isNotificationMetadataVisibleToViewer,
-} from "@/lib/notifications/notification-client-scope";
+} from "@/application/use-cases/notification/list-notifications-with-scope";
 import { SSE_NOTIFICATIONS_CHANNEL } from "@/infrastructure/queue/constants";
 import {
+  acquireSseSlot,
   createSubscriberConnection,
-  getRedisConnection,
   isRedisEnabled,
+  releaseSseSlot,
   tripRedisCircuit,
-} from "@/infrastructure/queue/redis-connection";
+} from "@/infrastructure/notifications/sse-connection-slot";
 import type IORedis from "ioredis";
 
 export const dynamic = "force-dynamic";
-
-const MAX_SSE_PER_USER = 3;
-const SSE_COUNTER_TTL = 3600;
-
-type SseSlotResult = "ok" | "limit" | "redis_unavailable";
-
-async function acquireSseSlot(userId: string): Promise<SseSlotResult> {
-  const redis = getRedisConnection();
-  if (!redis) return "redis_unavailable";
-  const key = `sse:conn:${userId}`;
-  try {
-    const current = await redis.incr(key);
-    if (current === 1) await redis.expire(key, SSE_COUNTER_TTL);
-    if (current > MAX_SSE_PER_USER) {
-      await redis.decr(key);
-      return "limit";
-    }
-    return "ok";
-  } catch {
-    tripRedisCircuit();
-    return "redis_unavailable";
-  }
-}
-
-async function releaseSseSlot(userId: string): Promise<void> {
-  const redis = getRedisConnection();
-  if (!redis) return;
-  const key = `sse:conn:${userId}`;
-  try {
-    const val = await redis.decr(key);
-    if (val <= 0) await redis.del(key);
-  } catch {
-    /* Redis caiu durante o stream; slot expira pelo TTL */
-  }
-}
 
 export async function GET(request: Request) {
   const apiT = await getApiT(request);

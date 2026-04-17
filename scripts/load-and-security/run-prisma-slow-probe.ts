@@ -13,7 +13,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { PrismaClient } from "@prisma/client";
-import { CLIENT_LIST_INCLUDE } from "@/lib/clients/clients-list-shared";
+import { CLIENT_LIST_INCLUDE } from "@/application/use-cases/client/serialize-client-list";
 
 const SLOW_MS = Number(process.env.PRISMA_SLOW_QUERY_MS ?? 25);
 const PROBE_ROUNDS = Math.max(1, Math.min(50, Number(process.env.PRISMA_PROBE_ROUNDS ?? 8)));

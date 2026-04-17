@@ -3,7 +3,7 @@
 import { ClipboardCheck, Info, Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 
-import { normalizeStageChecklistDraftItems } from "@/lib/pathway/graph";
+import { normalizeStageChecklistDraftItems } from "@/domain/pathway/graph-normalizer";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";

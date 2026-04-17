@@ -4,7 +4,7 @@ import { ClientDetailAssigneeOverviewCard } from "@/features/clients/app/compone
 import { ClientDetailCardTitle } from "@/features/clients/app/components/client-detail-card-title";
 import { JourneyStagesList } from "@/features/clients/app/components/client-detail-journey-stages-list";
 import { formatDateTime } from "@/lib/utils/date";
-import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
+import type { SlaHealthStatus } from "@/domain/pathway/sla-health";
 import { slaHealthPillClassName } from "@/lib/utils/sla-status-ui";
 import type { ClientPatientPathwayDetailDto } from "@/types/api/clients-v1";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";

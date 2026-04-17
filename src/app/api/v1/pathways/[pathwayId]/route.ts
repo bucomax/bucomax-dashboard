@@ -1,33 +1,16 @@
-import {
-  revalidateTenantPathwaysAndClientsLists,
-  revalidateTenantPathwaysList,
-} from "@/infrastructure/cache/revalidate-tenant-lists";
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
 import { patchPathwayBodySchema } from "@/lib/validators/pathway";
+import {
+  getCarePathwayDetail,
+  runDeleteCarePathway,
+  runPatchCarePathway,
+} from "@/application/use-cases/pathway/manage-care-pathway";
 
 export const dynamic = "force-dynamic";
 
-type RouteCtx = { params: Promise<{ pathwayId: string }> };
-
-async function getPathwayOr404(pathwayId: string, tenantId: string) {
-  return prisma.carePathway.findFirst({
-    where: { id: pathwayId, tenantId },
-    include: {
-      versions: {
-        orderBy: { version: "desc" },
-        select: {
-          id: true,
-          version: true,
-          published: true,
-          createdAt: true,
-        },
-      },
-    },
-  });
-}
+import type { RouteCtx } from "@/types/api/route-context";
 
 export async function GET(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);
@@ -38,7 +21,7 @@ export async function GET(request: Request, ctx: RouteCtx) {
   if (tenantCtx.response) return tenantCtx.response;
 
   const { pathwayId } = await ctx.params;
-  const row = await getPathwayOr404(pathwayId, tenantCtx.tenantId);
+  const row = await getCarePathwayDetail(tenantCtx.tenantId, pathwayId);
   if (!row) {
     return jsonError("NOT_FOUND", apiT("errors.pathwayNotFound"), 404);
   }
@@ -48,12 +31,9 @@ export async function GET(request: Request, ctx: RouteCtx) {
       id: row.id,
       name: row.name,
       description: row.description,
-      versions: row.versions.map((v) => ({
-        ...v,
-        createdAt: v.createdAt.toISOString(),
-      })),
-      createdAt: row.createdAt.toISOString(),
-      updatedAt: row.updatedAt.toISOString(),
+      versions: row.versions,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
     },
   });
 }
@@ -67,12 +47,6 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
   if (tenantCtx.response) return tenantCtx.response;
 
   const { pathwayId } = await ctx.params;
-  const existing = await prisma.carePathway.findFirst({
-    where: { id: pathwayId, tenantId: tenantCtx.tenantId },
-  });
-  if (!existing) {
-    return jsonError("NOT_FOUND", apiT("errors.pathwayNotFound"), 404);
-  }
 
   let body: unknown;
   try {
@@ -96,20 +70,21 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     return jsonError("VALIDATION_ERROR", apiT("errors.noFieldsToUpdate"), 422);
   }
 
-  const row = await prisma.carePathway.update({
-    where: { id: pathwayId },
-    data,
+  const result = await runPatchCarePathway({
+    tenantId: tenantCtx.tenantId,
+    pathwayId,
+    patch: data,
   });
 
-  revalidateTenantPathwaysAndClientsLists(tenantCtx.tenantId);
+  if (!result.ok) {
+    if (result.code === "NOT_FOUND") {
+      return jsonError("NOT_FOUND", apiT("errors.pathwayNotFound"), 404);
+    }
+    return jsonError("VALIDATION_ERROR", apiT("errors.noFieldsToUpdate"), 422);
+  }
 
   return jsonSuccess({
-    pathway: {
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      updatedAt: row.updatedAt.toISOString(),
-    },
+    pathway: result.pathway,
   });
 }
 
@@ -122,21 +97,14 @@ export async function DELETE(request: Request, ctx: RouteCtx) {
   if (tenantCtx.response) return tenantCtx.response;
 
   const { pathwayId } = await ctx.params;
-  const existing = await prisma.carePathway.findFirst({
-    where: { id: pathwayId, tenantId: tenantCtx.tenantId },
-  });
-  if (!existing) {
-    return jsonError("NOT_FOUND", apiT("errors.pathwayNotFound"), 404);
-  }
+  const result = await runDeleteCarePathway(tenantCtx.tenantId, pathwayId);
 
-  const inUse = await prisma.patientPathway.count({ where: { pathwayId } });
-  if (inUse > 0) {
+  if (!result.ok) {
+    if (result.code === "NOT_FOUND") {
+      return jsonError("NOT_FOUND", apiT("errors.pathwayNotFound"), 404);
+    }
     return jsonError("CONFLICT", apiT("errors.pathwayPatientsBlockDelete"), 409);
   }
-
-  await prisma.carePathway.delete({ where: { id: pathwayId } });
-
-  revalidateTenantPathwaysList(tenantCtx.tenantId);
 
   return jsonSuccess({ message: apiT("success.pathwayDeleted") });
 }

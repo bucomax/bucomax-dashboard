@@ -2,14 +2,14 @@ import { unstable_cache } from "next/cache";
 import { prisma } from "@/infrastructure/database/prisma";
 import { CACHE_REVALIDATE_SEC } from "@/infrastructure/cache/cache-config";
 import { tenantClientsListTag } from "@/infrastructure/cache/cache-tags";
-import type { TenantMembershipClientScope } from "@/lib/auth/client-visibility";
-import { mergeClientWhereWithVisibility } from "@/lib/auth/client-visibility";
+import type { TenantMembershipClientScope } from "@/application/use-cases/shared/load-client-visibility-scope";
+import { mergeClientWhereWithVisibility } from "@/application/use-cases/shared/load-client-visibility-scope";
 import {
   buildClientsListBaseWhere,
   CLIENT_LIST_INCLUDE,
   reviveClientListRows,
   type ClientListRow,
-} from "@/lib/clients/clients-list-shared";
+} from "@/application/use-cases/client/serialize-client-list";
 
 type CachedClientsListArgs = {
   tenantId: string;

@@ -1,28 +1,21 @@
-import bcrypt from "bcryptjs";
 import { createApiMeta } from "@/lib/api/envelope";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError } from "@/lib/api-response";
 import { rateLimit } from "@/lib/api/rate-limit";
-import {
-  appendPatientPortalSessionCookie,
-  type PatientPortalSessionPayload,
-  portalPasswordVersionMs,
-} from "@/lib/auth/patient-portal-session";
-import { PATIENT_PORTAL_SESSION_MAX_AGE_SEC } from "@/lib/constants/patient-portal";
-import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { prisma } from "@/infrastructure/database/prisma";
-import { findClientForPortalLogin } from "@/lib/patient-portal/find-client-by-portal-login";
+import { appendPatientPortalSessionCookie } from "@/lib/auth/patient-portal-session";
+import { AuditEventType } from "@prisma/client";
+import { auditEventPrismaRepository } from "@/infrastructure/repositories/audit-event.repository";
 import {
   parsePortalLoginInput,
   portalLoginRateKey,
-} from "@/lib/patient-portal/login-identifier";
-import { findActiveTenantBySlug } from "@/lib/tenants/resolve-public-tenant";
+} from "@/domain/auth/patient-portal-login-identifier";
+import { findActiveTenantBySlug } from "@/application/use-cases/auth/resolve-public-tenant";
+import { runVerifyPatientPortalPassword } from "@/application/use-cases/patient-portal/verify-patient-portal-password";
 import { postPatientPortalPasswordVerifyBodySchema } from "@/lib/validators/patient-portal";
 import { NextResponse } from "next/server";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ tenantSlug: string }> };
 
 export async function POST(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);
@@ -56,45 +49,34 @@ export async function POST(request: Request, ctx: RouteCtx) {
   );
   if (limited) return limited;
 
-  const client = await findClientForPortalLogin(tenant.id, identifier);
+  const result = await runVerifyPatientPortalPassword({
+    tenant: { id: tenant.id, slug: tenant.slug },
+    identifier,
+    password: parsed.data.password,
+  });
 
-  if (!client) {
+  if (!result.ok) {
+    if (result.reason === "client_not_found") {
+      return jsonError("UNAUTHORIZED", apiT("errors.patientPortalPasswordInvalid"), 401);
+    }
+    const auditPayload =
+      result.reason === "password_not_set"
+        ? ({ reason: "password_not_set" } as const)
+        : ({ reason: "invalid_password" } as const);
+    if (result.client) {
+      void auditEventPrismaRepository
+        .recordCanonical({
+          tenantId: tenant.id,
+          clientId: result.client.id,
+          patientPathwayId: null,
+          actorUserId: null,
+          eventType: AuditEventType.PATIENT_PORTAL_LOGIN_FAILED,
+          payload: auditPayload,
+        })
+        .catch(() => {});
+    }
     return jsonError("UNAUTHORIZED", apiT("errors.patientPortalPasswordInvalid"), 401);
   }
-
-  if (!client.portalPasswordHash) {
-    void recordAuditEvent(prisma, {
-      tenantId: tenant.id,
-      clientId: client.id,
-      patientPathwayId: null,
-      actorUserId: null,
-      type: AuditEventType.PATIENT_PORTAL_LOGIN_FAILED,
-      payload: { reason: "password_not_set" },
-    }).catch(() => {});
-    return jsonError("UNAUTHORIZED", apiT("errors.patientPortalPasswordInvalid"), 401);
-  }
-
-  const ok = await bcrypt.compare(parsed.data.password, client.portalPasswordHash);
-  if (!ok) {
-    void recordAuditEvent(prisma, {
-      tenantId: tenant.id,
-      clientId: client.id,
-      patientPathwayId: null,
-      actorUserId: null,
-      type: AuditEventType.PATIENT_PORTAL_LOGIN_FAILED,
-      payload: { reason: "invalid_password" },
-    }).catch(() => {});
-    return jsonError("UNAUTHORIZED", apiT("errors.patientPortalPasswordInvalid"), 401);
-  }
-
-  const exp = Math.floor(Date.now() / 1000) + PATIENT_PORTAL_SESSION_MAX_AGE_SEC;
-  const sessionPayload: PatientPortalSessionPayload = {
-    clientId: client.id,
-    tenantId: tenant.id,
-    tenantSlug: tenant.slug,
-    exp,
-    pwdv: portalPasswordVersionMs(client.portalPasswordChangedAt),
-  };
 
   try {
     const res = NextResponse.json({
@@ -102,14 +84,14 @@ export async function POST(request: Request, ctx: RouteCtx) {
       data: { ok: true },
       meta: createApiMeta(),
     });
-    appendPatientPortalSessionCookie(res, sessionPayload);
-    await recordAuditEvent(prisma, {
+    appendPatientPortalSessionCookie(res, result.sessionPayload);
+    await auditEventPrismaRepository.recordCanonical({
       tenantId: tenant.id,
-      clientId: client.id,
+      clientId: result.sessionPayload.clientId,
       patientPathwayId: null,
       actorUserId: null,
-      type: AuditEventType.PATIENT_PORTAL_SESSION_CREATED,
-      payload: { clientId: client.id, method: "password" },
+      eventType: AuditEventType.PATIENT_PORTAL_SESSION_CREATED,
+      payload: { clientId: result.sessionPayload.clientId, method: "password" },
     });
     return res;
   } catch (e) {

@@ -1,6 +1,5 @@
 import { getCachedOpmeSuppliersPage } from "@/infrastructure/cache/cached-opme-suppliers-list";
-import { revalidateTenantOpmeSuppliersList } from "@/infrastructure/cache/revalidate-tenant-lists";
-import { prisma } from "@/infrastructure/database/prisma";
+import { runCreateOpmeSupplier } from "@/application/use-cases/opme/create-opme-supplier";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -78,33 +77,18 @@ export async function POST(request: Request) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const existing = await prisma.opmeSupplier.findFirst({
-    where: {
-      tenantId: tenantCtx.tenantId,
-      name: { equals: parsed.data.name.trim(), mode: "insensitive" },
-    },
-    select: { id: true },
+  const result = await runCreateOpmeSupplier({
+    tenantId: tenantCtx.tenantId,
+    name: parsed.data.name,
   });
-  if (existing) {
+
+  if (!result.ok) {
     return jsonError("CONFLICT", apiT("errors.opmeSupplierNameConflict"), 409);
   }
 
-  const supplier = await prisma.opmeSupplier.create({
-    data: {
-      tenantId: tenantCtx.tenantId,
-      name: parsed.data.name.trim(),
-    },
-    select: { id: true, name: true, active: true },
-  });
-
-  revalidateTenantOpmeSuppliersList(tenantCtx.tenantId);
-
   return jsonSuccess(
     {
-      supplier: {
-        ...supplier,
-        activePatientsCount: 0,
-      },
+      supplier: result.supplier,
     },
     { status: 201 },
   );

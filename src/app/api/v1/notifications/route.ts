@@ -1,7 +1,7 @@
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
-import { listNotificationsWithClientScope } from "@/lib/notifications/notification-client-scope";
+import { listNotificationsWithClientScope } from "@/application/use-cases/notification/list-notifications-with-scope";
 import { notificationsListQuerySchema } from "@/lib/validators/notification";
 import type { NotificationDto } from "@/types/api/notification-v1";
 

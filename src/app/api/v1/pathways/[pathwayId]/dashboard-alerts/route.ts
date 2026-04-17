@@ -1,18 +1,15 @@
 import { resolvePublishedPathwayVersion } from "@/infrastructure/database/pathway-published";
-import { prisma } from "@/infrastructure/database/prisma";
 import { checkAndEmitSlaNotifications } from "@/infrastructure/notifications/sla-notification-check";
-import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { buildKanbanClientWhereForSession } from "@/lib/auth/client-visibility";
+import { buildKanbanClientWhereForSession } from "@/application/use-cases/shared/load-client-visibility-scope";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
-import { computeSlaHealthStatus } from "@/lib/pathway/sla-health";
 import { dashboardPathwayOpmeQuerySchema } from "@/lib/validators/kanban";
+import { loadDashboardPathwayAlerts } from "@/application/use-cases/pathway/load-dashboard-pathway-alerts";
 import { z } from "zod";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ pathwayId: string }> };
 
 const querySchema = dashboardPathwayOpmeQuerySchema.extend({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
@@ -59,9 +56,6 @@ export async function GET(request: Request, ctx: RouteCtx) {
     });
   }
 
-  const now = new Date();
-  const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
   const clientWhere = await buildKanbanClientWhereForSession(
     auth.session!,
     tenantCtx.tenantId,
@@ -69,55 +63,17 @@ export async function GET(request: Request, ctx: RouteCtx) {
     opmeSupplierId,
   );
 
-  const SCAN_LIMIT = 5_000;
-  const raw = await prisma.patientPathway.findMany({
-    where: {
-      tenantId: tenantCtx.tenantId,
-      pathwayId,
-      pathwayVersionId: version.id,
-      completedAt: null,
-      client: clientWhere,
-    },
-    include: {
-      client: { select: { id: true, name: true, phone: true } },
-      currentStage: {
-        select: {
-          id: true,
-          name: true,
-          alertWarningDays: true,
-          alertCriticalDays: true,
-        },
-      },
-    },
-    take: SCAN_LIMIT,
+  const alerts = await loadDashboardPathwayAlerts({
+    tenantId: tenantCtx.tenantId,
+    pathwayId,
+    version,
+    clientWhere,
+    limit,
   });
-
-  const dangerOrdered = raw
-    .map((pp) => {
-      const slaStatus = computeSlaHealthStatus(
-        pp.enteredStageAt,
-        now,
-        pp.currentStage.alertWarningDays,
-        pp.currentStage.alertCriticalDays,
-      );
-      const daysInStage = Math.floor((now.getTime() - pp.enteredStageAt.getTime()) / MS_PER_DAY);
-      return { pp, slaStatus, daysInStage };
-    })
-    .filter((x) => x.slaStatus === "danger")
-    .sort((a, b) => b.daysInStage - a.daysInStage);
-
-  const totalItems = dangerOrdered.length;
-  const pageRows = dangerOrdered.slice(0, limit);
 
   return jsonSuccess({
     pathwayId,
-    data: pageRows.map(({ pp, daysInStage }) => ({
-      patientPathwayId: pp.id,
-      clientId: pp.client.id,
-      clientName: pp.client.name,
-      daysInStage,
-      stageName: pp.currentStage.name,
-    })),
-    pagination: buildPagination(1, limit, totalItems),
+    data: alerts.data,
+    pagination: alerts.pagination,
   });
 }

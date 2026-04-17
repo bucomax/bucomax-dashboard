@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 
 import { AuditEventType } from "@prisma/client";
 
-import { recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { prisma } from "@/infrastructure/database/prisma";
+import { auditEventPrismaRepository } from "@/infrastructure/repositories/audit-event.repository";
 
 function emailHashHex(email: string): string {
   return createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
@@ -20,12 +20,12 @@ async function activeTenantIdForUser(userId: string): Promise<string | null> {
 export async function recordStaffLoginSuccess(userId: string): Promise<void> {
   const tenantId = await activeTenantIdForUser(userId);
   if (!tenantId) return;
-  await recordAuditEvent(prisma, {
+  await auditEventPrismaRepository.recordCanonical({
     tenantId,
     clientId: null,
     patientPathwayId: null,
     actorUserId: userId,
-    type: AuditEventType.STAFF_LOGIN_SUCCESS,
+    eventType: AuditEventType.STAFF_LOGIN_SUCCESS,
     payload: { userId, method: "credentials" },
   });
 }
@@ -38,12 +38,12 @@ export async function recordStaffLoginFailed(
   if (!userId) return;
   const tenantId = await activeTenantIdForUser(userId);
   if (!tenantId) return;
-  await recordAuditEvent(prisma, {
+  await auditEventPrismaRepository.recordCanonical({
     tenantId,
     clientId: null,
     patientPathwayId: null,
     actorUserId: userId,
-    type: AuditEventType.STAFF_LOGIN_FAILED,
+    eventType: AuditEventType.STAFF_LOGIN_FAILED,
     payload: { emailHash: emailHashHex(email), reason },
   });
 }

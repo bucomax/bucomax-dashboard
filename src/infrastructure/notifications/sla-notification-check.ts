@@ -1,8 +1,8 @@
 import type { NotificationType } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
-import { resolvePathwayNotificationTargetUserIds } from "@/lib/notifications/resolve-pathway-notification-targets";
+import { resolvePathwayNotificationTargetUserIds } from "@/application/use-cases/notification/resolve-notification-targets";
 import { notificationEmitter } from "./notification-emitter";
-import { computeSlaHealthStatus } from "@/lib/pathway/sla-health";
+import { computeSlaHealthStatus } from "@/domain/pathway/sla-health";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000;

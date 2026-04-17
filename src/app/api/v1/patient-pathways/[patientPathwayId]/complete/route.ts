@@ -1,6 +1,3 @@
-import { revalidateTenantClientsList } from "@/infrastructure/cache/revalidate-tenant-lists";
-import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import {
@@ -8,10 +5,10 @@ import {
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
+import { runCompletePatientPathway } from "@/application/use-cases/patient-pathway/complete-patient-pathway";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ patientPathwayId: string }> };
 
 export async function POST(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);
@@ -25,45 +22,20 @@ export async function POST(request: Request, ctx: RouteCtx) {
 
   const { patientPathwayId } = await ctx.params;
 
-  const pp = await prisma.patientPathway.findFirst({
-    where: { id: patientPathwayId, tenantId: tenantCtx.tenantId },
-    select: { id: true, completedAt: true, clientId: true },
+  const result = await runCompletePatientPathway({
+    tenantId: tenantCtx.tenantId,
+    actorUserId: auth.session!.user.id,
+    patientPathwayId,
   });
-  if (!pp) {
-    return jsonError("NOT_FOUND", apiT("errors.patientPathwayInstanceNotFound"), 404);
-  }
-  if (pp.completedAt) {
+
+  if (!result.ok) {
+    if (result.code === "NOT_FOUND") {
+      return jsonError("NOT_FOUND", apiT("errors.patientPathwayInstanceNotFound"), 404);
+    }
     return jsonError("CONFLICT", apiT("errors.pathwayAlreadyCompleted"), 409);
   }
 
-  const updated = await prisma.patientPathway.update({
-    where: { id: pp.id },
-    data: { completedAt: new Date() },
-    include: {
-      client: { select: { id: true, name: true } },
-      pathway: { select: { id: true, name: true } },
-      currentStage: { select: { id: true, name: true } },
-    },
-  });
-
-  revalidateTenantClientsList(tenantCtx.tenantId);
-
-  await recordAuditEvent(prisma, {
-    tenantId: tenantCtx.tenantId,
-    clientId: pp.clientId,
-    patientPathwayId: updated.id,
-    actorUserId: auth.session!.user.id,
-    type: AuditEventType.PATIENT_PATHWAY_COMPLETED,
-    payload: { patientPathwayId: updated.id },
-  });
-
   return jsonSuccess({
-    patientPathway: {
-      id: updated.id,
-      completedAt: updated.completedAt!.toISOString(),
-      client: updated.client,
-      pathway: updated.pathway,
-      currentStage: updated.currentStage,
-    },
+    patientPathway: result.patientPathway,
   });
 }

@@ -5,7 +5,7 @@ import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
 
 export const dynamic = "force-dynamic";
 
-type RouteCtx = { params: Promise<{ pathwayId: string }> };
+import type { RouteCtx } from "@/types/api/route-context";
 
 function serializeStage(s: {
   id: string;

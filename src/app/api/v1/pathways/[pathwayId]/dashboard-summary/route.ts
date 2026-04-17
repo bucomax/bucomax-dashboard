@@ -1,15 +1,13 @@
 import { resolvePublishedPathwayVersion } from "@/infrastructure/database/pathway-published";
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { buildKanbanClientWhereForSession } from "@/lib/auth/client-visibility";
+import { buildKanbanClientWhereForSession } from "@/application/use-cases/shared/load-client-visibility-scope";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
-import { computeSlaHealthStatus } from "@/lib/pathway/sla-health";
 import { dashboardPathwayOpmeQuerySchema } from "@/lib/validators/kanban";
+import { loadDashboardPathwaySummary } from "@/application/use-cases/pathway/load-dashboard-pathway-summary";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ pathwayId: string }> };
 
 /** Métricas dos 4 cards do dashboard (totais por faixa SLA) para uma jornada com versão publicada. */
 export async function GET(request: Request, ctx: RouteCtx) {
@@ -39,7 +37,6 @@ export async function GET(request: Request, ctx: RouteCtx) {
     return jsonError("CONFLICT", apiT("errors.noPublishedVersion"), 409);
   }
   const { version } = resolved;
-  const now = new Date();
 
   const clientWhere = await buildKanbanClientWhereForSession(
     auth.session!,
@@ -48,50 +45,16 @@ export async function GET(request: Request, ctx: RouteCtx) {
     opmeSupplierId,
   );
 
-  const SCAN_LIMIT = 5_000;
-  const rows = await prisma.patientPathway.findMany({
-    where: {
-      tenantId: tenantCtx.tenantId,
-      pathwayId,
-      pathwayVersionId: version.id,
-      completedAt: null,
-      client: clientWhere,
-    },
-    select: {
-      enteredStageAt: true,
-      currentStage: {
-        select: { alertWarningDays: true, alertCriticalDays: true },
-      },
-    },
-    take: SCAN_LIMIT,
+  const summary = await loadDashboardPathwaySummary({
+    tenantId: tenantCtx.tenantId,
+    pathwayId,
+    version,
+    clientWhere,
   });
-
-  let ok = 0;
-  let warning = 0;
-  let danger = 0;
-  for (const r of rows) {
-    const s = computeSlaHealthStatus(
-      r.enteredStageAt,
-      now,
-      r.currentStage.alertWarningDays,
-      r.currentStage.alertCriticalDays,
-    );
-    if (s === "ok") ok += 1;
-    else if (s === "warning") warning += 1;
-    else danger += 1;
-  }
 
   return jsonSuccess({
     pathwayId,
-    version: {
-      id: version.id,
-      version: version.version,
-    },
-    totals: {
-      total: rows.length,
-      ok,
-      warning,
-      danger,
-    },
+    version: summary.versionMeta,
+    totals: summary.totals,
   });
 }

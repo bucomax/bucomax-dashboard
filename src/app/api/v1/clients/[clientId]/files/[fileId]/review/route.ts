@@ -1,20 +1,17 @@
-import { AuditEventType, PatientPortalFileReviewStatus } from "@prisma/client";
-import { prisma } from "@/infrastructure/database/prisma";
-import { recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { notifyPatientFileReviewed } from "@/infrastructure/email/notify-patient-file-reviewed";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
+import { runReviewClientPortalFile } from "@/application/use-cases/client/review-client-portal-file";
+import { findTenantClientVisibleToSession } from "@/application/use-cases/shared/load-client-visibility-scope";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
+import { notifyPatientFileReviewed } from "@/infrastructure/email/notify-patient-file-reviewed";
 import { patchClientFileReviewBodySchema } from "@/lib/validators/patient-portal-files";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ clientId: string; fileId: string }> };
 
 export async function PATCH(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);
@@ -49,66 +46,34 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const asset = await prisma.fileAsset.findFirst({
-    where: { id: fileId, clientId, tenantId },
-    select: {
-      id: true,
-      fileName: true,
-      mimeType: true,
-      patientPortalReviewStatus: true,
+  const result = await runReviewClientPortalFile({
+    tenantId,
+    clientId,
+    fileId,
+    actorUserId: userId,
+    input: {
+      decision: parsed.data.decision,
+      rejectReason: parsed.data.rejectReason,
     },
   });
-  if (!asset) {
-    return jsonError("NOT_FOUND", apiT("errors.clientFileNotFound"), 404);
-  }
 
-  if (asset.patientPortalReviewStatus !== PatientPortalFileReviewStatus.PENDING) {
+  if (!result.ok) {
+    if (result.code === "FILE_NOT_FOUND") {
+      return jsonError("NOT_FOUND", apiT("errors.clientFileNotFound"), 404);
+    }
     return jsonError("INVALID_STATE", apiT("errors.fileNotPendingPortalReview"), 409);
   }
 
-  const nextStatus =
-    parsed.data.decision === "approve"
-      ? PatientPortalFileReviewStatus.APPROVED
-      : PatientPortalFileReviewStatus.REJECTED;
-
-  await prisma.$transaction(async (tx) => {
-    await tx.fileAsset.update({
-      where: { id: asset.id },
-      data: { patientPortalReviewStatus: nextStatus },
-    });
-    await recordAuditEvent(tx, {
-      tenantId,
-      clientId,
-      patientPathwayId: null,
-      actorUserId: userId,
-      type:
-        parsed.data.decision === "approve"
-          ? AuditEventType.PATIENT_PORTAL_FILE_APPROVED
-          : AuditEventType.PATIENT_PORTAL_FILE_REJECTED,
-      payload:
-        parsed.data.decision === "approve"
-          ? { fileAssetId: asset.id, mimeType: asset.mimeType }
-          : {
-              fileAssetId: asset.id,
-              mimeType: asset.mimeType,
-              ...(parsed.data.rejectReason?.trim()
-                ? { rejectReason: parsed.data.rejectReason.trim() }
-                : {}),
-            },
-    });
-  });
-
-  // Fire-and-forget: notifica paciente por e-mail e/ou WhatsApp
   notifyPatientFileReviewed({
     tenantId,
     clientId,
-    fileName: asset.fileName,
+    fileName: result.fileName,
     decision: parsed.data.decision,
     rejectReason: parsed.data.decision === "reject" ? parsed.data.rejectReason : undefined,
   }).catch((err) => console.error("[file-review] notify patient failed:", err));
 
   return jsonSuccess({
-    fileId: asset.id,
-    patientPortalReviewStatus: nextStatus,
+    fileId: result.fileId,
+    patientPortalReviewStatus: result.patientPortalReviewStatus,
   });
 }

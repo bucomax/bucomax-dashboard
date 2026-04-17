@@ -3,7 +3,7 @@
 import { ClientDetailCardTitle } from "@/features/clients/app/components/client-detail-card-title";
 import { useClientTimeline } from "@/features/clients/app/hooks/use-client-timeline";
 import { lineForItem } from "@/features/clients/app/utils/timeline-line";
-import { CLIENT_TIMELINE_EVENT_CATEGORIES } from "@/lib/clients/timeline-event-categories";
+import { CLIENT_TIMELINE_EVENT_CATEGORIES } from "@/domain/audit/event-category-mapper";
 import {
   AuditTimelineList,
   TimelineCategoryIcon,

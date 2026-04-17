@@ -1,5 +1,5 @@
 import { AuthLayout } from "@/shared/components/layout/auth-layout";
-import { findActiveTenantBySlug } from "@/lib/tenants/resolve-public-tenant";
+import { findActiveTenantBySlug } from "@/application/use-cases/auth/resolve-public-tenant";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 

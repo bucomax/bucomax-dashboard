@@ -1,6 +1,6 @@
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonSuccess } from "@/lib/api-response";
+import { listTenantMembersForPicker } from "@/application/use-cases/tenant/list-tenant-members-for-picker";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
@@ -21,28 +21,7 @@ export async function GET(request: Request) {
   const forbidden = await assertActiveTenantMembership(auth.session!, tenantCtx.tenantId, request, apiT);
   if (forbidden) return forbidden;
 
-  const rows = await prisma.tenantMembership.findMany({
-    where: { tenantId: tenantCtx.tenantId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          deletedAt: true,
-        },
-      },
-    },
-    orderBy: { user: { email: "asc" } },
-  });
-
-  const members = rows
-    .filter((r) => r.user.deletedAt === null)
-    .map((r) => ({
-      userId: r.userId,
-      email: r.user.email,
-      name: r.user.name,
-    }));
+  const members = await listTenantMembersForPicker({ tenantId: tenantCtx.tenantId });
 
   return jsonSuccess({ members });
 }

@@ -1,11 +1,9 @@
-import bcrypt from "bcryptjs";
-import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { requireActivePatientPortalClient } from "@/lib/auth/patient-portal-request";
 import { postPatientPortalSessionPasswordBodySchema } from "@/lib/validators/patient-portal";
+import { runSetPatientPortalSessionPassword } from "@/application/use-cases/patient-portal/set-patient-portal-session-password";
 
 export const dynamic = "force-dynamic";
 
@@ -33,39 +31,22 @@ export async function POST(request: Request) {
 
   const { newPassword, currentPassword } = parsed.data;
 
-  const row = await prisma.client.findFirst({
-    where: { id: portal.clientId, tenantId: portal.tenantId, deletedAt: null },
-    select: { id: true, portalPasswordHash: true },
+  const result = await runSetPatientPortalSessionPassword({
+    tenantId: portal.tenantId,
+    clientId: portal.clientId,
+    newPassword,
+    currentPassword,
   });
-  if (!row) {
-    return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
-  }
 
-  if (row.portalPasswordHash) {
-    if (!currentPassword?.trim()) {
+  if (!result.ok) {
+    if (result.code === "NOT_FOUND") {
+      return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
+    }
+    if (result.code === "CURRENT_REQUIRED") {
       return jsonError("VALIDATION_ERROR", apiT("errors.patientPortalPasswordCurrentRequired"), 422);
     }
-    const match = await bcrypt.compare(currentPassword, row.portalPasswordHash);
-    if (!match) {
-      return jsonError("UNAUTHORIZED", apiT("errors.patientPortalPasswordCurrentWrong"), 401);
-    }
+    return jsonError("UNAUTHORIZED", apiT("errors.patientPortalPasswordCurrentWrong"), 401);
   }
-
-  const portalPasswordHash = await bcrypt.hash(newPassword, 12);
-  const portalPasswordChangedAt = new Date();
-  await prisma.client.update({
-    where: { id: row.id },
-    data: { portalPasswordHash, portalPasswordChangedAt },
-  });
-
-  await recordAuditEvent(prisma, {
-    tenantId: portal.tenantId,
-    clientId: row.id,
-    patientPathwayId: null,
-    actorUserId: null,
-    type: AuditEventType.PATIENT_PORTAL_PASSWORD_SET,
-    payload: { clientId: row.id, source: "portal_session" },
-  });
 
   return jsonSuccess({ ok: true });
 }

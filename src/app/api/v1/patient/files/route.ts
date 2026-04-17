@@ -1,18 +1,9 @@
-import { AuditEventType, PatientPortalFileReviewStatus } from "@prisma/client";
-import { prisma } from "@/infrastructure/database/prisma";
-import { recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
-import {
-  computeSha256HexForGcsObjectKey,
-  keyMatchesFileRegisterIntent,
-  publicUrlForKey,
-  readFirstBytesFromGcsObject,
-} from "@/infrastructure/storage/gcs-storage";
-import { MAGIC_BYTES_READ_SIZE, validateMagicBytes } from "@/lib/utils/magic-bytes";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { requireActivePatientPortalClient } from "@/lib/auth/patient-portal-request";
+import { listPatientPortalFilesPage } from "@/application/use-cases/patient-portal/list-patient-portal-files-page";
+import { runRegisterPatientPortalFile } from "@/application/use-cases/patient-portal/register-patient-portal-file";
 import { clientDetailQuerySchema } from "@/lib/validators/client-detail-query";
 import { patientPortalFileRegisterBodySchema } from "@/lib/validators/patient-portal-files";
 
@@ -32,39 +23,14 @@ export async function GET(request: Request) {
     return jsonError("VALIDATION_ERROR", parsedQ.error.flatten().formErrors.join("; "), 422);
   }
   const { page, limit } = parsedQ.data;
-  const offset = (page - 1) * limit;
   const { tenantId, clientId } = portalCtx.data.portal;
 
-  const where = {
+  const { totalItems, rows } = await listPatientPortalFilesPage({
     tenantId,
     clientId,
-    patientPortalReviewStatus: {
-      in: [
-        PatientPortalFileReviewStatus.NOT_APPLICABLE,
-        PatientPortalFileReviewStatus.PENDING,
-        PatientPortalFileReviewStatus.APPROVED,
-      ],
-    },
-  };
-
-  const [totalItems, rows] = await Promise.all([
-    prisma.fileAsset.count({ where }),
-    prisma.fileAsset.findMany({
-      where,
-      orderBy: { createdAt: "desc" },
-      skip: offset,
-      take: limit,
-      select: {
-        id: true,
-        fileName: true,
-        mimeType: true,
-        sizeBytes: true,
-        sha256Hash: true,
-        createdAt: true,
-        patientPortalReviewStatus: true,
-      },
-    }),
-  ]);
+    page,
+    limit,
+  });
 
   return jsonSuccess({
     data: rows.map((r) => ({
@@ -99,104 +65,34 @@ export async function POST(request: Request) {
 
   const { tenantId, clientId } = portalCtx.data.portal;
 
-  if (!keyMatchesFileRegisterIntent(parsed.data.key, tenantId, clientId)) {
-    return jsonError("FORBIDDEN", trans("errors.invalidObjectKey"), 403);
-  }
-
-  const existingKey = await prisma.fileAsset.findUnique({
-    where: { r2Key: parsed.data.key },
-    select: { id: true },
-  });
-  if (existingKey) {
-    return jsonError("CONFLICT", trans("errors.fileAlreadyRegistered"), 409);
-  }
-
-  // --- Magic bytes: validar conteúdo real antes de persistir ---
-  try {
-    const header = await readFirstBytesFromGcsObject(parsed.data.key, MAGIC_BYTES_READ_SIZE);
-    if (header) {
-      const mbResult = validateMagicBytes(header, parsed.data.mimeType);
-      if (!mbResult.valid) {
-        return jsonError(
-          "VALIDATION_ERROR",
-          trans("errors.fileMimeTypeMismatch"),
-          422,
-          { declaredMime: mbResult.declaredMime },
-        );
-      }
-    }
-  } catch {
-    // GCS indisponível — fail-open
-  }
-
-  const sha256Hash = await computeSha256HexForGcsObjectKey(parsed.data.key);
-
-  const asset = await prisma.fileAsset.create({
-    data: {
-      tenantId,
-      r2Key: parsed.data.key,
-      fileName: parsed.data.fileName,
-      mimeType: parsed.data.mimeType,
-      sizeBytes: parsed.data.sizeBytes,
-      uploadedById: null,
-      clientId,
-      patientPortalReviewStatus: PatientPortalFileReviewStatus.PENDING,
-      sha256Hash,
-    },
-    select: {
-      id: true,
-      r2Key: true,
-      fileName: true,
-      mimeType: true,
-      sizeBytes: true,
-      sha256Hash: true,
-      clientId: true,
-      patientPortalReviewStatus: true,
-      createdAt: true,
-    },
-  });
-
-  await recordAuditEvent(prisma, {
+  const result = await runRegisterPatientPortalFile({
     tenantId,
     clientId,
-    patientPathwayId: null,
-    actorUserId: null,
-    type: AuditEventType.PATIENT_PORTAL_FILE_SUBMITTED,
-    payload: { fileAssetId: asset.id, mimeType: asset.mimeType },
+    data: parsed.data,
+    t: trans,
   });
 
-  const clientRow = await prisma.client.findFirst({
-    where: { id: clientId, tenantId },
-    select: { name: true },
-  });
-  const patientLabel = clientRow?.name?.trim() || trans("notifications.patientPortalFallbackPatientName");
-
-  notificationEmitter
-    .emit({
-      tenantId,
-      type: "patient_portal_file_pending",
-      title: trans("notifications.patientPortalFileTitle"),
-      body: trans("notifications.patientPortalFileBody", {
-        patientName: patientLabel,
-        fileName: asset.fileName,
-      }),
-      metadata: { clientId, fileAssetId: asset.id },
-      correlationId: asset.id,
-    })
-    .catch((err) => console.error("[patient/files] notification emit failed:", err));
+  if (!result.ok) {
+    if (result.code === "INVALID_KEY") {
+      return jsonError("FORBIDDEN", trans("errors.invalidObjectKey"), 403);
+    }
+    if (result.code === "MIME_MISMATCH") {
+      return jsonError(
+        "VALIDATION_ERROR",
+        trans("errors.fileMimeTypeMismatch"),
+        422,
+        { declaredMime: result.declaredMime },
+      );
+    }
+    if (result.code === "CONFLICT") {
+      return jsonError("CONFLICT", trans("errors.fileAlreadyRegistered"), 409);
+    }
+    return jsonError("INTERNAL_ERROR", trans("errors.internalError"), 500);
+  }
 
   return jsonSuccess(
     {
-      file: {
-        id: asset.id,
-        fileName: asset.fileName,
-        mimeType: asset.mimeType,
-        sizeBytes: asset.sizeBytes,
-        sha256Hash: asset.sha256Hash,
-        patientPortalReviewStatus: asset.patientPortalReviewStatus,
-        publicUrl: publicUrlForKey(asset.r2Key),
-        createdAt: asset.createdAt.toISOString(),
-      },
+      file: result.file,
     },
     { status: 201 },
   );

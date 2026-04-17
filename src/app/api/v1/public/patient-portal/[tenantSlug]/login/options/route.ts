@@ -1,13 +1,13 @@
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { findClientForPortalLogin } from "@/lib/patient-portal/find-client-by-portal-login";
-import { parsePortalLoginInput } from "@/lib/patient-portal/login-identifier";
-import { findActiveTenantBySlug } from "@/lib/tenants/resolve-public-tenant";
+import { findClientForPortalLogin } from "@/application/use-cases/client/find-client-for-portal-login";
+import { parsePortalLoginInput } from "@/domain/auth/patient-portal-login-identifier";
+import { findActiveTenantBySlug } from "@/application/use-cases/auth/resolve-public-tenant";
 import { postPatientPortalLoginOptionsBodySchema } from "@/lib/validators/patient-portal";
 
 export const dynamic = "force-dynamic";
 
-type RouteCtx = { params: Promise<{ tenantSlug: string }> };
+import type { RouteCtx } from "@/types/api/route-context";
 
 export async function POST(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);

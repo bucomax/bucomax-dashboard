@@ -1,24 +1,16 @@
-import { randomBytes } from "crypto";
-import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
+import { findTenantClientVisibleToSession } from "@/application/use-cases/shared/load-client-visibility-scope";
+import { runCreateClientPortalLink } from "@/application/use-cases/client/create-client-portal-link";
 import {
   assertActiveTenantMembership,
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
-import { getPublicAppUrl } from "@/lib/config/urls";
-import { PATIENT_PORTAL_LINK_TTL_MS } from "@/lib/constants/patient-portal";
-import { prisma } from "@/infrastructure/database/prisma";
-import { getPatientPortalMagicLinkHtml } from "@/infrastructure/email/email-templates";
-import { isEmailConfigured, sendEmail } from "@/infrastructure/email/resend.client";
 import { postClientPortalLinkBodySchema } from "@/lib/validators/patient-portal";
-import type { PostClientPortalLinkResponse } from "@/types/api/patient-portal-v1";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ clientId: string }> };
 
 export async function POST(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);
@@ -63,74 +55,22 @@ export async function POST(request: Request, ctx: RouteCtx) {
     return jsonError("VALIDATION_ERROR", apiT("errors.patientPortalEmailRequired"), 422);
   }
 
-  const token = randomBytes(32).toString("hex");
-  const expiresAt = new Date(Date.now() + PATIENT_PORTAL_LINK_TTL_MS);
-
-  const singleUse = sendEmailFlag;
-
-  const tokenRow = await prisma.patientPortalLinkToken.create({
-    data: {
-      clientId: client.id,
-      token,
-      expiresAt,
-      singleUse,
-    },
-    select: { id: true },
-  });
-
-  await recordAuditEvent(prisma, {
+  const result = await runCreateClientPortalLink({
     tenantId,
-    clientId: client.id,
-    patientPathwayId: null,
     actorUserId: auth.session!.user.id,
-    type: AuditEventType.PATIENT_PORTAL_LINK_GENERATED,
-    payload: {
-      tokenId: tokenRow.id,
-      singleUse,
-      ttlMs: PATIENT_PORTAL_LINK_TTL_MS,
-    },
+    client,
+    sendEmailFlag,
   });
 
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    select: { name: true, slug: true },
-  });
-  const clinicName = tenant?.name ?? "Clínica";
-  const tenantSlug = tenant?.slug ?? "";
-  if (!tenantSlug) {
-    return jsonError("SERVICE_UNAVAILABLE", apiT("errors.tenantNotFound"), 503);
-  }
-
-  const enterUrl = `${getPublicAppUrl()}/${tenantSlug}/patient/enter?token=${encodeURIComponent(token)}`;
-
-  let emailSent = false;
-  if (sendEmailFlag && email) {
-    if (!isEmailConfigured()) {
+  if (!result.ok) {
+    if (result.code === "TENANT_SLUG_MISSING") {
+      return jsonError("SERVICE_UNAVAILABLE", apiT("errors.tenantNotFound"), 503);
+    }
+    if (result.code === "EMAIL_NOT_CONFIGURED") {
       return jsonError("SERVICE_UNAVAILABLE", apiT("errors.invitesNotConfigured"), 503);
     }
-
-    const { error } = await sendEmail({
-      to: email,
-      subject: `${clinicName} — Acesso ao seu acompanhamento (Bucomax)`,
-      html: getPatientPortalMagicLinkHtml({
-        patientName: client.name,
-        clinicName,
-        enterUrl,
-        singleUse,
-      }),
-      text: `Olá, ${client.name}. Acesse seu acompanhamento: ${enterUrl}`,
-    });
-    if (error) {
-      return jsonError("SERVICE_UNAVAILABLE", apiT("errors.emailSendFailedGeneric"), 503);
-    }
-    emailSent = true;
+    return jsonError("SERVICE_UNAVAILABLE", apiT("errors.emailSendFailedGeneric"), 503);
   }
 
-  const data: PostClientPortalLinkResponse = {
-    enterUrl,
-    emailSent,
-    expiresAt: expiresAt.toISOString(),
-  };
-
-  return jsonSuccess(data, { status: 201 });
+  return jsonSuccess(result.data, { status: 201 });
 }

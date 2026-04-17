@@ -1,4 +1,3 @@
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import {
@@ -6,10 +5,10 @@ import {
   getActiveTenantIdOr400,
   requireSessionOr401,
 } from "@/lib/auth/guards";
+import { listChannelDispatchesForPatientPathway } from "@/application/use-cases/patient-pathway/list-channel-dispatches";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ patientPathwayId: string }> };
 
 export async function GET(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);
@@ -24,38 +23,13 @@ export async function GET(request: Request, ctx: RouteCtx) {
 
   const { patientPathwayId } = await ctx.params;
 
-  // Verify the pathway belongs to this tenant
-  const pp = await prisma.patientPathway.findFirst({
-    where: { id: patientPathwayId, tenantId: tenantCtx.tenantId },
-    select: { id: true },
+  const dispatches = await listChannelDispatchesForPatientPathway({
+    tenantId: tenantCtx.tenantId,
+    patientPathwayId,
   });
-  if (!pp) {
+  if (!dispatches) {
     return jsonError("NOT_FOUND", apiT("errors.patientPathwayInstanceNotFound"), 404);
   }
-
-  const dispatches = await prisma.channelDispatch.findMany({
-    where: {
-      stageTransition: { patientPathwayId },
-      tenantId: tenantCtx.tenantId,
-    },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      stageTransitionId: true,
-      channel: true,
-      status: true,
-      externalMessageId: true,
-      recipientPhone: true,
-      documentFileName: true,
-      errorDetail: true,
-      sentAt: true,
-      deliveredAt: true,
-      readAt: true,
-      confirmedAt: true,
-      confirmationPayload: true,
-      createdAt: true,
-    },
-  });
 
   return jsonSuccess({ dispatches });
 }

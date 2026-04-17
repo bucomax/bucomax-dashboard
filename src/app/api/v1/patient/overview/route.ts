@@ -1,8 +1,7 @@
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { requireActivePatientPortalClient } from "@/lib/auth/patient-portal-request";
-import { prisma } from "@/infrastructure/database/prisma";
-import type { PatientPortalOverviewResponse } from "@/types/api/patient-portal-v1";
+import { loadPatientPortalOverview } from "@/application/use-cases/patient-portal/load-patient-portal-overview";
 
 export const dynamic = "force-dynamic";
 
@@ -12,50 +11,13 @@ export async function GET(request: Request) {
   if (!portalCtx.ok) return portalCtx.response;
   const portal = portalCtx.data.portal;
 
-  const client = await prisma.client.findFirst({
-    where: {
-      id: portal.clientId,
-      tenantId: portal.tenantId,
-      deletedAt: null,
-    },
-    select: { name: true, email: true },
+  const data = await loadPatientPortalOverview({
+    tenantId: portal.tenantId,
+    clientId: portal.clientId,
   });
-  if (!client) {
+  if (!data) {
     return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
   }
-
-  const [tenant, activePp] = await Promise.all([
-    prisma.tenant.findUnique({
-      where: { id: portal.tenantId },
-      select: { name: true },
-    }),
-    prisma.patientPathway.findFirst({
-      where: {
-        clientId: portal.clientId,
-        tenantId: portal.tenantId,
-        completedAt: null,
-      },
-      select: {
-        id: true,
-        enteredStageAt: true,
-        pathway: { select: { name: true } },
-        currentStage: { select: { name: true } },
-      },
-    }),
-  ]);
-
-  const data: PatientPortalOverviewResponse = {
-    client: { name: client.name, email: client.email },
-    tenant: { name: tenant?.name ?? "—" },
-    activeJourney: activePp
-      ? {
-          patientPathwayId: activePp.id,
-          pathwayName: activePp.pathway.name,
-          currentStageName: activePp.currentStage.name,
-          enteredStageAt: activePp.enteredStageAt.toISOString(),
-        }
-      : null,
-  };
 
   return jsonSuccess(data);
 }

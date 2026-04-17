@@ -8,7 +8,7 @@ import {
   verifyPatientPortalPassword,
 } from "@/lib/api/patient-portal-client";
 import { formatLoginDisplay } from "@/features/patient-portal/app/utils/login-display";
-import { parsePortalLoginInput } from "@/lib/patient-portal/login-identifier";
+import { parsePortalLoginInput } from "@/domain/auth/patient-portal-login-identifier";
 import { digitsOnlyCpf, formatCpfDisplay } from "@/lib/validators/cpf";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";

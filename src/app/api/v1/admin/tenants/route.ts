@@ -1,8 +1,11 @@
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { requireSessionOr401, superAdminOr403 } from "@/lib/auth/guards";
 import { postAdminTenantBodySchema } from "@/lib/validators/tenant";
+import { listAllTenantsForSuperAdmin } from "@/application/use-cases/admin/list-tenants";
+import { runCreateTenant } from "@/application/use-cases/admin/create-tenant";
+
+export const dynamic = "force-dynamic";
 
 /** Lista todos os tenants com flags de gestão (apenas `super_admin`). */
 export async function GET(request: Request) {
@@ -13,10 +16,7 @@ export async function GET(request: Request) {
   const forbidden = await superAdminOr403(auth.session!, request, apiT);
   if (forbidden) return forbidden;
 
-  const rows = await prisma.tenant.findMany({
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, slug: true, isActive: true },
-  });
+  const rows = await listAllTenantsForSuperAdmin();
 
   return jsonSuccess({ tenants: rows });
 }
@@ -42,19 +42,14 @@ export async function POST(request: Request) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const { name, slug } = parsed.data;
+  const result = await runCreateTenant({
+    name: parsed.data.name,
+    slug: parsed.data.slug,
+  });
 
-  try {
-    const tenant = await prisma.tenant.create({
-      data: { name: name.trim(), slug },
-    });
-    return jsonSuccess({ tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug } }, { status: 201 });
-  } catch (e: unknown) {
-    const isUnique =
-      typeof e === "object" && e !== null && "code" in e && (e as { code: string }).code === "P2002";
-    if (isUnique) {
-      return jsonError("CONFLICT", apiT("errors.tenantSlugConflict"), 409);
-    }
-    throw e;
+  if (!result.ok) {
+    return jsonError("CONFLICT", apiT("errors.tenantSlugConflict"), 409);
   }
+
+  return jsonSuccess({ tenant: result.tenant }, { status: 201 });
 }

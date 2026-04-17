@@ -1,7 +1,7 @@
 import { normalizeApiError } from "@/lib/api/axios-error";
 import type { ApiPagination } from "@/lib/api/pagination";
 import { apiClient } from "@/lib/api/http-client";
-import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
+import type { SlaHealthStatus } from "@/domain/pathway/sla-health";
 import type {
   DashboardAlertRow,
   DashboardSummaryTotals,

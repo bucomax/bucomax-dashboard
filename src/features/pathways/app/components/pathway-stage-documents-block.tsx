@@ -2,7 +2,7 @@
 
 import { requestFileDownloadPresign } from "@/features/clients/app/services/clients.service";
 import { uploadTenantLibraryFile } from "@/features/pathways/app/services/pathway-tenant-file-upload.service";
-import { normalizeStageDocumentDraftItems } from "@/lib/pathway/graph";
+import { normalizeStageDocumentDraftItems } from "@/domain/pathway/graph-normalizer";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";

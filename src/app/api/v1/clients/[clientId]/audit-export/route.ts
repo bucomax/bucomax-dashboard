@@ -1,11 +1,9 @@
-import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { prisma } from "@/infrastructure/database/prisma";
-import { buildClientAuditExportCsv } from "@/lib/clients/build-client-audit-export-csv";
 import { getApiT } from "@/lib/api/i18n";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
 import { jsonError } from "@/lib/api-response";
+import { runClientAuditExport } from "@/application/use-cases/client/run-client-audit-export";
 import type { ClientTimelineEventCategory } from "@/types/api/clients-v1";
-import { findTenantClientVisibleToSession } from "@/lib/auth/client-visibility";
+import { findTenantClientVisibleToSession } from "@/application/use-cases/shared/load-client-visibility-scope";
 import {
   assertActiveTenantMembership,
   assertTenantAdminOrSuper,
@@ -13,12 +11,11 @@ import {
   requireSessionOr401,
 } from "@/lib/auth/guards";
 import { clientAuditExportQuerySchema } from "@/lib/validators/client-audit-export-query";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
 
 const MAX_RANGE_MS = 730 * 24 * 60 * 60 * 1000;
-
-type RouteCtx = { params: Promise<{ clientId: string }> };
 
 function resolveExportRange(
   fromIso: string | undefined,
@@ -105,24 +102,13 @@ export async function GET(request: Request, ctx: RouteCtx) {
   const categoryFilter: Set<ClientTimelineEventCategory> | null =
     q.categories != null && q.categories.length > 0 ? new Set(q.categories) : null;
 
-  const { csv, rowCount } = await buildClientAuditExportCsv(prisma, tenantCtx.tenantId, clientId, {
+  const { csv } = await runClientAuditExport({
+    tenantId: tenantCtx.tenantId,
+    clientId,
+    actorUserId: auth.session!.user.id,
     from,
     to,
     categoryFilter,
-  });
-
-  await recordAuditEvent(prisma, {
-    tenantId: tenantCtx.tenantId,
-    clientId,
-    patientPathwayId: null,
-    actorUserId: auth.session!.user.id,
-    type: AuditEventType.AUDIT_EXPORT_GENERATED,
-    payload: {
-      format: "csv",
-      rowCount,
-      from: from.toISOString(),
-      to: to.toISOString(),
-    },
   });
 
   const safeName = `audit-export-${clientId.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.csv`;

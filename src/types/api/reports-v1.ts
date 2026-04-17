@@ -1,5 +1,5 @@
 import type { ApiPagination } from "@/lib/api/pagination";
-import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
+import type { SlaHealthStatus } from "@/domain/pathway/sla-health";
 
 export type ReportsSummaryQueryParams = {
   periodDays?: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
+import type { SlaHealthStatus } from "@/domain/pathway/sla-health";
 import type { DashboardSummaryTotals, PipelineStatusFilter } from "@/features/dashboard/app/types";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/shared/components/ui/skeleton";

@@ -22,7 +22,7 @@ import { usePathwayDraftVersion } from "@/features/pathways/app/hooks/use-pathwa
 import { usePathwayPublishPreview } from "@/features/pathways/app/hooks/use-pathway-publish-preview";
 import { listTenantMembersForPicker } from "@/features/settings/app/services/tenant-settings.service";
 import { isPathwayDraftDirty, parsePathwayGraph } from "@/features/pathways/app/utils/pathway-graph";
-import { normalizeStageDefaultAssigneeUserIds } from "@/lib/pathway/graph";
+import { normalizeStageDefaultAssigneeUserIds } from "@/domain/pathway/graph-normalizer";
 import { pathwayEditorFitViewOptions, pathwayEditorGraphNodePosition } from "@/lib/pathway/graph-editor-layout";
 import { setStageNodeDefaultAssignees } from "@/lib/pathway/stage-node-assignees";
 import {

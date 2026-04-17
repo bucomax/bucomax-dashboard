@@ -1,4 +1,3 @@
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import {
@@ -7,6 +6,7 @@ import {
   requireSessionOr401,
 } from "@/lib/auth/guards";
 import { postStageDocumentBodySchema } from "@/lib/validators/stage-document";
+import { runLinkStageDocument } from "@/application/use-cases/pathway/link-stage-document";
 
 export const dynamic = "force-dynamic";
 
@@ -34,61 +34,28 @@ export async function POST(request: Request) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
-  const stage = await prisma.pathwayStage.findFirst({
-    where: {
-      id: parsed.data.pathwayStageId,
-      pathwayVersion: { pathway: { tenantId: tenantCtx.tenantId }, published: true },
-    },
-    select: { id: true },
+  const result = await runLinkStageDocument({
+    tenantId: tenantCtx.tenantId,
+    pathwayStageId: parsed.data.pathwayStageId,
+    fileAssetId: parsed.data.fileAssetId,
   });
-  if (!stage) {
-    return jsonError("NOT_FOUND", apiT("errors.stagePublishedNotFoundInTenant"), 404);
-  }
 
-  const file = await prisma.fileAsset.findFirst({
-    where: { id: parsed.data.fileAssetId, tenantId: tenantCtx.tenantId },
-    select: { id: true },
-  });
-  if (!file) {
-    return jsonError("NOT_FOUND", apiT("errors.fileNotFoundInTenant"), 404);
-  }
-
-  const existing = await prisma.stageDocument.findFirst({
-    where: {
-      pathwayStageId: stage.id,
-      fileAssetId: file.id,
-    },
-    select: { id: true },
-  });
-  if (existing) {
+  if (!result.ok) {
+    if (result.code === "STAGE_NOT_FOUND") {
+      return jsonError("NOT_FOUND", apiT("errors.stagePublishedNotFoundInTenant"), 404);
+    }
+    if (result.code === "FILE_NOT_FOUND") {
+      return jsonError("NOT_FOUND", apiT("errors.fileNotFoundInTenant"), 404);
+    }
     return jsonError("CONFLICT", apiT("errors.fileLinkedToStage"), 409);
   }
-
-  const agg = await prisma.stageDocument.aggregate({
-    where: { pathwayStageId: stage.id },
-    _max: { sortOrder: true },
-  });
-  const sortOrder = (agg._max.sortOrder ?? -1) + 1;
-
-  const created = await prisma.stageDocument.create({
-    data: {
-      pathwayStageId: stage.id,
-      fileAssetId: file.id,
-      sortOrder,
-    },
-    select: {
-      id: true,
-      sortOrder: true,
-      fileAsset: { select: { id: true, fileName: true, mimeType: true } },
-    },
-  });
 
   return jsonSuccess(
     {
       stageDocument: {
-        id: created.id,
-        sortOrder: created.sortOrder,
-        file: created.fileAsset,
+        id: result.stageDocument.id,
+        sortOrder: result.stageDocument.sortOrder,
+        file: result.stageDocument.file,
       },
     },
     { status: 201 },

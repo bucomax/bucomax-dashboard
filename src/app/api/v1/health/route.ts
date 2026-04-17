@@ -1,13 +1,12 @@
-import { prisma } from "@/infrastructure/database/prisma";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
+import { pingDatabase } from "@/application/use-cases/health/ping-database";
 
 export async function GET(request: Request) {
-  try {
-    await prisma.$queryRaw`SELECT 1`;
+  const ok = await pingDatabase();
+  if (ok) {
     return jsonSuccess({ status: "ok", database: "up" });
-  } catch {
-    const apiT = await getApiT(request);
-    return jsonError("DB_UNAVAILABLE", apiT("errors.dbUnavailable"), 503);
   }
+  const apiT = await getApiT(request);
+  return jsonError("DB_UNAVAILABLE", apiT("errors.dbUnavailable"), 503);
 }

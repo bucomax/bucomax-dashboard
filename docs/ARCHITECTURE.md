@@ -95,7 +95,7 @@ Convenções:
 
 - **Tenant:** organização (clínica, unidade de negócio). Campos típicos: nome, **slug** (usado em URL/subdomínio), `subdomain` ou hostname, status, plano.
 - **User:** identidade global (e-mail único), com **papel global** opcional (ver seção 5.4).
-- **TenantMembership:** vínculo `user` ↔ `tenant` com **papel no tenant** (`tenant_admin`, `tenant_user`, etc.). Para `tenant_user`, flags opcionais de **visibilidade de pacientes**: `restrictedToAssignedOnly` (só `Client` com `assignedToUserId` = o usuário) e `linkedOpmeSupplierId` (só `Client` com aquele fornecedor OPME). `tenant_admin` e `super_admin` no contexto do tenant ignoram esses filtros. A política é aplicada nas rotas via `src/lib/auth/client-visibility.ts` (lista, ficha, Kanban, dashboards, arquivos, notificações).
+- **TenantMembership:** vínculo `user` ↔ `tenant` com **papel no tenant** (`tenant_admin`, `tenant_user`, etc.). Para `tenant_user`, flags opcionais de **visibilidade de pacientes**: `restrictedToAssignedOnly` (só `Client` com `assignedToUserId` = o usuário) e `linkedOpmeSupplierId` (só `Client` com aquele fornecedor OPME). `tenant_admin` e `super_admin` no contexto do tenant ignoram esses filtros. A política é aplicada nas rotas via `src/application/use-cases/shared/load-client-visibility-scope.ts` (lista, ficha, Kanban, dashboards, arquivos, notificações).
 
 Todo registro de negócio relevante inclui `tenantId` (Client, `CarePathway` / `PathwayStage`, `PatientPathway`, `StageTransition`, `AuditEvent`, `FileAsset`, `AiJob`, …). Modelo relacional em **§8**.
 
@@ -563,7 +563,7 @@ Eventos de domínio (opcional): após `TransitionPatientStage`, worker assíncro
 2. ~~Introduzir `ChannelDispatch` e cliente HTTP real do canal.~~ **Implementado** — WhatsApp Business Cloud API via `ChannelDispatch`.  
 3. Introduzir `AiJob` + webhooks.  
 4. Evoluir notas e regras de topologia do fluxo.  
-5. Ampliar `AuditEvent` (ex. assinaturas, dispatch real). **RBAC fino** na leitura (lista/ficha/Kanban/notificações) está em `src/lib/auth/client-visibility.ts` — ver Fase 7 em `docs/bucomax/meeting-presentation-action-plan.md`.  
+5. Ampliar `AuditEvent` (ex. assinaturas, dispatch real). **RBAC fino** na leitura (lista/ficha/Kanban/notificações) está em `src/application/use-cases/shared/load-client-visibility-scope.ts` — ver Fase 7 em `docs/bucomax/meeting-presentation-action-plan.md`.  
 
 ### 8.7 Resumo
 

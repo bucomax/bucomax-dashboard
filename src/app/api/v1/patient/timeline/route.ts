@@ -1,9 +1,8 @@
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { requireActivePatientPortalClient } from "@/lib/auth/patient-portal-request";
-import { buildClientTimelinePage } from "@/lib/clients/client-timeline";
-import { mapClientTimelineForPatientPortal } from "@/lib/clients/patient-portal-timeline-map";
-import { prisma } from "@/infrastructure/database/prisma";
+import { mapClientTimelineForPatientPortal } from "@/application/use-cases/patient-portal/map-timeline-for-patient";
+import { loadPatientPortalTimelinePage } from "@/application/use-cases/patient-portal/load-patient-portal-timeline-page";
 import { clientTimelineQuerySchema } from "@/lib/validators/client-timeline-query";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +28,11 @@ export async function GET(request: Request) {
   const categoryFilter =
     categories != null && categories.length > 0 ? new Set(categories) : null;
 
-  const raw = await buildClientTimelinePage(prisma, portal.tenantId, portal.clientId, page, limit, {
+  const raw = await loadPatientPortalTimelinePage({
+    tenantId: portal.tenantId,
+    clientId: portal.clientId,
+    page,
+    limit,
     categoryFilter,
   });
   return jsonSuccess(mapClientTimelineForPatientPortal(raw));

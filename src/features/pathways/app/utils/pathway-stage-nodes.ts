@@ -5,7 +5,7 @@ import {
   normalizeStageDocumentDraftItems,
   type PathwayStageDocumentDraft,
   type StageChecklistDraftItem,
-} from "@/lib/pathway/graph";
+} from "@/domain/pathway/graph-normalizer";
 import { pathwayEditorGraphNodePosition } from "@/lib/pathway/graph-editor-layout";
 
 export function parsePathwayStageNodes(graphJson: unknown): Node[] {

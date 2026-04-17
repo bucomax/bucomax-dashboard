@@ -1,7 +1,3 @@
-import { AuditEventType, recordAuditEvent } from "@/infrastructure/audit/record-audit-event";
-import { prisma } from "@/infrastructure/database/prisma";
-import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
-import { resolvePathwayNotificationTargetUserIds } from "@/lib/notifications/resolve-pathway-notification-targets";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import {
@@ -10,10 +6,11 @@ import {
   requireSessionOr401,
 } from "@/lib/auth/guards";
 import { patchPatientChecklistItemBodySchema } from "@/lib/validators/patient-pathway-checklist";
+import { runPatchPatientChecklistItem } from "@/application/use-cases/patient-pathway/patch-checklist-item";
 
 export const dynamic = "force-dynamic";
 
-type RouteCtx = { params: Promise<{ patientPathwayId: string; itemId: string }> };
+import type { RouteCtx } from "@/types/api/route-context";
 
 export async function PATCH(request: Request, ctx: RouteCtx) {
   const apiT = await getApiT(request);
@@ -40,121 +37,28 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
 
   const { patientPathwayId, itemId } = await ctx.params;
 
-  const patientPathway = await prisma.patientPathway.findFirst({
-    where: { id: patientPathwayId, tenantId: tenantCtx.tenantId },
-    select: { id: true, clientId: true, currentStageId: true, pathwayVersionId: true },
-  });
-  if (!patientPathway) {
-    return jsonError("NOT_FOUND", apiT("errors.patientPathwayNotFound"), 404);
-  }
-
-  const checklistItem = await prisma.pathwayStageChecklistItem.findFirst({
-    where: {
-      id: itemId,
-      pathwayStage: {
-        pathwayVersionId: patientPathway.pathwayVersionId,
-      },
-    },
-    select: { id: true, pathwayStageId: true },
-  });
-  if (!checklistItem) {
-    return jsonError("NOT_FOUND", apiT("errors.checklistItemNotFound"), 404);
-  }
-
-  if (checklistItem.pathwayStageId !== patientPathway.currentStageId) {
-    return jsonError("VALIDATION_ERROR", apiT("errors.checklistOnlyCurrentStage"), 422);
-  }
-
-  const completedAt = parsed.data.completed ? new Date() : null;
-  const completedByUserId = parsed.data.completed ? auth.session!.user.id : null;
-
-  const progress = await prisma.patientPathwayChecklistItem.upsert({
-    where: {
-      patientPathwayId_checklistItemId: {
-        patientPathwayId: patientPathway.id,
-        checklistItemId: checklistItem.id,
-      },
-    },
-    update: {
-      completedAt,
-      completedByUserId,
-    },
-    create: {
-      patientPathwayId: patientPathway.id,
-      checklistItemId: checklistItem.id,
-      completedAt,
-      completedByUserId,
-    },
-    select: {
-      checklistItemId: true,
-      completedAt: true,
-    },
-  });
-
-  if (parsed.data.completed) {
-    const totalItems = await prisma.pathwayStageChecklistItem.count({
-      where: { pathwayStageId: patientPathway.currentStageId },
-    });
-    const completedItems = await prisma.patientPathwayChecklistItem.count({
-      where: {
-        patientPathwayId: patientPathway.id,
-        checklistItem: { pathwayStageId: patientPathway.currentStageId },
-        completedAt: { not: null },
-      },
-    });
-
-    if (totalItems > 0 && completedItems >= totalItems) {
-      const pp = await prisma.patientPathway.findUnique({
-        where: { id: patientPathway.id },
-        select: {
-          tenantId: true,
-          clientId: true,
-          currentStageAssigneeUserId: true,
-          client: { select: { name: true } },
-          currentStage: { select: { name: true } },
-        },
-      });
-      if (pp) {
-        const checklistTargets = await resolvePathwayNotificationTargetUserIds({
-          tenantId: tenantCtx.tenantId,
-          type: "checklist_complete",
-          currentStageAssigneeUserId: pp.currentStageAssigneeUserId,
-        });
-        notificationEmitter.emit({
-          tenantId: tenantCtx.tenantId,
-          type: "checklist_complete",
-          title: `Checklist completo: ${pp.client.name}`,
-          body: `Todos os itens da etapa "${pp.currentStage.name}" foram concluídos.`,
-          targetUserIds: checklistTargets,
-          correlationId: `${patientPathway.id}:${patientPathway.currentStageId}`,
-          metadata: {
-            clientId: pp.clientId,
-            patientPathwayId: patientPathway.id,
-            stageName: pp.currentStage.name,
-          },
-        }).catch((err) => console.error("[notification] checklist_complete emit failed:", err));
-      }
-    }
-  }
-
-  await recordAuditEvent(prisma, {
+  const result = await runPatchPatientChecklistItem({
     tenantId: tenantCtx.tenantId,
-    clientId: patientPathway.clientId,
-    patientPathwayId: patientPathway.id,
     actorUserId: auth.session!.user.id,
-    type: AuditEventType.CHECKLIST_ITEM_TOGGLED,
-    payload: {
-      itemId: checklistItem.id,
-      checked: parsed.data.completed,
-      userId: auth.session!.user.id,
-    },
+    patientPathwayId,
+    itemId,
+    body: parsed.data,
   });
+
+  if (!result.ok) {
+    if (result.code === "PP_NOT_FOUND") {
+      return jsonError("NOT_FOUND", apiT("errors.patientPathwayNotFound"), 404);
+    }
+    if (result.code === "ITEM_NOT_FOUND") {
+      return jsonError("NOT_FOUND", apiT("errors.checklistItemNotFound"), 404);
+    }
+    if (result.code === "WRONG_STAGE") {
+      return jsonError("VALIDATION_ERROR", apiT("errors.checklistOnlyCurrentStage"), 422);
+    }
+    return jsonError("INTERNAL_ERROR", apiT("errors.internalError"), 500);
+  }
 
   return jsonSuccess({
-    item: {
-      checklistItemId: progress.checklistItemId,
-      completed: progress.completedAt != null,
-      completedAt: progress.completedAt?.toISOString() ?? null,
-    },
+    item: result.item,
   });
 }

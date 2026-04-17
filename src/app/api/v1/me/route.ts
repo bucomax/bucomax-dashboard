@@ -1,34 +1,16 @@
 import { keyBelongsToTenant } from "@/infrastructure/storage/gcs-storage";
 import { resolveUserProfileImageUrl } from "@/infrastructure/storage/resolve-user-profile-image-url";
-import { prisma } from "@/infrastructure/database/prisma";
-import { getApiT, type ApiT } from "@/lib/api/i18n";
+import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { getActiveTenantIdOr400, requireSessionOr401 } from "@/lib/auth/guards";
 import { getSession } from "@/lib/auth/session";
 import { parseUserProfileImageGcsKey } from "@/lib/utils/user-profile-image-ref";
 import { patchMeBodySchema } from "@/lib/validators/profile";
+import { runDeleteMeAccount } from "@/application/use-cases/me/delete-me-account";
+import { getMeProfile } from "@/application/use-cases/me/get-me-profile";
+import { runPatchMeProfile } from "@/application/use-cases/me/patch-me-profile";
 
 export const dynamic = "force-dynamic";
-
-async function getActiveUserOr401(sessionUserId: string, apiT: ApiT) {
-  const user = await prisma.user.findFirst({
-    where: { id: sessionUserId, deletedAt: null },
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      image: true,
-      globalRole: true,
-      emailVerified: true,
-      activeTenantId: true,
-      createdAt: true,
-    },
-  });
-  if (!user) {
-    return { user: null, response: jsonError("UNAUTHORIZED", apiT("errors.accountInvalid"), 401) };
-  }
-  return { user, response: null };
-}
 
 export async function GET(request: Request) {
   const apiT = await getApiT(request);
@@ -37,42 +19,25 @@ export async function GET(request: Request) {
     return jsonError("UNAUTHORIZED", apiT("errors.sessionInvalid"), 401);
   }
 
-  const { user, response } = await getActiveUserOr401(session.user.id, apiT);
-  if (response) return response;
-
-  const membership = user.activeTenantId
-    ? await prisma.tenantMembership.findUnique({
-        where: {
-          userId_tenantId: { userId: user.id, tenantId: user.activeTenantId },
-        },
-      })
-    : null;
-
-  let tenantId: string | null = null;
-  let tenantRole: string | null = null;
-
-  if (membership) {
-    tenantId = membership.tenantId;
-    tenantRole = membership.role;
-  } else if (user.globalRole === "super_admin" && user.activeTenantId) {
-    tenantId = user.activeTenantId;
-    tenantRole = null;
+  const result = await getMeProfile(session.user.id);
+  if (!result.ok) {
+    return jsonError("UNAUTHORIZED", apiT("errors.accountInvalid"), 401);
   }
 
-  const imageUrl = await resolveUserProfileImageUrl(user.image);
+  const imageUrl = await resolveUserProfileImageUrl(result.user.image);
 
   return jsonSuccess({
     user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      image: user.image,
+      id: result.user.id,
+      email: result.user.email,
+      name: result.user.name,
+      image: result.user.image,
       imageUrl,
-      emailVerified: user.emailVerified,
-      globalRole: user.globalRole,
-      tenantId,
-      tenantRole,
-      createdAt: user.createdAt.toISOString(),
+      emailVerified: result.user.emailVerified,
+      globalRole: result.user.globalRole,
+      tenantId: result.user.tenantId,
+      tenantRole: result.user.tenantRole,
+      createdAt: result.user.createdAt.toISOString(),
     },
   });
 }
@@ -93,9 +58,6 @@ export async function PATCH(request: Request) {
   if (!parsed.success) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
-
-  const { user, response } = await getActiveUserOr401(auth.session!.user.id, apiT);
-  if (response) return response;
 
   const gcsKey = parseUserProfileImageGcsKey(
     parsed.data.image === "" || parsed.data.image === null ? null : parsed.data.image,
@@ -118,24 +80,23 @@ export async function PATCH(request: Request) {
     return jsonError("VALIDATION_ERROR", apiT("errors.noFieldsToUpdate"), 422);
   }
 
-  const updated = await prisma.user.update({
-    where: { id: user.id },
-    data,
-    select: {
-      id: true,
-      email: true,
-      name: true,
-      image: true,
-      globalRole: true,
-      emailVerified: true,
-    },
+  const updated = await runPatchMeProfile({
+    sessionUserId: auth.session!.user.id,
+    patch: data,
   });
 
-  const imageUrl = await resolveUserProfileImageUrl(updated.image);
+  if (!updated.ok) {
+    if (updated.code === "ACCOUNT_INVALID") {
+      return jsonError("UNAUTHORIZED", apiT("errors.accountInvalid"), 401);
+    }
+    return jsonError("VALIDATION_ERROR", apiT("errors.noFieldsToUpdate"), 422);
+  }
+
+  const imageUrl = await resolveUserProfileImageUrl(updated.user.image);
 
   return jsonSuccess({
     user: {
-      ...updated,
+      ...updated.user,
       imageUrl,
     },
   });
@@ -147,17 +108,10 @@ export async function DELETE(request: Request) {
   const auth = await requireSessionOr401(request, apiT);
   if (auth.response) return auth.response;
 
-  const { user, response } = await getActiveUserOr401(auth.session!.user.id, apiT);
-  if (response) return response;
-
-  const now = new Date();
-  await prisma.$transaction([
-    prisma.session.deleteMany({ where: { userId: user.id } }),
-    prisma.user.update({
-      where: { id: user.id },
-      data: { deletedAt: now },
-    }),
-  ]);
+  const result = await runDeleteMeAccount(auth.session!.user.id);
+  if (!result.ok) {
+    return jsonError("UNAUTHORIZED", apiT("errors.accountInvalid"), 401);
+  }
 
   return jsonSuccess({ message: apiT("success.accountDeactivated") });
 }

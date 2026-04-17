@@ -4,7 +4,7 @@ import { ClientListDeleteDialog } from "@/features/clients/app/components/client
 import { useClientsList } from "@/features/clients/app/hooks/use-clients-list";
 import { useCopyPortalLink } from "@/features/clients/app/hooks/use-copy-portal-link";
 import { Link } from "@/i18n/navigation";
-import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
+import type { SlaHealthStatus } from "@/domain/pathway/sla-health";
 import { formatListUpdatedAt } from "@/lib/utils/format-list-updated-at";
 import { formatCpfDisplay } from "@/lib/validators/cpf";
 import { cn } from "@/lib/utils";

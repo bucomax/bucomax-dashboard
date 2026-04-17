@@ -1,27 +1,13 @@
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
-import {
-  PATIENT_PORTAL_OTP_MAX_REQUESTS_PER_WINDOW,
-  PATIENT_PORTAL_OTP_REQUEST_WINDOW_MS,
-  PATIENT_PORTAL_OTP_TTL_MS,
-} from "@/lib/constants/patient-portal";
-import { prisma } from "@/infrastructure/database/prisma";
-import { getPatientPortalOtpHtml } from "@/infrastructure/email/email-templates";
-import { isEmailConfigured, sendEmail } from "@/infrastructure/email/resend.client";
-import { notifyPatientPortalOtpByWebhook } from "@/infrastructure/notifications/patient-portal-otp-wpp";
-import { findClientForPortalLogin } from "@/lib/patient-portal/find-client-by-portal-login";
-import { digitsOnlyPhone } from "@/lib/validators/phone";
-import { parsePortalLoginInput } from "@/lib/patient-portal/login-identifier";
-import { findActiveTenantBySlug } from "@/lib/tenants/resolve-public-tenant";
-import {
-  generatePatientPortalOtpCode,
-  hashPatientPortalOtpCode,
-} from "@/lib/utils/patient-portal-otp";
+import { findClientForPortalLogin } from "@/application/use-cases/client/find-client-for-portal-login";
+import { findActiveTenantBySlug } from "@/application/use-cases/auth/resolve-public-tenant";
+import { runRequestPatientPortalOtp } from "@/application/use-cases/patient-portal/request-patient-portal-otp";
+import { parsePortalLoginInput } from "@/domain/auth/patient-portal-login-identifier";
 import { postPatientPortalOtpRequestBodySchema } from "@/lib/validators/patient-portal";
+import type { RouteCtx } from "@/types/api/route-context";
 
 export const dynamic = "force-dynamic";
-
-type RouteCtx = { params: Promise<{ tenantSlug: string }> };
 
 function jsonSuccessOpaque() {
   return jsonSuccess({ ok: true });
@@ -55,99 +41,16 @@ export async function POST(request: Request, ctx: RouteCtx) {
 
   const client = await findClientForPortalLogin(tenant.id, identifier);
 
-  if (!client) {
-    return jsonSuccessOpaque();
-  }
-
-  const windowStart = new Date(Date.now() - PATIENT_PORTAL_OTP_REQUEST_WINDOW_MS);
-  const recentCount = await prisma.patientPortalOtpChallenge.count({
-    where: { clientId: client.id, createdAt: { gte: windowStart } },
+  const result = await runRequestPatientPortalOtp({
+    tenant: { id: tenant.id, name: tenant.name },
+    client,
   });
-  if (recentCount >= PATIENT_PORTAL_OTP_MAX_REQUESTS_PER_WINDOW) {
+
+  if (result.kind === "rate_limited") {
     return jsonError("TOO_MANY_REQUESTS", apiT("errors.patientPortalOtpTooManyRequests"), 429);
   }
-
-  const email = client.email?.trim() ?? "";
-  const guardianEmail = client.isMinor ? (client.guardianEmail?.trim() ?? "") : "";
-  const hasWebhook = Boolean(process.env.PATIENT_PORTAL_OTP_NOTIFY_URL?.trim());
-  const phoneDigits = client.phone?.replace(/\D/g, "") ?? "";
-  const guardianPhoneDigits = client.isMinor ? digitsOnlyPhone(client.guardianPhone ?? "") : "";
-  const emailReady =
-    isEmailConfigured() &&
-    (Boolean(email) ||
-      (client.isMinor &&
-        Boolean(guardianEmail) &&
-        guardianEmail.toLowerCase() !== email.toLowerCase()));
-  const wppReady =
-    hasWebhook &&
-    (phoneDigits.length >= 10 || (client.isMinor && guardianPhoneDigits.length >= 10));
-
-  if (!emailReady && !wppReady) {
-    return jsonSuccessOpaque();
-  }
-
-  let code: string;
-  let codeHash: string;
-  try {
-    code = generatePatientPortalOtpCode();
-    codeHash = hashPatientPortalOtpCode(code);
-  } catch {
+  if (result.kind === "service_unavailable") {
     return jsonError("SERVICE_UNAVAILABLE", apiT("errors.patientPortalMisconfigured"), 503);
-  }
-
-  const expiresAt = new Date(Date.now() + PATIENT_PORTAL_OTP_TTL_MS);
-
-  await prisma.patientPortalOtpChallenge.create({
-    data: {
-      clientId: client.id,
-      tenantId: tenant.id,
-      codeHash,
-      expiresAt,
-    },
-  });
-
-  const clinicName = tenant.name;
-
-  if (emailReady) {
-    const subject = `${clinicName} — Código do portal do paciente (Bucomax)`;
-    const html = getPatientPortalOtpHtml({
-      patientName: client.name,
-      clinicName,
-      code,
-    });
-    const text = `Olá, ${client.name}. Seu código Bucomax: ${code}. Válido por poucos minutos.`;
-    const toList: string[] = [];
-    if (email) toList.push(email);
-    if (
-      client.isMinor &&
-      guardianEmail &&
-      guardianEmail.toLowerCase() !== email.toLowerCase() &&
-      !toList.some((x) => x.toLowerCase() === guardianEmail.toLowerCase())
-    ) {
-      toList.push(guardianEmail);
-    }
-    for (const to of toList) {
-      const { error } = await sendEmail({ to, subject, html, text });
-      if (error) {
-        console.error("[patient-portal] OTP email failed:", error);
-      }
-    }
-  }
-
-  if (wppReady) {
-    const text = `Bucomax (${clinicName}): seu código para acessar o portal é ${code}. Válido por poucos minutos.`;
-    const phones: string[] = [];
-    if (phoneDigits.length >= 10) phones.push(client.phone!.trim());
-    if (
-      client.isMinor &&
-      guardianPhoneDigits.length >= 10 &&
-      guardianPhoneDigits !== phoneDigits
-    ) {
-      phones.push(client.guardianPhone!.trim());
-    }
-    for (const phone of phones) {
-      await notifyPatientPortalOtpByWebhook({ phone, text });
-    }
   }
 
   return jsonSuccessOpaque();

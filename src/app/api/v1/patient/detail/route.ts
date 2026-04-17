@@ -1,11 +1,7 @@
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { requireActivePatientPortalClient } from "@/lib/auth/patient-portal-request";
-import {
-  loadClientDetailResponseData,
-  sanitizeClientDetailForPatientPortal,
-} from "@/lib/clients/load-client-detail-response";
-import { prisma } from "@/infrastructure/database/prisma";
+import { loadPatientPortalDetailPayload } from "@/application/use-cases/patient-portal/load-patient-portal-detail";
 import { clientDetailQuerySchema } from "@/lib/validators/client-detail-query";
 
 export const dynamic = "force-dynamic";
@@ -26,58 +22,15 @@ export async function GET(request: Request) {
   }
   const { page, limit } = parsedQ.data;
 
-  const row = await prisma.client.findFirst({
-    where: { id: portal.clientId, tenantId: portal.tenantId, deletedAt: null },
-    select: {
-      id: true,
-      name: true,
-      phone: true,
-      email: true,
-      caseDescription: true,
-      documentId: true,
-      postalCode: true,
-      addressLine: true,
-      addressNumber: true,
-      addressComp: true,
-      neighborhood: true,
-      city: true,
-      state: true,
-      isMinor: true,
-      birthDate: true,
-      guardianName: true,
-      guardianDocumentId: true,
-      guardianPhone: true,
-      guardianEmail: true,
-      guardianRelationship: true,
-      emergencyContactName: true,
-      emergencyContactPhone: true,
-      preferredChannel: true,
-      assignedToUserId: true,
-      opmeSupplierId: true,
-      portalPasswordHash: true,
-      createdAt: true,
-      updatedAt: true,
-      assignedTo: { select: { id: true, name: true, email: true } },
-      opmeSupplier: { select: { id: true, name: true } },
-    },
+  const result = await loadPatientPortalDetailPayload({
+    tenantId: portal.tenantId,
+    clientId: portal.clientId,
+    page,
+    limit,
   });
-  if (!row) {
+  if (!result) {
     return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
   }
 
-  const [payload, tenantRow] = await Promise.all([
-    loadClientDetailResponseData(portal.tenantId, row, page, limit),
-    prisma.tenant.findUnique({
-      where: { id: portal.tenantId },
-      select: { name: true },
-    }),
-  ]);
-
-  const hasPortalPassword = row.portalPasswordHash != null;
-
-  return jsonSuccess({
-    ...sanitizeClientDetailForPatientPortal(payload),
-    tenant: { name: tenantRow?.name ?? "—" },
-    hasPortalPassword,
-  });
+  return jsonSuccess(result.body);
 }
