@@ -1,5 +1,6 @@
 import { normalizeApiError } from "@/lib/api/axios-error";
 import { apiClient } from "@/lib/api/http-client";
+import { readFileHeader, validateMagicBytes } from "@/lib/utils/magic-bytes";
 import { formatUserProfileImageGcsRef } from "@/lib/utils/user-profile-image-ref";
 import type { ApiEnvelope } from "@/shared/types/api/v1";
 
@@ -54,6 +55,12 @@ export async function uploadProfileAvatarToStorage(file: File): Promise<string> 
   }
   if (file.size > MAX_PROFILE_IMAGE_BYTES) {
     throw new ProfileAvatarValidationError("TOO_LARGE", "TOO_LARGE");
+  }
+
+  const header = await readFileHeader(file);
+  const mbResult = validateMagicBytes(header, mimeType);
+  if (!mbResult.valid) {
+    throw new ProfileAvatarValidationError("INVALID_TYPE", "INVALID_TYPE");
   }
 
   try {

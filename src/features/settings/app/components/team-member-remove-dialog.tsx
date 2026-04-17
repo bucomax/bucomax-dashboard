@@ -1,6 +1,6 @@
 "use client";
 
-import type { TenantMemberRow } from "@/features/settings/types/account";
+import type { TenantMemberRow } from "@/features/settings/app/types/account";
 import { Alert, AlertDescription, AlertTitle } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";

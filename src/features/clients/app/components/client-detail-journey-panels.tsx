@@ -3,6 +3,7 @@
 import { ClientDetailAssigneeOverviewCard } from "@/features/clients/app/components/client-detail-assignee-overview-card";
 import { ClientDetailCardTitle } from "@/features/clients/app/components/client-detail-card-title";
 import { JourneyStagesList } from "@/features/clients/app/components/client-detail-journey-stages-list";
+import { formatDateTime } from "@/lib/utils/date";
 import type { SlaHealthStatus } from "@/lib/pathway/sla-health";
 import { slaHealthPillClassName } from "@/lib/utils/sla-status-ui";
 import type { ClientPatientPathwayDetailDto } from "@/types/api/clients-v1";
@@ -40,10 +41,7 @@ export function ClientDetailJourneyCard({ pp }: { pp: ClientPatientPathwayDetail
             <Info className="size-4" aria-hidden />
             <AlertDescription>
               {t("journey.completedBanner", {
-                date: new Date(pp.completedAt).toLocaleString(locale, {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }),
+                date: formatDateTime(pp.completedAt, locale === "en" ? "en-US" : "pt-BR"),
               })}
             </AlertDescription>
           </Alert>
@@ -285,7 +283,7 @@ export function ClientDetailChecklistCard({
                       {item.completedAt ? (
                         <span className="text-muted-foreground mt-1 block text-xs">
                           {t("checklist.completedAt", {
-                            date: new Date(item.completedAt).toLocaleString(),
+                            date: formatDateTime(item.completedAt),
                           })}
                         </span>
                       ) : null}

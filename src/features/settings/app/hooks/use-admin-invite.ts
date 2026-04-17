@@ -4,7 +4,7 @@ import { useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 
 import { sendAdminInvite } from "@/features/settings/app/services/admin-invites.service";
-import type { AdminInviteResult, TenantRole } from "@/features/settings/types/account";
+import type { AdminInviteResult, TenantRole } from "@/features/settings/app/types/account";
 
 export function useAdminInvite() {
   const { data: session, status } = useSession();

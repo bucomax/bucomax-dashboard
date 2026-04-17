@@ -1,12 +1,14 @@
 "use client";
 
-import type { KanbanPatientPathway } from "@/features/dashboard/types";
+import type { KanbanPatientPathway } from "@/features/dashboard/app/types";
 import { useKanbanDragOverlayMode } from "@/features/dashboard/app/components/pipeline-kanban-dnd-context";
+import { stageDurationTone } from "@/features/dashboard/app/utils/kanban";
 import { useRouter } from "@/i18n/navigation";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { formatPhoneBrDisplay } from "@/lib/validators/phone";
 import { cn } from "@/lib/utils";
+import { calendarDaysFromNow } from "@/lib/utils/date";
 import { slaHealthKanbanCardClassName } from "@/lib/utils/sla-status-ui";
 import { Button } from "@/shared/components/ui/button";
 import {
@@ -25,28 +27,6 @@ type PipelineKanbanPatientCardProps = {
   isTransitioning: boolean;
   onRequestChangeStage: () => void;
 };
-
-function calendarDaysInStage(enteredStageAt: string): number {
-  const entered = new Date(enteredStageAt);
-  const a = new Date(entered.getFullYear(), entered.getMonth(), entered.getDate());
-  const now = new Date();
-  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return Math.max(0, Math.round((b.getTime() - a.getTime()) / (24 * 60 * 60 * 1000)));
-}
-
-type StageDurationTone = "ok" | "warning" | "critical";
-
-function stageDurationTone(pp: KanbanPatientPathway, days: number): StageDurationTone {
-  const warn = pp.currentStage.alertWarningDays;
-  const crit = pp.currentStage.alertCriticalDays;
-  if (pp.slaStatus === "danger" || (crit != null && days >= crit)) {
-    return "critical";
-  }
-  if (pp.slaStatus === "warning" || (warn != null && days >= warn)) {
-    return "warning";
-  }
-  return "ok";
-}
 
 export function PipelineKanbanPatientCard({
   patientPathway: pp,
@@ -71,7 +51,7 @@ export function PipelineKanbanPatientCard({
         ? { transform: CSS.Transform.toString(transform) }
         : undefined;
 
-  const days = useMemo(() => calendarDaysInStage(pp.enteredStageAt), [pp.enteredStageAt]);
+  const days = useMemo(() => calendarDaysFromNow(pp.enteredStageAt), [pp.enteredStageAt]);
   const tone = useMemo(() => stageDurationTone(pp, days), [pp, days]);
 
   const durationLabel = t("drag.daysInStage", { count: days });

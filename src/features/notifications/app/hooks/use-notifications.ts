@@ -2,60 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import type { NotificationDto } from "@/features/notifications/types";
+import type { NotificationDto } from "@/features/notifications/app/types";
 import {
   getNotifications,
   getUnreadCount,
   markAllRead,
   markNotificationRead,
 } from "@/features/notifications/app/services/notifications.service";
+import { alertUserOfNotification } from "@/features/notifications/app/utils/notification-alert";
 import { toast } from "@/lib/toast";
 
 const PAGE_SIZE = 20;
 const SSE_RECONNECT_MS = 5_000;
 const POLL_INTERVAL_MS = 30_000;
 const MAX_SSE_FAILURES = 3;
-
-function resolveNotificationUrl(type: string, metadata: Record<string, unknown> | null): string | null {
-  const clientId = metadata?.clientId as string | undefined;
-  if (!clientId) return null;
-  if (type === "patient_portal_file_pending") return `/dashboard/clients/${clientId}?tab=files`;
-  return `/dashboard/clients/${clientId}`;
-}
-
-function alertUserOfNotification(notification: NotificationDto): void {
-  // 1. Toast in-app (sempre)
-  const meta = notification.metadata as Record<string, unknown> | null;
-  const url = resolveNotificationUrl(notification.type, meta);
-  if (url) {
-    toast(notification.title, {
-      description: notification.body ?? undefined,
-      action: { label: "Ver", onClick: () => { window.location.href = url; } },
-    });
-  } else {
-    toast(notification.title, {
-      description: notification.body ?? undefined,
-    });
-  }
-
-  // 2. Browser Notification (se permissão concedida)
-  if (typeof window === "undefined" || !("Notification" in window)) return;
-  if (Notification.permission !== "granted") return;
-
-  try {
-    const n = new Notification(notification.title, {
-      body: notification.body ?? undefined,
-      icon: "/icon-192x192.png",
-      tag: notification.id,
-    });
-    if (url) {
-      n.onclick = () => {
-        window.focus();
-        window.location.href = url;
-      };
-    }
-  } catch { /* silent — browser may block */ }
-}
 
 export function useNotifications() {
   const t = useTranslations("notifications.bell");

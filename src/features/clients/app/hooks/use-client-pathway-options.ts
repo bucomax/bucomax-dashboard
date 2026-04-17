@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { listPathwaysForTenant } from "@/features/clients/app/services/clients.service";
-import type { PathwayOption } from "@/features/clients/types/api";
+import type { PathwayOption } from "@/features/clients/app/types/api";
 
 type UseClientPathwayOptionsParams = {
   enabled: boolean;

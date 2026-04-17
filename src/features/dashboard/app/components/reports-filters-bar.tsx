@@ -1,6 +1,6 @@
 "use client";
 
-import type { DashboardReportFilterOption } from "@/features/dashboard/types";
+import type { DashboardReportFilterOption } from "@/features/dashboard/app/types";
 import { LabeledSelect } from "@/shared/components/forms/labeled-select";
 import { Button } from "@/shared/components/ui/button";
 import { Download, Loader2, RefreshCw } from "lucide-react";

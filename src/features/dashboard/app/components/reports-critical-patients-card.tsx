@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 
-import type { ReportsSummaryResponseData } from "@/features/dashboard/types/api";
+import type { ReportsSummaryResponseData } from "@/features/dashboard/app/types/api";
 import { formatPhoneBrDisplay } from "@/lib/validators/phone";
 import { Button } from "@/shared/components/ui/button";
 import { ChevronLeft, ChevronRight, UserRound } from "lucide-react";

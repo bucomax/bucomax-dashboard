@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { routing } from "@/i18n/routing";
+import { normalizeCallbackPath } from "@/features/auth/app/utils/callback-path";
 import { signIn } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
@@ -9,30 +9,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import type { LoginFormValues } from "../types/auth";
 import { loginSchema } from "../utils/schemas";
-
-function normalizeCallbackPath(input: string | null, fallback: string) {
-  if (!input) return fallback;
-
-  let path = input;
-  if (path.startsWith("http://") || path.startsWith("https://")) {
-    try {
-      const u = new URL(path);
-      path = `${u.pathname}${u.search}${u.hash}`;
-    } catch {
-      return fallback;
-    }
-  }
-
-  for (const locale of routing.locales) {
-    const prefix = `/${locale}`;
-    if (path === prefix) return "/";
-    if (path.startsWith(`${prefix}/`)) {
-      return path.slice(prefix.length) || "/";
-    }
-  }
-
-  return path.startsWith("/") ? path : fallback;
-}
 
 export function useLoginForm() {
   const searchParams = useSearchParams();

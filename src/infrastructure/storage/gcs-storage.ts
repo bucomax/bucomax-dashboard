@@ -253,6 +253,45 @@ export async function computeSha256HexForGcsObjectKey(key: string): Promise<stri
   }
 }
 
+/**
+ * Lê os primeiros `size` bytes de um objeto no bucket (para validação de magic bytes).
+ * Retorna `null` se GCS não estiver configurado ou o objeto não existir.
+ */
+export async function readFirstBytesFromGcsObject(
+  key: string,
+  size: number,
+): Promise<Uint8Array | null> {
+  if (!isGcsConfigured()) return null;
+  try {
+    const bucket = getStorage().bucket(bucketNameOrThrow());
+    const file = bucket.file(key);
+    const [exists] = await file.exists();
+    if (!exists) return null;
+
+    const chunks: Buffer[] = [];
+    let totalRead = 0;
+
+    await new Promise<void>((resolve, reject) => {
+      const rs = file.createReadStream({ start: 0, end: size - 1 });
+      rs.on("data", (chunk: Buffer | string) => {
+        const buf = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+        chunks.push(buf);
+        totalRead += buf.length;
+        if (totalRead >= size) {
+          rs.destroy();
+          resolve();
+        }
+      });
+      rs.on("end", () => resolve());
+      rs.on("error", reject);
+    });
+
+    return new Uint8Array(Buffer.concat(chunks).subarray(0, size));
+  } catch {
+    return null;
+  }
+}
+
 /** URL pública estável (ex.: bucket público ou CDN); senão `null` — downloads usam presign. */
 export function publicUrlForKey(key: string): string | null {
   const base = process.env.GCS_PUBLIC_BASE_URL?.replace(/\/$/, "");

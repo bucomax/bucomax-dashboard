@@ -8,6 +8,10 @@ import {
 } from "@/features/clients/app/utils/schemas";
 import type { PublicPatientSelfRegisterFormPrefillDto } from "@/types/api/clients-v1";
 import { joinTranslatedZodIssues } from "@/lib/api/zod-i18n";
+import {
+  collectRhfErrorMessages,
+  scrollFirstInvalidFieldIntoView,
+} from "@/lib/utils/form";
 import { syncMaskedFormFieldsFromDom } from "@/lib/utils/sync-masked-form-fields-from-dom";
 import { publicPatientSelfRegisterBodySchema } from "@/lib/validators/client";
 import { isPortalSelfRegisterPasswordComplete } from "@/lib/validators/patient-portal-auth";
@@ -53,36 +57,6 @@ import { useParams, useSearchParams } from "next/navigation";
 import { GuardianRelationship, PatientPreferredChannel } from "@prisma/client";
 
 type Phase = "loading" | "invalid" | "form" | "success";
-
-function collectRhfErrorMessages(errors: FieldErrors): string[] {
-  const out: string[] = [];
-  function walk(node: unknown): void {
-    if (node == null || typeof node !== "object") return;
-    const o = node as Record<string, unknown>;
-    if (typeof o.message === "string" && o.message.trim()) {
-      out.push(o.message);
-      return;
-    }
-    for (const v of Object.values(o)) {
-      if (Array.isArray(v)) {
-        for (const item of v) walk(item);
-      } else if (v && typeof v === "object") {
-        walk(v);
-      }
-    }
-  }
-  walk(errors);
-  return [...new Set(out)];
-}
-
-function scrollFirstInvalidFieldIntoView(): void {
-  requestAnimationFrame(() => {
-    const el =
-      document.querySelector<HTMLElement>('[data-slot="field"][data-invalid]') ??
-      document.querySelector<HTMLElement>('[aria-invalid="true"]');
-    el?.scrollIntoView({ block: "center", behavior: "smooth" });
-  });
-}
 
 function PatientSelfRegisterInner() {
   const t = useTranslations("clients.selfRegister");

@@ -11,7 +11,7 @@ import type {
   PatientPathwayDetail,
   TogglePatientChecklistItemInput,
   TransitionPatientStageInput,
-} from "@/features/pathways/types/patient-pathways";
+} from "@/features/pathways/app/types/patient-pathways";
 
 export class TransitionBlockedByChecklistError extends Error {
   readonly pendingItems: { id: string; label: string }[];

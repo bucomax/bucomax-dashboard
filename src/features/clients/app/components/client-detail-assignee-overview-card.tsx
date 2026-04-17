@@ -1,15 +1,11 @@
 "use client";
 
 import { ClientDetailCardTitle } from "@/features/clients/app/components/client-detail-card-title";
+import { assigneeDisplayName } from "@/features/clients/app/utils/assignee";
 import type { PatientPathwayAssigneeOverviewDto, StageAssigneeSummaryDto } from "@/types/api/clients-v1";
 import { Card, CardContent, CardDescription, CardHeader } from "@/shared/components/ui/card";
 import { Users } from "lucide-react";
 import { useTranslations } from "next-intl";
-
-function assigneeDisplayName(u: StageAssigneeSummaryDto): string {
-  const n = u.name?.trim();
-  return n && n.length > 0 ? n : u.email;
-}
 
 export function ClientDetailAssigneeOverviewCard(props: {
   overview: PatientPathwayAssigneeOverviewDto;

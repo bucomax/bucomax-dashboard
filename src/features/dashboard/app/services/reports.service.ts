@@ -4,7 +4,7 @@ import type { ApiEnvelope } from "@/shared/types/api/v1";
 import type {
   ReportsSummaryQueryParams,
   ReportsSummaryResponseData,
-} from "@/features/dashboard/types/api";
+} from "@/features/dashboard/app/types/api";
 
 export async function getReportsSummary(
   params: ReportsSummaryQueryParams,

@@ -1,6 +1,6 @@
 "use client";
 
-import type { DashboardPipelineSectionProps } from "@/features/dashboard/types";
+import type { DashboardPipelineSectionProps } from "@/features/dashboard/app/types";
 import { useExportDashboardPipeline } from "@/features/dashboard/app/hooks/use-export-dashboard-pipeline";
 import { useDashboardPipeline } from "@/features/dashboard/app/hooks/use-dashboard-pipeline";
 import { PipelineAlertsCard } from "./pipeline-alerts-card";

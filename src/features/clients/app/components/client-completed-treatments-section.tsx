@@ -3,6 +3,8 @@
 import { JourneyStagesList } from "@/features/clients/app/components/client-detail-journey-stages-list";
 import { useClientFileDownload } from "@/features/clients/app/hooks/use-client-file-download";
 import type { ClientCompletedTreatmentDto, ClientDetailClientDto } from "@/types/api/clients-v1";
+import { uniqueActors } from "@/features/clients/app/utils/treatments";
+import { formatDateTime } from "@/lib/utils/date";
 import { toast } from "@/lib/toast";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/shared/components/ui/card";
@@ -23,7 +25,7 @@ import {
   Users,
 } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
-import { type ReactNode, useMemo } from "react";
+import { type ReactNode } from "react";
 
 function CompletedSectionTitle({ icon: Icon, children }: { icon: LucideIcon; children: ReactNode }) {
   return (
@@ -32,15 +34,6 @@ function CompletedSectionTitle({ icon: Icon, children }: { icon: LucideIcon; chi
       {children}
     </p>
   );
-}
-
-function uniqueActors(transitions: ClientCompletedTreatmentDto["transitions"]) {
-  const map = new Map<string, { name: string | null; email: string }>();
-  for (const tr of transitions) {
-    const a = tr.actor;
-    if (!map.has(a.id)) map.set(a.id, { name: a.name, email: a.email });
-  }
-  return [...map.values()];
 }
 
 type ClientCompletedTreatmentsSectionProps = {
@@ -69,14 +62,7 @@ export function ClientCompletedTreatmentsSection({
     }
   }
 
-  const dateFmt = useMemo(
-    () =>
-      new Intl.DateTimeFormat(locale === "en" ? "en-US" : "pt-BR", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }),
-    [locale],
-  );
+  const intlLocale = locale === "en" ? "en-US" : "pt-BR";
 
   if (items.length === 0) return null;
 
@@ -104,8 +90,8 @@ export function ClientCompletedTreatmentsSection({
                   <p className="truncate text-sm font-semibold">{ct.pathway.name}</p>
                   <p className="text-muted-foreground text-xs">
                     {t("summaryDates", {
-                      start: dateFmt.format(new Date(ct.startedAt)),
-                      end: dateFmt.format(new Date(ct.completedAt)),
+                      start: formatDateTime(ct.startedAt, intlLocale),
+                      end: formatDateTime(ct.completedAt, intlLocale),
                     })}
                   </p>
                 </div>
@@ -223,7 +209,7 @@ export function ClientCompletedTreatmentsSection({
                                   </span>
                                   {item.completedAt ? (
                                     <span className="text-muted-foreground ml-2 text-xs">
-                                      ({dateFmt.format(new Date(item.completedAt))})
+                                      ({formatDateTime(item.completedAt, intlLocale)})
                                     </span>
                                   ) : null}
                                 </li>
@@ -248,7 +234,7 @@ export function ClientCompletedTreatmentsSection({
                             {tr.fromStage?.name ?? tHist("start")} → {tr.toStage.name}
                           </span>
                           <span className="text-muted-foreground text-xs">
-                            {dateFmt.format(new Date(tr.createdAt))} · {tr.actor.name ?? tr.actor.email}
+                            {formatDateTime(tr.createdAt, intlLocale)} · {tr.actor.name ?? tr.actor.email}
                             {tr.note ? ` · ${tr.note}` : ""}
                             {tr.ruleOverrideReason
                               ? ` · ${tHist("overrideSummary", {

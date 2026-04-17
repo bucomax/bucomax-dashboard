@@ -1,6 +1,8 @@
 "use client";
 
-import type { KanbanPatientPathway } from "@/features/dashboard/types";
+import type { KanbanPatientPathway } from "@/features/dashboard/app/types";
+import { stageDurationTone } from "@/features/dashboard/app/utils/kanban";
+import { calendarDaysFromNow } from "@/lib/utils/date";
 import { slaHealthKanbanCardClassName } from "@/lib/utils/sla-status-ui";
 import { cn } from "@/lib/utils";
 import { formatPhoneBrDisplay } from "@/lib/validators/phone";
@@ -8,32 +10,10 @@ import { Siren } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";
 
-function calendarDaysInStage(enteredStageAt: string): number {
-  const entered = new Date(enteredStageAt);
-  const a = new Date(entered.getFullYear(), entered.getMonth(), entered.getDate());
-  const now = new Date();
-  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return Math.max(0, Math.round((b.getTime() - a.getTime()) / (24 * 60 * 60 * 1000)));
-}
-
-type StageDurationTone = "ok" | "warning" | "critical";
-
-function stageDurationTone(pp: KanbanPatientPathway, days: number): StageDurationTone {
-  const warn = pp.currentStage.alertWarningDays;
-  const crit = pp.currentStage.alertCriticalDays;
-  if (pp.slaStatus === "danger" || (crit != null && days >= crit)) {
-    return "critical";
-  }
-  if (pp.slaStatus === "warning" || (warn != null && days >= warn)) {
-    return "warning";
-  }
-  return "ok";
-}
-
 /** Pré-visualização espelhada do card no {@link DragOverlay} (fora do fluxo flex da coluna). */
 export function PipelineKanbanDragPreview({ pp }: { pp: KanbanPatientPathway }) {
   const t = useTranslations("dashboard.pipeline");
-  const days = useMemo(() => calendarDaysInStage(pp.enteredStageAt), [pp.enteredStageAt]);
+  const days = useMemo(() => calendarDaysFromNow(pp.enteredStageAt), [pp.enteredStageAt]);
   const tone = useMemo(() => stageDurationTone(pp, days), [pp, days]);
   const durationLabel = t("drag.daysInStage", { count: days });
 

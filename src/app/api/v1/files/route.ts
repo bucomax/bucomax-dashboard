@@ -5,7 +5,9 @@ import {
   computeSha256HexForGcsObjectKey,
   keyMatchesFileRegisterIntent,
   publicUrlForKey,
+  readFirstBytesFromGcsObject,
 } from "@/infrastructure/storage/gcs-storage";
+import { MAGIC_BYTES_READ_SIZE, validateMagicBytes } from "@/lib/utils/magic-bytes";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
 import { jsonIfPrismaSchemaMismatch } from "@/lib/api/prisma-schema-error";
@@ -71,6 +73,27 @@ export async function POST(request: Request) {
   }
 
   try {
+    // --- Magic bytes: validar conteúdo real antes de persistir ---
+    try {
+      const header = await Promise.race([
+        readFirstBytesFromGcsObject(parsed.data.key, MAGIC_BYTES_READ_SIZE),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), GCS_SHA256_REGISTER_TIMEOUT_MS)),
+      ]);
+      if (header) {
+        const result = validateMagicBytes(header, parsed.data.mimeType);
+        if (!result.valid) {
+          return jsonError(
+            "VALIDATION_ERROR",
+            apiT("errors.fileMimeTypeMismatch"),
+            422,
+            { declaredMime: result.declaredMime },
+          );
+        }
+      }
+    } catch {
+      // GCS indisponível — fail-open (não bloqueia o registro)
+    }
+
     let sha256Hash: string | null = null;
     try {
       // Se a leitura no GCS rejeitar, o Promise.race falharia inteiro — tratar como null.

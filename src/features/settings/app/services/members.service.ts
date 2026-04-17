@@ -2,7 +2,7 @@ import { normalizeApiError } from "@/lib/api/axios-error";
 import { apiClient } from "@/lib/api/http-client";
 import type { ApiEnvelope } from "@/shared/types/api/v1";
 
-import type { TenantMemberRow, TenantRole } from "@/features/settings/types/account";
+import type { TenantMemberRow, TenantRole } from "@/features/settings/app/types/account";
 
 type ListPayload = { members: TenantMemberRow[] };
 

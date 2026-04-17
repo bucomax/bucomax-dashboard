@@ -19,7 +19,7 @@ import type {
   KanbanColumn,
   KanbanPatientPathway,
   PipelineStatusFilter,
-} from "@/features/dashboard/types";
+} from "@/features/dashboard/app/types";
 import { DEBOUNCE_MS, useDebouncedState } from "@/shared/hooks/use-debounce";
 import { useDebouncedCallback } from "@/shared/hooks/use-debounce";
 import { useTranslations } from "next-intl";

@@ -1,4 +1,4 @@
-import type { KanbanColumn } from "@/features/dashboard/types";
+import type { KanbanColumn } from "@/features/dashboard/app/types";
 
 /**
  * Resolve o `stageId` alvo a partir do `over.id` do @dnd-kit (coluna ou card).

@@ -1,6 +1,8 @@
 "use client";
 
-import type { NotificationDto } from "@/features/notifications/types";
+import { useRelativeTime } from "@/features/notifications/app/hooks/use-relative-time";
+import type { NotificationDto } from "@/features/notifications/app/types";
+import { resolveNotificationUrl } from "@/features/notifications/app/utils/notification-url";
 import { Link } from "@/i18n/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -12,7 +14,6 @@ import {
   UserPlus,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useMemo } from "react";
 import { buttonVariants } from "@/shared/components/ui/button";
 
 const TYPE_ICONS: Record<string, typeof Bell> = {
@@ -33,37 +34,11 @@ const TYPE_COLORS: Record<string, string> = {
   patient_portal_file_pending: "text-cyan-500",
 };
 
-function useRelativeTime(dateStr: string) {
-  const t = useTranslations("notifications.time");
-  return useMemo(() => {
-    const now = Date.now();
-    const then = new Date(dateStr).getTime();
-    const diffMs = now - then;
-    const diffMin = Math.floor(diffMs / 60_000);
-    if (diffMin < 1) return t("justNow");
-    if (diffMin < 60) return t("minutesAgo", { count: diffMin });
-    const diffHrs = Math.floor(diffMin / 60);
-    if (diffHrs < 24) return t("hoursAgo", { count: diffHrs });
-    const diffDays = Math.floor(diffHrs / 24);
-    return t("daysAgo", { count: diffDays });
-  }, [dateStr, t]);
-}
-
 type NotificationItemProps = {
   notification: NotificationDto;
   onMarkRead: (id: string) => void;
   onPanelClose?: () => void;
 };
-
-function resolveActionUrl(type: string, metadata: Record<string, unknown> | null): string | null {
-  const clientId = metadata?.clientId as string | undefined;
-  if (!clientId) return null;
-
-  if (type === "patient_portal_file_pending") {
-    return `/dashboard/clients/${clientId}?tab=files`;
-  }
-  return `/dashboard/clients/${clientId}`;
-}
 
 export function NotificationItem({ notification, onMarkRead, onPanelClose }: NotificationItemProps) {
   const t = useTranslations("notifications");
@@ -72,7 +47,7 @@ export function NotificationItem({ notification, onMarkRead, onPanelClose }: Not
   const iconColor = TYPE_COLORS[notification.type] ?? "text-muted-foreground";
   const relativeTime = useRelativeTime(notification.createdAt);
   const metadata = notification.metadata as Record<string, unknown> | null;
-  const actionUrl = resolveActionUrl(notification.type, metadata);
+  const actionUrl = resolveNotificationUrl(notification.type, metadata);
   const showActionButton = Boolean(actionUrl);
   const wrapFullRowInLink = Boolean(actionUrl) && !showActionButton;
 

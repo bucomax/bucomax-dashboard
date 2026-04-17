@@ -9,7 +9,7 @@ import {
 import type {
   PatientPathwayDetail,
   TransitionPatientStageInput,
-} from "@/features/pathways/types/patient-pathways";
+} from "@/features/pathways/app/types/patient-pathways";
 import { useTranslations } from "next-intl";
 
 export function usePatientPathway(patientPathwayId: string) {

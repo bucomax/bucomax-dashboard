@@ -21,11 +21,12 @@ import {
   logoutPatientPortal,
   PatientPortalUnauthorizedError,
 } from "@/lib/api/patient-portal-client";
+import { formatDateTime } from "@/lib/utils/date";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardDescription, CardHeader } from "@/shared/components/ui/card";
 import { Info, KeyRound, MapPinned } from "lucide-react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 import type { PatientPortalTimelineResponseData } from "@/types/api/patient-portal-v1";
 
@@ -33,7 +34,6 @@ export function PatientPortalHomePage() {
   const tenantSlug = usePatientPortalTenantSlug();
   const t = useTranslations("patientPortal");
   const td = useTranslations("clients.detail");
-  const locale = useLocale();
   const { data, error, loading, needsLink, reload } = usePatientPortalClientDetail(tenantSlug);
   const [timeline, setTimeline] = useState<PatientPortalTimelineResponseData | null>(null);
   const [timelineLoading, setTimelineLoading] = useState(false);
@@ -72,17 +72,6 @@ export function PatientPortalHomePage() {
     },
     [t, tenantSlug],
   );
-
-  const formatDateTime = (iso: string) => {
-    try {
-      return new Intl.DateTimeFormat(locale === "en" ? "en-US" : "pt-BR", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(new Date(iso));
-    } catch {
-      return iso;
-    }
-  };
 
   async function onLogout() {
     await logoutPatientPortal();
@@ -184,10 +173,10 @@ export function PatientPortalHomePage() {
           loading={timelineLoading}
           error={timelineError}
           onPageChange={loadTimelinePage}
-          formatDateTime={formatDateTime}
+          formatDateTime={(iso) => formatDateTime(iso)}
         />
 
-        <PatientPortalFilesSection formatDateTime={formatDateTime} onAfterUpload={() => loadTimelinePage(1)} />
+        <PatientPortalFilesSection formatDateTime={(iso) => formatDateTime(iso)} onAfterUpload={() => loadTimelinePage(1)} />
       </div>
 
       <div className="[column-span:all] min-w-0 w-full">

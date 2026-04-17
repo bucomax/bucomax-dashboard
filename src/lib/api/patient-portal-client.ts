@@ -1,4 +1,5 @@
 import { PATIENT_PORTAL_TENANT_SLUG_HEADER } from "@/lib/constants/patient-portal";
+import { readFileHeader, validateMagicBytes } from "@/lib/utils/magic-bytes";
 import { putFileWithUploadProgress } from "@/lib/utils/upload-put-xhr";
 import type { PatchPatientPortalProfileBody } from "@/lib/validators/patient-portal-profile";
 import type {
@@ -318,6 +319,12 @@ export async function uploadPatientPortalFile(
 ): Promise<PatientPortalFileRegisteredResponse> {
   const mimeType = file.type?.trim() || "application/octet-stream";
   const bump = (pct: number) => onUploadProgress?.(Math.min(100, Math.max(0, Math.round(pct))));
+
+  const header = await readFileHeader(file);
+  const mbResult = validateMagicBytes(header, mimeType);
+  if (!mbResult.valid) {
+    throw new Error("O conteúdo do arquivo não corresponde ao tipo declarado.");
+  }
 
   const presignRes = await fetch(
     "/api/v1/patient/files/presign",

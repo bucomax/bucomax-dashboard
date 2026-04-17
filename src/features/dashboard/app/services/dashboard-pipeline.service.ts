@@ -7,7 +7,7 @@ import type {
   DashboardSummaryTotals,
   KanbanColumn,
   KanbanPatientPathway,
-} from "@/features/dashboard/types";
+} from "@/features/dashboard/app/types";
 import type { ApiEnvelope } from "@/shared/types/api/v1";
 
 export async function getDashboardSummary(

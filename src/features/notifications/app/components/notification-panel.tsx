@@ -1,6 +1,6 @@
 "use client";
 
-import type { NotificationDto } from "@/features/notifications/types";
+import type { NotificationDto } from "@/features/notifications/app/types";
 import { NotificationItem } from "./notification-item";
 import { Button } from "@/shared/components/ui/button";
 import {

@@ -14,7 +14,7 @@ import {
   type Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { PATHWAY_STAGE_NONE_ASSIGNEE } from "@/features/pathways/app/constants/stage-default-assignee";
+import { PATHWAY_STAGE_NONE_ASSIGNEE } from "@/features/pathways/app/utils/stage-default-assignee";
 import { PathwayStageChecklistBlock } from "@/features/pathways/app/components/pathway-stage-checklist-block";
 import { PathwayStageDefaultAssigneesField } from "@/features/pathways/app/components/pathway-stage-default-assignees-field";
 import { PathwayStageDocumentsBlock } from "@/features/pathways/app/components/pathway-stage-documents-block";
@@ -30,8 +30,8 @@ import {
   updatePathwayStageNodeChecklistItems,
   updatePathwayStageNodeStageDocuments,
 } from "@/features/pathways/app/utils/pathway-stage-nodes";
-import type { PathwayEditorProps, SelectedPathwayNodeUpdate } from "@/features/pathways/types/components";
-import type { StageSlaField } from "@/features/pathways/types/column-editor";
+import type { PathwayEditorProps, SelectedPathwayNodeUpdate } from "@/features/pathways/app/types/components";
+import type { StageSlaField } from "@/features/pathways/app/types/column-editor";
 import { cn } from "@/lib/utils";
 import { toast } from "@/lib/toast";
 import { LabeledNonNegativeIntegerUnitField } from "@/shared/components/forms";

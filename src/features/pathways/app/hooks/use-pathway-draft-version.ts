@@ -12,7 +12,7 @@ import {
 } from "@/features/pathways/app/services/pathways.service";
 import { createDefaultPathwayGraph } from "@/features/pathways/app/utils/default-graph";
 import { savedDraftGraphDiffersFromPublished } from "@/features/pathways/app/utils/pathway-graph";
-import type { PathwayVersionDetail } from "@/features/pathways/types/pathways";
+import type { PathwayVersionDetail } from "@/features/pathways/app/types/pathways";
 import { useTranslations } from "next-intl";
 
 export function usePathwayDraftVersion(pathwayId: string) {

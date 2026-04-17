@@ -9,6 +9,7 @@ import type { PatchPatientPortalProfileBody } from "@/lib/validators/patient-por
 import type { ClientDetailClientDto, PatchClientRequestBody } from "@/types/api/clients-v1";
 import { GuardianRelationship, PatientPreferredChannel } from "@prisma/client";
 import { toast } from "@/lib/toast";
+import { normNullable } from "@/lib/utils/string";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/shared/components/ui/card";
 import { digitsOnlyCep, formatCepDisplay } from "@/lib/validators/cep";
@@ -39,11 +40,6 @@ type ClientDetailProfileCardProps = {
   /** Obrigatório quando `variant` é `patient`. */
   tenantSlug?: string;
 };
-
-function normNullable(s: string | null | undefined): string | null {
-  const t = (s ?? "").trim();
-  return t === "" ? null : t;
-}
 
 export function ClientDetailProfileCard({
   clientId,

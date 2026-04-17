@@ -7,7 +7,7 @@ import {
   getPatientPathway,
   transitionPatientStage,
 } from "@/features/pathways/app/services/patient-pathways.service";
-import type { PatientPathwayDetail } from "@/features/pathways/types/patient-pathways";
+import type { PatientPathwayDetail } from "@/features/pathways/app/types/patient-pathways";
 
 export function usePipelineChangeStageDialog(
   patientPathwayId: string | null,

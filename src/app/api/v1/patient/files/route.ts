@@ -6,7 +6,9 @@ import {
   computeSha256HexForGcsObjectKey,
   keyMatchesFileRegisterIntent,
   publicUrlForKey,
+  readFirstBytesFromGcsObject,
 } from "@/infrastructure/storage/gcs-storage";
+import { MAGIC_BYTES_READ_SIZE, validateMagicBytes } from "@/lib/utils/magic-bytes";
 import { buildPagination } from "@/lib/api/pagination";
 import { getApiT } from "@/lib/api/i18n";
 import { jsonError, jsonSuccess } from "@/lib/api-response";
@@ -107,6 +109,24 @@ export async function POST(request: Request) {
   });
   if (existingKey) {
     return jsonError("CONFLICT", trans("errors.fileAlreadyRegistered"), 409);
+  }
+
+  // --- Magic bytes: validar conteúdo real antes de persistir ---
+  try {
+    const header = await readFirstBytesFromGcsObject(parsed.data.key, MAGIC_BYTES_READ_SIZE);
+    if (header) {
+      const mbResult = validateMagicBytes(header, parsed.data.mimeType);
+      if (!mbResult.valid) {
+        return jsonError(
+          "VALIDATION_ERROR",
+          trans("errors.fileMimeTypeMismatch"),
+          422,
+          { declaredMime: mbResult.declaredMime },
+        );
+      }
+    }
+  } catch {
+    // GCS indisponível — fail-open
   }
 
   const sha256Hash = await computeSha256HexForGcsObjectKey(parsed.data.key);

@@ -1,6 +1,6 @@
 "use client";
 
-import type { KanbanColumn, PipelineStatusFilter } from "@/features/dashboard/types";
+import type { KanbanColumn, PipelineStatusFilter } from "@/features/dashboard/app/types";
 import { useDroppable } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { Button } from "@/shared/components/ui/button";

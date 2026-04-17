@@ -8,6 +8,10 @@ import { TenantNotificationsCard } from "@/features/settings/app/components/tena
 import { UserSettingsPanel } from "@/features/settings/app/components/user-settings-panel";
 import { UsersManagementPanel } from "@/features/settings/app/components/users-management-panel";
 import { WhatsAppSettingsCard } from "@/features/settings/app/components/whatsapp-settings-card";
+import {
+  sectionFromHash,
+  type SettingsSectionId,
+} from "@/features/settings/app/utils/section-hash";
 import { cn } from "@/lib/utils";
 import {
   Bell,
@@ -25,9 +29,7 @@ import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-type SectionId = "account" | "clinic" | "notifications" | "whatsapp" | "team" | "opme" | "phases" | "admin";
-
-type NavDef = { id: SectionId; icon: LucideIcon; superAdminOnly?: boolean; tenantAdminOnly?: boolean };
+type NavDef = { id: SettingsSectionId; icon: LucideIcon; superAdminOnly?: boolean; tenantAdminOnly?: boolean };
 
 const NAV_DEFS: NavDef[] = [
   { id: "account", icon: User },
@@ -41,22 +43,6 @@ const NAV_DEFS: NavDef[] = [
 ];
 
 const FADE_MS = 200;
-
-const HASH_TO_SECTION: Record<string, SectionId> = {
-  account: "account",
-  clinic: "clinic",
-  notifications: "notifications",
-  whatsapp: "whatsapp",
-  team: "team",
-  opme: "opme",
-  phases: "phases",
-  admin: "admin",
-};
-
-function sectionFromHash(hash: string): SectionId | null {
-  const key = hash.replace(/^#/, "");
-  return HASH_TO_SECTION[key] ?? null;
-}
 
 export function SettingsPageLayout() {
   const t = useTranslations("settings.sectionsNav");
@@ -75,7 +61,7 @@ export function SettingsPageLayout() {
     [isSuperAdmin, isTenantAdminOrSuper],
   );
 
-  const [activeSection, setActiveSection] = useState<SectionId>("account");
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>("account");
   const [panelVisible, setPanelVisible] = useState(true);
   const fadeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const skipHashReplaceRef = useRef(false);
@@ -112,7 +98,7 @@ export function SettingsPageLayout() {
   }, [activeSection, pathname]);
 
   const goToSection = useCallback(
-    (id: SectionId) => {
+    (id: SettingsSectionId) => {
       if (id === activeSection) return;
       if (fadeTimeoutRef.current) {
         clearTimeout(fadeTimeoutRef.current);

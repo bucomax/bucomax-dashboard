@@ -24,6 +24,7 @@ import { useUpdateClient } from "@/features/clients/app/hooks/use-update-client"
 import { TransitionBlockedByChecklistError } from "@/features/pathways/app/services/patient-pathways.service";
 import { Link } from "@/i18n/navigation";
 import { toast } from "@/lib/toast";
+import { waDigits } from "@/lib/utils/phone";
 import { formatCpfDisplay } from "@/lib/validators/cpf";
 import { formatPhoneBrDisplay } from "@/lib/validators/phone";
 import { Alert, AlertDescription } from "@/shared/components/ui/alert";
@@ -63,10 +64,6 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useState } from "react";
-
-function waDigits(phone: string): string {
-  return phone.replace(/\D/g, "");
-}
 
 type ClientDetailViewProps = {
   clientId: string;

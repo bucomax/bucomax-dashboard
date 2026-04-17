@@ -1,4 +1,4 @@
-import type { KanbanColumn, PipelineStatusFilter } from "@/features/dashboard/types";
+import type { KanbanColumn, PipelineStatusFilter } from "@/features/dashboard/app/types";
 
 type ExportPipelineCsvInput = {
   columns: KanbanColumn[];

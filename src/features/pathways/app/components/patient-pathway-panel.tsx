@@ -1,7 +1,7 @@
 "use client";
 
 import { usePatientPathway } from "@/features/pathways/app/hooks/use-patient-pathway";
-import type { PatientPathwayPanelProps } from "@/features/pathways/types/components";
+import type { PatientPathwayPanelProps } from "@/features/pathways/app/types/components";
 import { toast } from "@/lib/toast";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/components/ui/card";

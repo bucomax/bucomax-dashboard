@@ -8,7 +8,7 @@ import type {
   DashboardPipelineOpmeOption,
   KanbanColumn,
   PipelineStatusFilter,
-} from "@/features/dashboard/types";
+} from "@/features/dashboard/app/types";
 import { buildPipelineCsv } from "@/features/dashboard/app/utils/export-pipeline-csv";
 import { KANBAN_OPME_QUERY_UNASSIGNED } from "@/lib/pathway/kanban-client-where";
 

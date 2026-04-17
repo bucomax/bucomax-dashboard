@@ -1,6 +1,6 @@
 "use client";
 
-import { PATHWAY_STAGE_NONE_ASSIGNEE } from "@/features/pathways/app/constants/stage-default-assignee";
+import { PATHWAY_STAGE_NONE_ASSIGNEE } from "@/features/pathways/app/utils/stage-default-assignee";
 import type { LabeledSelectOption } from "@/shared/components/forms/labeled-select";
 import { normalizeSearchText } from "@/lib/utils/string-search";
 import { cn } from "@/lib/utils";

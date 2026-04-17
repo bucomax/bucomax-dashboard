@@ -9,7 +9,7 @@ import {
   patchMemberRole,
   removeTenantMember,
 } from "@/features/settings/app/services/members.service";
-import type { TenantMemberRow, TenantRole } from "@/features/settings/types/account";
+import type { TenantMemberRow, TenantRole } from "@/features/settings/app/types/account";
 
 export function useTenantMembers() {
   const t = useTranslations("settings.members");

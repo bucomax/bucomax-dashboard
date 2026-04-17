@@ -10,7 +10,7 @@ import type {
   PathwayListItem,
   PathwayVersionDetail,
   UpdatePathwayDraftInput,
-} from "@/features/pathways/types/pathways";
+} from "@/features/pathways/app/types/pathways";
 import type { PathwayPublishPreviewDto } from "@/types/api/pathways-v1";
 
 export async function listPathways(): Promise<PathwayListItem[]> {

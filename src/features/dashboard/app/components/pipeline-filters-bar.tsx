@@ -1,6 +1,6 @@
 "use client";
 
-import type { DashboardPipelineOpmeOption, PipelineStatusFilter } from "@/features/dashboard/types";
+import type { DashboardPipelineOpmeOption, PipelineStatusFilter } from "@/features/dashboard/app/types";
 import { KANBAN_OPME_QUERY_UNASSIGNED } from "@/lib/pathway/kanban-client-where";
 import { LabeledSelect } from "@/shared/components/forms/labeled-select";
 import { Field, FieldLabel } from "@/shared/components/ui/field";

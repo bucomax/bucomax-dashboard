@@ -10,7 +10,7 @@ import type {
   ClientListStatusFilter,
   PathwayOption,
   PublishedStageRowDto,
-} from "@/features/clients/types/api";
+} from "@/features/clients/app/types/api";
 import type { ApiPagination } from "@/lib/api/pagination";
 import { DEBOUNCE_MS, useDebouncedState } from "@/shared/hooks/use-debounce";
 import { useTranslations } from "next-intl";

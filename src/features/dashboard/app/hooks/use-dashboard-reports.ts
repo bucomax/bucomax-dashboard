@@ -5,8 +5,8 @@ import { useTranslations } from "next-intl";
 
 import { getReportsSummary } from "@/features/dashboard/app/services/reports.service";
 import { buildReportsCsv } from "@/features/dashboard/app/utils/export-reports-csv";
-import type { DashboardReportFilterOption } from "@/features/dashboard/types";
-import type { ReportsSummaryResponseData } from "@/features/dashboard/types/api";
+import type { DashboardReportFilterOption } from "@/features/dashboard/app/types";
+import type { ReportsSummaryResponseData } from "@/features/dashboard/app/types/api";
 import { listPathways } from "@/features/pathways/app/services/pathways.service";
 import {
   listOpmeSuppliers,

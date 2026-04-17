@@ -1,53 +1,68 @@
-import { routing } from "@/i18n/routing";
-import createMiddleware from "next-intl/middleware";
-import { withAuth } from "next-auth/middleware";
 import type { NextRequest } from "next/server";
+import { withAuth } from "next-auth/middleware";
+import createMiddleware from "next-intl/middleware";
 
+import { routing } from "@/i18n/routing";
+
+// ---------------------------------------------------------------------------
+// i18n middleware (aplicado em todas as rotas de página)
+// ---------------------------------------------------------------------------
 const intlMiddleware = createMiddleware(routing);
 
+// ---------------------------------------------------------------------------
+// Auth middleware (next-auth wrapping intl)
+// ---------------------------------------------------------------------------
 const authMiddleware = withAuth(
   function onSuccess(req) {
     return intlMiddleware(req);
   },
   {
-    callbacks: { authorized: ({ token }) => !!token && token.invalid !== true },
+    callbacks: {
+      authorized: ({ token }) => !!token && token.invalid !== true,
+    },
     pages: { signIn: "/login" },
   },
 );
 
-const PUBLIC_PAGES = ["/", "/login", "/auth/forgot-password", "/auth/reset-password", "/auth/invite"];
+// ---------------------------------------------------------------------------
+// Rotas públicas — sem exigência de sessão
+// ---------------------------------------------------------------------------
+
+/** Rotas exatas (sem filhos) que são públicas. */
+const PUBLIC_EXACT = new Set([
+  "/",
+  "/login",
+  "/patient",
+  "/patient-self-register",
+]);
+
+/** Prefixos cujos filhos também são públicos (`/auth/forgot-password`, `/legal/terms`, …). */
+const PUBLIC_PREFIXES = [
+  "/auth/",
+  "/legal/",
+];
+
+/** Padrão: `/{tenantSlug}/patient` e `/{tenantSlug}/patient-self-register` (portal do paciente). */
+const TENANT_SCOPED_PUBLIC_RE = /^\/[^/]+\/(patient|patient-self-register)(\/|$)/;
 
 function isPublicPath(pathname: string): boolean {
-  if (PUBLIC_PAGES.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
-    return true;
-  }
-  /** Termos de uso e aviso de privacidade (LGPD) — leitura sem sessão (links no auto-cadastro / portal). */
-  if (pathname.startsWith("/legal/")) {
-    return true;
-  }
-  /** Landing do portal (sem slug). */
-  if (pathname === "/patient") {
-    return true;
-  }
-  /** Auto-cadastro legado: `/patient-self-register?token=`. */
-  if (pathname === "/patient-self-register") {
-    return true;
-  }
-  /** `/{tenantSlug}/patient/*` — portal do paciente. */
-  if (/^\/[^/]+\/patient(\/.*)?$/.test(pathname)) {
-    return true;
-  }
-  /** `/{tenantSlug}/patient-self-register` — cadastro pelo link/QR. */
-  if (/^\/[^/]+\/patient-self-register(\/.*)?$/.test(pathname)) {
-    return true;
-  }
+  if (PUBLIC_EXACT.has(pathname)) return true;
+  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) return true;
+  if (TENANT_SCOPED_PUBLIC_RE.test(pathname)) return true;
   return false;
 }
 
+// ---------------------------------------------------------------------------
+// Proxy (middleware entry-point — Next.js 16)
+// ---------------------------------------------------------------------------
 export default function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  if (isPublicPath(pathname)) return intlMiddleware(req);
-  return (authMiddleware as unknown as (req: NextRequest) => Response)(req);
+
+  if (isPublicPath(pathname)) {
+    return intlMiddleware(req);
+  }
+
+  return (authMiddleware as unknown as (r: NextRequest) => Response)(req);
 }
 
 export const config = {

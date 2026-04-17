@@ -1,6 +1,6 @@
 "use client";
 
-import type { DashboardPathwayOption } from "@/features/dashboard/types";
+import type { DashboardPathwayOption } from "@/features/dashboard/app/types";
 import { LabeledSelect } from "@/shared/components/forms/labeled-select";
 import { useTranslations } from "next-intl";
 import { useMemo } from "react";

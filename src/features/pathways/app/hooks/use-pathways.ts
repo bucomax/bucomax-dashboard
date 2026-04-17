@@ -1,7 +1,7 @@
 "use client";
 
 import { listPathways } from "@/features/pathways/app/services/pathways.service";
-import type { PathwayListItem } from "@/features/pathways/types/pathways";
+import type { PathwayListItem } from "@/features/pathways/app/types/pathways";
 import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useState } from "react";
 

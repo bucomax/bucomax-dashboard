@@ -14,7 +14,7 @@ import type { Node } from "@xyflow/react";
 import { ExternalLink, Info, Loader2, Plus, RefreshCw, Rocket, Save } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { PATHWAY_STAGE_NONE_ASSIGNEE } from "@/features/pathways/app/constants/stage-default-assignee";
+import { PATHWAY_STAGE_NONE_ASSIGNEE } from "@/features/pathways/app/utils/stage-default-assignee";
 import { setStageNodeDefaultAssignees } from "@/lib/pathway/stage-node-assignees";
 import { PathwaySortableStageRow } from "@/features/pathways/app/components/pathway-sortable-stage-row";
 import { usePathwayDraftVersion } from "@/features/pathways/app/hooks/use-pathway-draft-version";
@@ -29,7 +29,7 @@ import {
   updatePathwayStageNodeStageDocuments,
 } from "@/features/pathways/app/utils/pathway-stage-nodes";
 import { pathwayEditorGraphNodePosition } from "@/lib/pathway/graph-editor-layout";
-import type { PathwayStagesColumnEditorProps, StageSlaField } from "@/features/pathways/types/column-editor";
+import type { PathwayStagesColumnEditorProps, StageSlaField } from "@/features/pathways/app/types/column-editor";
 import type { LabeledSelectOption } from "@/shared/components/forms/labeled-select";
 import { Link } from "@/i18n/navigation";
 import { toast } from "@/lib/toast";

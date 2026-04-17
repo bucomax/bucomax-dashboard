@@ -1,4 +1,4 @@
-import type { ReportsSummaryResponseData } from "@/features/dashboard/types/api";
+import type { ReportsSummaryResponseData } from "@/features/dashboard/app/types/api";
 
 function escapeCsv(value: string | number | null | undefined) {
   const raw = value == null ? "" : String(value);

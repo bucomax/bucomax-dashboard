@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { getMe, patchMe } from "@/features/settings/app/services/profile.service";
-import type { MeUser } from "@/features/settings/types/account";
+import type { MeUser } from "@/features/settings/app/types/account";
 
 export function useAccountProfile() {
   const t = useTranslations("settings.profile");

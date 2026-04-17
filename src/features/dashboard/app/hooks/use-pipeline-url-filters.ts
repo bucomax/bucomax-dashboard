@@ -1,6 +1,6 @@
 "use client";
 
-import type { PipelineStatusFilter } from "@/features/dashboard/types";
+import type { PipelineStatusFilter } from "@/features/dashboard/app/types";
 import { usePathname } from "@/i18n/navigation";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCallback, useRef } from "react";

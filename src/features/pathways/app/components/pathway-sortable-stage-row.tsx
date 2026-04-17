@@ -8,7 +8,7 @@ import { useTranslations } from "next-intl";
 import { PathwayStageChecklistBlock } from "@/features/pathways/app/components/pathway-stage-checklist-block";
 import { PathwayStageDefaultAssigneesField } from "@/features/pathways/app/components/pathway-stage-default-assignees-field";
 import { PathwayStageDocumentsBlock } from "@/features/pathways/app/components/pathway-stage-documents-block";
-import type { PathwaySortableStageRowProps } from "@/features/pathways/types/column-editor";
+import type { PathwaySortableStageRowProps } from "@/features/pathways/app/types/column-editor";
 import { normalizeStageDefaultAssigneeUserIds } from "@/lib/pathway/graph";
 import { cn } from "@/lib/utils";
 import { Button } from "@/shared/components/ui/button";

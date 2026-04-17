@@ -1,7 +1,7 @@
 "use client";
 
 import { postPathway } from "@/features/pathways/app/services/pathways.service";
-import type { CreatePathwayInput, CreatedPathway } from "@/features/pathways/types/pathways";
+import type { CreatePathwayInput, CreatedPathway } from "@/features/pathways/app/types/pathways";
 import { useState } from "react";
 
 export function useCreatePathway() {

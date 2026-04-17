@@ -7,6 +7,7 @@ import {
   verifyPatientPortalOtp,
   verifyPatientPortalPassword,
 } from "@/lib/api/patient-portal-client";
+import { formatLoginDisplay } from "@/features/patient-portal/app/utils/login-display";
 import { parsePortalLoginInput } from "@/lib/patient-portal/login-identifier";
 import { digitsOnlyCpf, formatCpfDisplay } from "@/lib/validators/cpf";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -29,13 +30,6 @@ import {
 } from "lucide-react";
 
 type Step = "identifier" | "password" | "sendOtp" | "code";
-
-function formatLoginDisplay(login: string): string {
-  const p = parsePortalLoginInput(login);
-  if (!p) return login.trim();
-  if (p.kind === "cpf") return formatCpfDisplay(p.cpf11);
-  return p.emailNorm;
-}
 
 export function PatientPortalLoginPage() {
   const tenantSlug = usePatientPortalTenantSlug();

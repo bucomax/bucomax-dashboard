@@ -1,6 +1,6 @@
 "use client";
 
-import type { DashboardAlertRow } from "@/features/dashboard/types";
+import type { DashboardAlertRow } from "@/features/dashboard/app/types";
 import { Link } from "@/i18n/navigation";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";

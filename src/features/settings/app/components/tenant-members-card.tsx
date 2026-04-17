@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { TeamMemberRemoveDialog } from "@/features/settings/app/components/team-member-remove-dialog";
 import { getTenantClinicSettings } from "@/features/settings/app/services/tenant-settings.service";
 import { useTenantMembers } from "@/features/settings/app/hooks/use-tenant-members";
-import type { TenantMemberRow } from "@/features/settings/types/account";
+import type { TenantMemberRow } from "@/features/settings/app/types/account";
 import { toast } from "@/lib/toast";
 import { Button } from "@/shared/components/ui/button";
 import {

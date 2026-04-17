@@ -1,6 +1,6 @@
 "use client";
 
-import type { KanbanColumn, PipelineStatusFilter } from "@/features/dashboard/types";
+import type { KanbanColumn, PipelineStatusFilter } from "@/features/dashboard/app/types";
 import { resolveKanbanDropStageId } from "@/features/dashboard/app/utils/kanban-dnd";
 import {
   DndContext,

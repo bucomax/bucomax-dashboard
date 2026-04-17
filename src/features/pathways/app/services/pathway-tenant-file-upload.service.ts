@@ -1,5 +1,6 @@
 import { normalizeApiError } from "@/lib/api/axios-error";
 import { apiClient } from "@/lib/api/http-client";
+import { readFileHeader, validateMagicBytes } from "@/lib/utils/magic-bytes";
 import { putFileWithUploadProgress } from "@/lib/utils/upload-put-xhr";
 import type { ApiEnvelope } from "@/shared/types/api/v1";
 
@@ -29,6 +30,11 @@ export async function uploadTenantLibraryFile(
   const bump = (pct: number) => onUploadProgress?.(Math.min(100, Math.max(0, Math.round(pct))));
 
   try {
+    const header = await readFileHeader(file);
+    const mbResult = validateMagicBytes(header, mimeType);
+    if (!mbResult.valid) {
+      throw new Error("O conteúdo do arquivo não corresponde ao tipo declarado.");
+    }
     const presignRes = await apiClient.post<ApiEnvelope<PresignResponseData>>("/api/v1/files/presign", {
       fileName: file.name,
       mimeType,
