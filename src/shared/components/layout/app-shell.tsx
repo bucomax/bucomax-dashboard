@@ -1,7 +1,5 @@
 "use client";
 
-import { NotificationBell } from "@/features/notifications/app/components/notification-bell";
-import { NotificationPermissionBanner } from "@/features/notifications/app/components/notification-permission-banner";
 import { DashboardBreadcrumb } from "@/shared/components/layout/dashboard-breadcrumb";
 import { LocaleSwitcher } from "@/shared/components/layout/locale-switcher";
 import { Separator } from "@/shared/components/ui/separator";
@@ -15,6 +13,8 @@ import type { ReactNode } from "react";
 type AppShellProps = {
   children: ReactNode;
   user: AppShellUser;
+  headerSlots?: ReactNode;
+  afterHeader?: ReactNode;
 };
 
 /**
@@ -23,7 +23,7 @@ type AppShellProps = {
  */
 const headerToolbarSeparatorClass = "hidden h-10 sm:block";
 
-export function AppShell({ children, user }: AppShellProps) {
+export function AppShell({ children, user, headerSlots, afterHeader }: AppShellProps) {
   return (
     <SidebarProvider>
       <AppSidebar user={user} />
@@ -33,15 +33,19 @@ export function AppShell({ children, user }: AppShellProps) {
           <DashboardBreadcrumb />
           <div className="ml-auto flex min-w-0 items-center gap-1 sm:gap-2">
             <TenantSwitcher activeTenantId={user.tenantId} />
-            <Separator orientation="vertical" className={headerToolbarSeparatorClass} />
-            <NotificationBell />
+            {headerSlots ? (
+              <>
+                <Separator orientation="vertical" className={headerToolbarSeparatorClass} />
+                {headerSlots}
+              </>
+            ) : null}
             <Separator orientation="vertical" className={headerToolbarSeparatorClass} />
             <LocaleSwitcher />
             <Separator orientation="vertical" className={headerToolbarSeparatorClass} />
             <ThemeToggle />
           </div>
         </header>
-        <NotificationPermissionBanner />
+        {afterHeader}
         <div className="bg-muted/40 flex min-h-[calc(100svh-3.5rem)] flex-1 flex-col gap-4 p-4 md:p-6 dark:bg-muted/25">
           {children}
         </div>

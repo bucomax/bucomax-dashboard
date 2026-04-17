@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { NotificationBell } from "@/features/notifications/app/components/notification-bell";
+import { NotificationPermissionBanner } from "@/features/notifications/app/components/notification-permission-banner";
 import { AppShell } from "@/shared/components/layout/app-shell";
 import { getSession } from "@/lib/auth/session";
 
@@ -32,6 +34,8 @@ export default async function AuthenticatedLayout({ children }: { children: Reac
         tenantId: u.tenantId,
         tenantRole: u.tenantRole,
       }}
+      headerSlots={<NotificationBell />}
+      afterHeader={<NotificationPermissionBanner />}
     >
       {children}
     </AppShell>
