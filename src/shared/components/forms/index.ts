@@ -2,6 +2,7 @@ export { FieldLabelWithHint } from "./field-label-with-hint";
 export { Form } from "./form";
 export { FormCep, type FormCepProps } from "./form-cep";
 export { FormCpf, type FormCpfProps } from "./form-cpf";
+export { FormBirthDateInput, type FormBirthDateInputProps } from "./form-birth-date-input";
 export { FormInput, type FormInputProps } from "./form-input";
 export { FormPassword, type FormPasswordProps } from "./form-password";
 export { FormPhoneNumber, type FormPhoneNumberProps } from "./form-phone-number";

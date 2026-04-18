@@ -97,6 +97,8 @@
     "validationPhoneBrDigits": "Invalid phone (use area code + number, 10 or 11 digits).",
     "validationEmailRequired": "Email is required.",
     "validationEmailInvalid": "Invalid email address.",
+    "validationBirthDateFuture": "Date of birth cannot be in the future.",
+    "validationBirthDateInvalid": "Invalid date of birth.",
     "patientSelfRegisterInvalidOrExpired": "This link is invalid, expired, or already used. Ask the clinic for a new QR code.",
     "validationPortalPasswordMin": "Password must be at least 8 characters.",
     "validationPortalPasswordUppercase": "Include at least one uppercase letter.",

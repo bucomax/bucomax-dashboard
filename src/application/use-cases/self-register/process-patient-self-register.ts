@@ -108,7 +108,7 @@ export async function runCompletePatientSelfRegister(
   data: ProcessPatientSelfRegisterBody,
 ): Promise<{ ok: true } | { ok: false; code: CompletePatientSelfRegisterErrorCode }> {
   const { token, password, ...clientFields } = data;
-  const patientEmail = clientFields.email.trim();
+  const patientEmail = clientFields.email?.trim() ?? "";
   const portalPasswordHash = await bcrypt.hash(password, 12);
   const portalPasswordChangedAt = new Date();
 
@@ -302,12 +302,14 @@ export async function runCompletePatientSelfRegister(
     clinicName,
   }).catch((e) => console.error("[patient-self-register] notify failed:", e));
 
-  notifyPatientSelfRegisterWelcome({
-    patientEmail,
-    patientName,
-    clinicName,
-    tenantSlug,
-  }).catch((e) => console.error("[patient-self-register] welcome email failed:", e));
+  if (patientEmail) {
+    notifyPatientSelfRegisterWelcome({
+      patientEmail,
+      patientName,
+      clinicName,
+      tenantSlug,
+    }).catch((e) => console.error("[patient-self-register] welcome email failed:", e));
+  }
 
   return { ok: true };
 }

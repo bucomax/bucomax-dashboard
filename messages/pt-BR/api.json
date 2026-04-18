@@ -97,6 +97,8 @@
     "validationPhoneBrDigits": "Telefone inválido (use DDD + número, 10 ou 11 dígitos).",
     "validationEmailRequired": "Informe o e-mail.",
     "validationEmailInvalid": "E-mail inválido.",
+    "validationBirthDateFuture": "A data de nascimento não pode ser futura.",
+    "validationBirthDateInvalid": "Data de nascimento inválida.",
     "patientSelfRegisterInvalidOrExpired": "Link inválido, expirado ou já utilizado. Peça um novo QR code na clínica.",
     "validationPortalPasswordMin": "A senha deve ter pelo menos 8 caracteres.",
     "validationPortalPasswordUppercase": "Inclua pelo menos uma letra maiúscula.",

@@ -2,24 +2,30 @@ import { GuardianRelationship, PatientPreferredChannel } from "@prisma/client";
 import { z } from "zod";
 
 import { zodApiMsg } from "@/lib/api/zod-i18n";
+import { todayIsoDateLocal } from "@/lib/utils/date";
 import { portalPasswordSchema } from "@/lib/validators/patient-portal-auth";
 import { digitsOnlyCep } from "@/lib/validators/cep";
 import { digitsOnlyCpf } from "@/lib/validators/cpf";
 import { digitsOnlyPhone, phoneDigitsSchema } from "@/lib/validators/phone";
 
-/** E-mail obrigatório na criação (formulário / POST); normaliza trim. */
-const requiredEmail = z.preprocess(
-  (v) => (v == null ? "" : String(v).trim()),
-  z
-    .string()
-    .min(1, { message: zodApiMsg("errors.validationEmailRequired") })
-    .max(320)
-    .email({ message: zodApiMsg("errors.validationEmailInvalid") }),
+/** E-mail opcional no base; obrigatoriedade forçada via `refineAdultRequiredFields`. */
+const optionalEmail = z.preprocess(
+  (v) => {
+    if (v == null) return "";
+    const s = String(v).trim();
+    return s === "" ? "" : s;
+  },
+  z.union([z.literal(""), z.string().max(320).email({ message: zodApiMsg("errors.validationEmailInvalid") })]),
 );
 
-const postPhone = z.preprocess(
-  (v) => (v == null ? "" : digitsOnlyPhone(String(v))),
-  phoneDigitsSchema,
+/** Telefone opcional no base; obrigatoriedade forçada via `refineAdultRequiredFields`. */
+const optionalPhone = z.preprocess(
+  (v) => {
+    if (v == null) return "";
+    const s = digitsOnlyPhone(String(v));
+    return s === "" ? "" : s;
+  },
+  z.union([z.literal(""), phoneDigitsSchema]),
 );
 
 const patchPhone = z.preprocess(
@@ -126,9 +132,16 @@ const documentIdRawForCreate = z.preprocess(
 
 const clientCreateObject = z.object({
   name: z.string().min(1).max(200),
-  phone: postPhone,
-  email: requiredEmail,
-  caseDescription: z.string().max(20_000).optional(),
+  phone: optionalPhone,
+  email: optionalEmail,
+  caseDescription: z.preprocess(
+    (v) => {
+      if (v === undefined || v === null) return undefined;
+      const s = String(v).trim();
+      return s === "" ? undefined : s;
+    },
+    z.string().max(20_000).optional(),
+  ),
   documentId: documentIdRawForCreate,
   assignedToUserId: z.string().cuid().optional(),
   opmeSupplierId: z.string().cuid().optional(),
@@ -137,6 +150,60 @@ const clientCreateObject = z.object({
   ...guardianFieldsCreate,
   ...extendedProfileFieldsCreate,
 });
+
+function refineAdultRequiredFields(
+  data: { isMinor: boolean; email: string; phone: string },
+  ctx: z.RefinementCtx,
+) {
+  if (data.isMinor) return;
+  if (!data.email || data.email.trim() === "") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["email"],
+      message: zodApiMsg("errors.validationEmailRequired"),
+    });
+  }
+  if (!data.phone || data.phone.trim() === "") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["phone"],
+      message: zodApiMsg("errors.validationPhoneBrDigits"),
+    });
+  }
+}
+
+/** Retorna true se a string YYYY-MM-DD representa uma data real no calendário. */
+function isRealCalendarDate(ymd: string): boolean {
+  const d = new Date(`${ymd}T12:00:00.000Z`);
+  if (!Number.isFinite(d.getTime())) return false;
+  const [y, m, day] = ymd.split("-").map(Number);
+  return d.getUTCFullYear() === y && d.getUTCMonth() + 1 === m && d.getUTCDate() === day;
+}
+
+function refineBirthDateNotFuture(
+  data: { birthDate?: string | null | undefined },
+  ctx: z.RefinementCtx,
+) {
+  const b = data.birthDate;
+  if (b === undefined || b === null || b === "") return;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(b)) return;
+  if (!isRealCalendarDate(b)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["birthDate"],
+      message: zodApiMsg("errors.validationBirthDateInvalid"),
+    });
+    return;
+  }
+  const today = todayIsoDateLocal();
+  if (b > today) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["birthDate"],
+      message: zodApiMsg("errors.validationBirthDateFuture"),
+    });
+  }
+}
 
 function refineEmergencyContact(
   data: { emergencyContactName?: string | undefined; emergencyContactPhone?: string | undefined },
@@ -253,7 +320,7 @@ function refineMinorGuardianCpf(
 export type ClientCreateNormalized = {
   name: string;
   phone: string;
-  email: string;
+  email: string | null;
   caseDescription: string | null;
   documentId: string | null;
   assignedToUserId: string | null;
@@ -300,7 +367,7 @@ function normalizeClientCreatePayload(
   return {
     name: data.name.trim(),
     phone: data.phone.trim(),
-    email: data.email.trim(),
+    email: data.email.trim() || null,
     caseDescription: data.caseDescription?.trim() || null,
     documentId: data.isMinor && doc.length === 0 ? null : doc,
     assignedToUserId: data.assignedToUserId ?? null,
@@ -326,8 +393,10 @@ function normalizeClientCreatePayload(
 }
 
 export const postClientBodySchema = clientCreateObject
+  .superRefine((data, ctx) => refineAdultRequiredFields(data, ctx))
   .superRefine((data, ctx) => refineMinorGuardianCpf(data, ctx))
   .superRefine((data, ctx) => refineEmergencyContact(data, ctx))
+  .superRefine((data, ctx) => refineBirthDateNotFuture(data, ctx))
   .transform((data) => normalizeClientCreatePayload(data));
 
 const publicPatientSelfRegisterObject = clientCreateObject
@@ -353,6 +422,8 @@ export const patientSelfRegisterFormSchema = clientCreateObject
     acceptPrivacy: z.boolean(),
   })
   .superRefine((data, ctx) => {
+    refineAdultRequiredFields(data, ctx);
+    refineBirthDateNotFuture(data, ctx);
     refineMinorGuardianCpf(data, ctx);
     refineEmergencyContact(data, ctx);
     const pw = portalPasswordSchema.safeParse(data.password);
@@ -392,6 +463,8 @@ export const publicPatientSelfRegisterBodySchema = publicPatientSelfRegisterObje
     void _pw;
     void _at;
     void _ap;
+    refineAdultRequiredFields(rest, ctx);
+    refineBirthDateNotFuture(rest, ctx);
     refineMinorGuardianCpf(rest, ctx);
     refineEmergencyContact(rest, ctx);
   })
@@ -510,6 +583,26 @@ const patchClientBodyBaseSchema = z.object({
 });
 
 export const patchClientBodySchema = patchClientBodyBaseSchema.superRefine((data, ctx) => {
+  refineBirthDateNotFuture(data, ctx);
+
+  // Adulto não pode ter email/phone removido (null/vazio)
+  if (data.isMinor !== true) {
+    if (data.email !== undefined && (data.email === null || data.email === "")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["email"],
+        message: zodApiMsg("errors.validationEmailRequired"),
+      });
+    }
+    if (data.phone !== undefined && data.phone === "") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["phone"],
+        message: zodApiMsg("errors.validationPhoneBrDigits"),
+      });
+    }
+  }
+
   if (data.documentId !== undefined && data.documentId !== null) {
     const d = digitsOnlyCpf(data.documentId);
     if (d.length === 0) {

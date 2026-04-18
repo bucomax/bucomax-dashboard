@@ -14,6 +14,7 @@ import {
   Form,
   FormCep,
   FormCpf,
+  FormBirthDateInput,
   FormInput,
   FormPhoneNumber,
   FormSelect,
@@ -184,7 +185,7 @@ export function NewClientWizard({
       const parsed = postClientBodySchema.safeParse({
         name: String(values.name ?? "").trim(),
         phone: String(values.phone ?? ""),
-        caseDescription: values.caseDescription?.trim() || undefined,
+        caseDescription: String(values.caseDescription ?? "").trim() || undefined,
         documentId: values.documentId ?? "",
         email: String(values.email ?? "").trim(),
         assignedToUserId: assignedToUserId === PICKER_NONE ? undefined : assignedToUserId,
@@ -266,11 +267,15 @@ export function NewClientWizard({
                 <p className="text-sm font-medium">{t("patientSection")}</p>
                 <div className="grid gap-4 lg:grid-cols-3">
                   <FormInput name="name" label={t("name")} autoComplete="name" />
-                  <FormPhoneNumber name="phone" label={t("phone")} description={t("phoneHint")} />
+                  <FormPhoneNumber
+                    name="phone"
+                    label={isMinorWatched ? t("phoneMinor") : t("phone")}
+                    description={isMinorWatched ? t("phoneMinorHint") : t("phoneHint")}
+                  />
                   <FormInput
                     name="email"
-                    label={t("email")}
-                    description={t("emailHint")}
+                    label={isMinorWatched ? t("emailMinor") : t("email")}
+                    description={isMinorWatched ? t("emailMinorHint") : t("emailHint")}
                     type="email"
                     autoComplete="email"
                   />
@@ -281,11 +286,10 @@ export function NewClientWizard({
                   description={isMinorWatched ? t("documentIdMinorHint") : t("documentIdHint")}
                 />
                 <div className="grid gap-4 lg:grid-cols-2">
-                  <FormInput
+                  <FormBirthDateInput
                     name="birthDate"
                     label={t("birthDate")}
                     description={t("birthDateHint")}
-                    type="date"
                     autoComplete="bday"
                   />
                   <FormSelect
@@ -307,6 +311,10 @@ export function NewClientWizard({
                           const checked = e.target.checked;
                           field.onChange(checked);
                           if (!checked) {
+                            form.setValue("guardianName", "");
+                            form.setValue("guardianDocumentId", "");
+                            form.setValue("guardianPhone", "");
+                            form.setValue("guardianEmail", "");
                             form.setValue("guardianRelationship", undefined);
                           }
                         }}

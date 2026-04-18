@@ -32,7 +32,8 @@
     "test:session-cookie": "tsx scripts/load-and-security/issue-load-test-session.ts",
     "test:e2e": "playwright test",
     "test:e2e:patient-self-register": "playwright test e2e/patient-self-register.spec.ts",
-    "e2e:issue-self-register-invite": "tsx scripts/e2e/issue-patient-self-register-invite.ts"
+    "e2e:issue-self-register-invite": "tsx scripts/e2e/issue-patient-self-register-invite.ts",
+    "db:inspect:client": "tsx scripts/db-inspect/inspect-client.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

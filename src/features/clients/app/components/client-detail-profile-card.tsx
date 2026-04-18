@@ -9,6 +9,7 @@ import type { PatchPatientPortalProfileBody } from "@/lib/validators/patient-por
 import type { ClientDetailClientDto, PatchClientRequestBody } from "@/types/api/clients-v1";
 import { GuardianRelationship, PatientPreferredChannel } from "@prisma/client";
 import { toast } from "@/lib/toast";
+import { todayIsoDateLocal } from "@/lib/utils/date";
 import { normNullable } from "@/lib/utils/string";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "@/shared/components/ui/card";
@@ -239,13 +240,27 @@ export function ClientDetailProfileCard({
 
   async function saveProfile() {
     const phoneDigits = digitsOnlyPhone(draftPhoneDigits);
-    if (!phoneDigitsSchema.safeParse(phoneDigits).success) {
+    const emailTrim = draftEmail.trim();
+    const emailNorm = emailTrim === "" ? null : emailTrim;
+
+    // Determina isMinor conforme contexto: patient usa server (readonly), staff usa draft (editável)
+    const effectiveIsMinor = isPatient ? client.isMinor : draftIsMinor;
+
+    // Phone: se preenchido, precisa ser válido; se adulto, é obrigatório
+    if (phoneDigits.length > 0 && !phoneDigitsSchema.safeParse(phoneDigits).success) {
+      toast.error(tApi("errors.validationPhoneBrDigits"));
+      return;
+    }
+    if (!effectiveIsMinor && phoneDigits.length === 0) {
       toast.error(tApi("errors.validationPhoneBrDigits"));
       return;
     }
 
-    const emailTrim = draftEmail.trim();
-    const emailNorm = emailTrim === "" ? null : emailTrim;
+    // Email: adulto obrigatório
+    if (!effectiveIsMinor && !emailNorm) {
+      toast.error(tApi("errors.validationEmailRequired"));
+      return;
+    }
 
     if (isPatient) {
       const nameTrim = draftName.trim();
@@ -487,8 +502,12 @@ export function ClientDetailProfileCard({
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="client-profile-phone">{t("phone")}</FieldLabel>
-              <FieldDescription>{t("phoneHint")}</FieldDescription>
+              <FieldLabel htmlFor="client-profile-phone">
+                {client.isMinor ? t("phoneMinor") : t("phone")}
+              </FieldLabel>
+              <FieldDescription>
+                {client.isMinor ? t("phoneMinorHint") : t("phoneHint")}
+              </FieldDescription>
               <Input
                 id="client-profile-phone"
                 type="tel"
@@ -503,7 +522,12 @@ export function ClientDetailProfileCard({
           </>
         ) : null}
         <Field>
-          <FieldLabel htmlFor="client-profile-email">{t("email")}</FieldLabel>
+          <FieldLabel htmlFor="client-profile-email">
+            {(isPatient ? client.isMinor : draftIsMinor) ? t("emailMinor") : t("email")}
+          </FieldLabel>
+          {(isPatient ? client.isMinor : draftIsMinor) ? (
+            <FieldDescription>{t("emailMinorHint")}</FieldDescription>
+          ) : null}
           <Input
             id="client-profile-email"
             type="email"
@@ -516,8 +540,12 @@ export function ClientDetailProfileCard({
         </Field>
         {!isPatient ? (
           <Field>
-            <FieldLabel htmlFor="client-profile-phone-staff">{t("phone")}</FieldLabel>
-            <FieldDescription>{t("phoneHint")}</FieldDescription>
+            <FieldLabel htmlFor="client-profile-phone-staff">
+              {draftIsMinor ? t("phoneMinor") : t("phone")}
+            </FieldLabel>
+            <FieldDescription>
+              {draftIsMinor ? t("phoneMinorHint") : t("phoneHint")}
+            </FieldDescription>
             <Input
               id="client-profile-phone-staff"
               type="tel"
@@ -555,8 +583,13 @@ export function ClientDetailProfileCard({
                 id="client-birth-date"
                 type="date"
                 autoComplete="bday"
+                max={todayIsoDateLocal()}
                 value={draftBirthDate}
-                onChange={(e) => setDraftBirthDate(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  const max = todayIsoDateLocal();
+                  setDraftBirthDate(v && v > max ? max : v);
+                }}
                 disabled={saving}
                 className="w-full min-w-0"
               />

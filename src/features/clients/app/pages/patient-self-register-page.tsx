@@ -40,6 +40,7 @@ import {
 } from "@/shared/components/ui/card";
 import {
   Form,
+  FormBirthDateInput,
   FormCep,
   FormCpf,
   FormInput,
@@ -59,8 +60,7 @@ import { GuardianRelationship, PatientPreferredChannel } from "@prisma/client";
 type Phase = "loading" | "invalid" | "form" | "success";
 
 function PatientSelfRegisterInner() {
-  const t = useTranslations("clients.selfRegister");
-  const tWiz = useTranslations("clients.wizard");
+  const t = useTranslations("clients");
   const tGlobal = useTranslations("global");
   const tApi = useTranslations("api");
   const params = useParams();
@@ -121,26 +121,26 @@ function PatientSelfRegisterInner() {
     () =>
       (
         [
-          [GuardianRelationship.mother, "guardianRelationship.mother"],
-          [GuardianRelationship.father, "guardianRelationship.father"],
-          [GuardianRelationship.legal_guardian, "guardianRelationship.legal_guardian"],
-          [GuardianRelationship.other, "guardianRelationship.other"],
+          [GuardianRelationship.mother, "wizard.guardianRelationship.mother"],
+          [GuardianRelationship.father, "wizard.guardianRelationship.father"],
+          [GuardianRelationship.legal_guardian, "wizard.guardianRelationship.legal_guardian"],
+          [GuardianRelationship.other, "wizard.guardianRelationship.other"],
         ] as const
-      ).map(([value, key]) => ({ value, label: tWiz(key) })),
-    [tWiz],
+      ).map(([value, key]) => ({ value, label: t(key) })),
+    [t],
   );
 
   const preferredChannelOptions = useMemo(
     () =>
       (
         [
-          [PatientPreferredChannel.none, "preferredChannelOption.none"],
-          [PatientPreferredChannel.email, "preferredChannelOption.email"],
-          [PatientPreferredChannel.whatsapp, "preferredChannelOption.whatsapp"],
-          [PatientPreferredChannel.sms, "preferredChannelOption.sms"],
+          [PatientPreferredChannel.none, "wizard.preferredChannelOption.none"],
+          [PatientPreferredChannel.email, "wizard.preferredChannelOption.email"],
+          [PatientPreferredChannel.whatsapp, "wizard.preferredChannelOption.whatsapp"],
+          [PatientPreferredChannel.sms, "wizard.preferredChannelOption.sms"],
         ] as const
-      ).map(([value, key]) => ({ value, label: tWiz(key) })),
-    [tWiz],
+      ).map(([value, key]) => ({ value, label: t(key) })),
+    [t],
   );
   const passwordWatched = useWatch({ control: form.control, name: "password" }) ?? "";
   const confirmPasswordWatched = useWatch({ control: form.control, name: "confirmPassword" }) ?? "";
@@ -155,16 +155,20 @@ function PatientSelfRegisterInner() {
   const consentsReady = acceptTermsWatched && acceptPrivacyWatched;
 
   useEffect(() => {
-    const raw = searchParams.get("token")?.trim() ?? "";
-    if (!raw) {
-      tokenRef.current = null;
-      setFormPrefill(null);
-      setPhase("invalid");
-      return;
-    }
     let cancelled = false;
-    void fetchPatientSelfRegisterValidation(raw, tenantSlug).then((r) => {
+
+    async function validate() {
+      const raw = searchParams.get("token")?.trim() ?? "";
+      if (!raw) {
+        tokenRef.current = null;
+        setFormPrefill(null);
+        setPhase("invalid");
+        return;
+      }
+
+      const r = await fetchPatientSelfRegisterValidation(raw, tenantSlug);
       if (cancelled) return;
+
       if (!r.valid) {
         tokenRef.current = null;
         setFormPrefill(null);
@@ -172,13 +176,16 @@ function PatientSelfRegisterInner() {
         setPhase("invalid");
         return;
       }
+
       setToken(raw);
       tokenRef.current = raw;
       setTenantName(r.tenantName ?? "");
       setTenantTaxId(r.tenantTaxId?.trim() ? r.tenantTaxId : null);
       setFormPrefill(r.formPrefill ?? null);
       setPhase("form");
-    });
+    }
+
+    void validate();
     return () => {
       cancelled = true;
     };
@@ -221,9 +228,9 @@ function PatientSelfRegisterInner() {
   async function onSubmit(values: PatientSelfRegisterFormValues) {
     const submitToken = tokenRef.current;
     if (!submitToken) {
-      const msg = t("invalidTokenBody");
+      const msg = t("selfRegister.invalidTokenBody");
       setSubmitError(msg);
-      toast.error(msg, { description: t("invalidTokenTitle") });
+      toast.error(msg, { description: t("selfRegister.invalidTokenTitle") });
       return;
     }
     setSubmitError(null);
@@ -231,7 +238,7 @@ function PatientSelfRegisterInner() {
     if (!parsed.success) {
       const msg = joinTranslatedZodIssues(parsed.error, tApi as (key: string) => string);
       setSubmitError(msg);
-      toast.error(t("submitFailedTitle"), { description: msg });
+      toast.error(t("selfRegister.submitFailedTitle"), { description: msg });
       return;
     }
     const { confirmPassword: _confirmOmit, ...fields } = parsed.data;
@@ -241,21 +248,21 @@ function PatientSelfRegisterInner() {
     if (!apiParsed.success) {
       const msg = joinTranslatedZodIssues(apiParsed.error, tApi as (key: string) => string);
       setSubmitError(msg);
-      toast.error(t("submitFailedTitle"), { description: msg });
+      toast.error(t("selfRegister.submitFailedTitle"), { description: msg });
       return;
     }
     let result: Awaited<ReturnType<typeof submitPatientSelfRegister>>;
     try {
       result = await submitPatientSelfRegister(requestBody, tenantSlug);
     } catch {
-      const msg = t("submitNetworkError");
+      const msg = t("selfRegister.submitNetworkError");
       setSubmitError(msg);
-      toast.error(t("submitFailedTitle"), { description: msg });
+      toast.error(t("selfRegister.submitFailedTitle"), { description: msg });
       return;
     }
     if (!result.ok) {
       setSubmitError(result.message);
-      toast.error(t("submitFailedTitle"), { description: result.message });
+      toast.error(t("selfRegister.submitFailedTitle"), { description: result.message });
       return;
     }
     setPhase("success");
@@ -264,9 +271,9 @@ function PatientSelfRegisterInner() {
   function onValidationFailed(errors: FieldErrors<PatientSelfRegisterFormValues>) {
     const messages = collectRhfErrorMessages(errors);
     const description =
-      messages.length > 0 ? messages.slice(0, 4).join(" · ") : t("fixFieldsHint");
+      messages.length > 0 ? messages.slice(0, 4).join(" · ") : t("selfRegister.fixFieldsHint");
     setSubmitError(description);
-    toast.error(t("submitFailedTitle"), { description });
+    toast.error(t("selfRegister.submitFailedTitle"), { description });
     scrollFirstInvalidFieldIntoView();
   }
 
@@ -289,17 +296,17 @@ function PatientSelfRegisterInner() {
           <span className="text-2xl font-semibold tracking-tight transition-opacity group-hover:opacity-80">
             {tGlobal("brand")}
           </span>
-          <span className="text-muted-foreground text-sm">{t("pageDescription")}</span>
+          <span className="text-muted-foreground text-sm">{t("selfRegister.pageDescription")}</span>
         </Link>
       </header>
 
-      {phase === "loading" ? <FullScreenLoading message={t("validating")} showMessage={false} /> : null}
+      {phase === "loading" ? <FullScreenLoading message={t("selfRegister.validating")} showMessage={false} /> : null}
 
       {phase === "invalid" ? (
         <Card className="w-full border shadow-xl shadow-black/5 dark:shadow-black/20">
           <CardHeader className="space-y-1 pb-2">
-            <CardTitle className="text-xl">{t("invalidTokenTitle")}</CardTitle>
-            <CardDescription>{t("invalidTokenBody")}</CardDescription>
+            <CardTitle className="text-xl">{t("selfRegister.invalidTokenTitle")}</CardTitle>
+            <CardDescription>{t("selfRegister.invalidTokenBody")}</CardDescription>
           </CardHeader>
           <CardFooter className="border-border/60 border-t bg-muted/35 pt-4 dark:bg-muted/20">
             <Button nativeButton={false} variant="outline" className="w-full" render={<Link href="/login" />}>
@@ -312,23 +319,23 @@ function PatientSelfRegisterInner() {
       {phase === "form" ? (
         <Card className="@container/patient-register w-full border shadow-xl shadow-black/5 dark:shadow-black/20">
           <CardHeader className="space-y-4 pb-4">
-            <CardTitle className="text-xl">{t("pageTitle")}</CardTitle>
+            <CardTitle className="text-xl">{t("selfRegister.pageTitle")}</CardTitle>
             {tenantName ? (
               <div className="bg-primary/[0.07] ring-primary/15 dark:bg-primary/12 rounded-xl border border-primary/25 p-4 ring-1">
-                <p className="text-muted-foreground mb-2 text-sm leading-snug">{t("registeringAsIntro")}</p>
+                <p className="text-muted-foreground mb-2 text-sm leading-snug">{t("selfRegister.registeringAsIntro")}</p>
                 <p className="text-foreground text-xl font-bold leading-tight tracking-tight">{tenantName}</p>
                 {tenantTaxId ? (
                   <p className="text-foreground mt-3 text-sm leading-relaxed">
-                    <span className="text-muted-foreground font-medium">{t("registeringAsTaxLabel")}: </span>
+                    <span className="text-muted-foreground font-medium">{t("selfRegister.registeringAsTaxLabel")}: </span>
                     <span className="font-bold tabular-nums">{formatBrCnpjDisplay(tenantTaxId)}</span>
                   </p>
                 ) : null}
               </div>
             ) : (
-              <CardDescription>{t("pageDescription")}</CardDescription>
+              <CardDescription>{t("selfRegister.pageDescription")}</CardDescription>
             )}
             {formPrefill ? (
-              <CardDescription className="text-muted-foreground text-sm">{t("scopedFormHint")}</CardDescription>
+              <CardDescription className="text-muted-foreground text-sm">{t("selfRegister.scopedFormHint")}</CardDescription>
             ) : null}
           </CardHeader>
           <CardContent>
@@ -341,24 +348,24 @@ function PatientSelfRegisterInner() {
                 className="flex flex-col gap-4 pb-2"
               >
                 <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
-                  <p className="text-sm font-medium">{tWiz("patientSection")}</p>
+                  <p className="text-sm font-medium">{t("wizard.patientSection")}</p>
                   <div className="grid grid-cols-1 gap-4 @min-[40rem]/patient-register:grid-cols-3">
                     <div className="min-w-0">
-                      <FormInput name="name" label={tWiz("name")} autoComplete="name" />
+                      <FormInput name="name" label={t("wizard.name")} autoComplete="name" />
                     </div>
                     <div className="min-w-0">
                       <FormPhoneNumber
                         name="phone"
-                        label={tWiz("phone")}
-                        description={tWiz("phoneHint")}
+                        label={isMinorWatched ? t("wizard.phoneMinor") : t("wizard.phone")}
+                        description={isMinorWatched ? t("wizard.phoneMinorHint") : t("wizard.phoneHint")}
                         autoComplete="tel"
                       />
                     </div>
                     <div className="min-w-0">
                       <FormInput
                         name="email"
-                        label={tWiz("email")}
-                        description={tWiz("emailHint")}
+                        label={isMinorWatched ? t("wizard.emailMinor") : t("wizard.email")}
+                        description={isMinorWatched ? t("wizard.emailMinorHint") : t("wizard.emailHint")}
                         type="email"
                         autoComplete="email"
                       />
@@ -366,24 +373,23 @@ function PatientSelfRegisterInner() {
                   </div>
                   <FormCpf
                     name="documentId"
-                    label={isMinorWatched ? tWiz("documentIdMinor") : tWiz("documentId")}
-                    description={isMinorWatched ? tWiz("documentIdMinorHint") : tWiz("documentIdHint")}
+                    label={isMinorWatched ? t("wizard.documentIdMinor") : t("wizard.documentId")}
+                    description={isMinorWatched ? t("wizard.documentIdMinorHint") : t("wizard.documentIdHint")}
                   />
                   <div className="grid grid-cols-1 gap-4 @min-[40rem]/patient-register:grid-cols-2">
                     <div className="min-w-0">
-                      <FormInput
+                      <FormBirthDateInput
                         name="birthDate"
-                        label={tWiz("birthDate")}
-                        description={tWiz("birthDateHint")}
-                        type="date"
+                        label={t("wizard.birthDate")}
+                        description={t("wizard.birthDateHint")}
                         autoComplete="bday"
                       />
                     </div>
                     <div className="min-w-0">
                       <FormSelect
                         name="preferredChannel"
-                        label={tWiz("preferredChannelField")}
-                        description={tWiz("preferredChannelHint")}
+                        label={t("wizard.preferredChannelField")}
+                        description={t("wizard.preferredChannelHint")}
                         options={preferredChannelOptions}
                       />
                     </div>
@@ -396,43 +402,53 @@ function PatientSelfRegisterInner() {
                         <input
                           type="checkbox"
                           checked={field.value}
-                          onChange={(e) => field.onChange(e.target.checked)}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            field.onChange(checked);
+                            if (!checked) {
+                              form.setValue("guardianName", "");
+                              form.setValue("guardianDocumentId", "");
+                              form.setValue("guardianPhone", "");
+                              form.setValue("guardianEmail", "");
+                              form.setValue("guardianRelationship", undefined);
+                            }
+                          }}
                           className="mt-0.5 size-4"
                         />
-                        <span className="min-w-0">{tWiz("isMinor")}</span>
+                        <span className="min-w-0">{t("wizard.isMinor")}</span>
                       </label>
                     )}
                   />
                 </div>
                 {isMinorWatched ? (
                   <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
-                    <p className="text-sm font-medium">{tWiz("guardianSection")}</p>
+                    <p className="text-sm font-medium">{t("wizard.guardianSection")}</p>
                     <div className="grid grid-cols-1 gap-4 @min-[40rem]/patient-register:grid-cols-3">
                       <div className="min-w-0">
-                        <FormInput name="guardianName" label={tWiz("guardianName")} autoComplete="name" />
+                        <FormInput name="guardianName" label={t("wizard.guardianName")} autoComplete="name" />
                       </div>
                       <div className="min-w-0">
-                        <FormCpf name="guardianDocumentId" label={tWiz("guardianDocumentId")} />
+                        <FormCpf name="guardianDocumentId" label={t("wizard.guardianDocumentId")} />
                       </div>
                       <div className="min-w-0">
-                        <FormPhoneNumber name="guardianPhone" label={tWiz("guardianPhone")} />
+                        <FormPhoneNumber name="guardianPhone" label={t("wizard.guardianPhone")} />
                       </div>
                     </div>
                     <div className="grid grid-cols-1 gap-4 @min-[40rem]/patient-register:grid-cols-2">
                       <div className="min-w-0">
                         <FormSelect
                           name="guardianRelationship"
-                          label={tWiz("guardianRelationshipLabel")}
-                          description={tWiz("guardianRelationshipHint")}
-                          placeholder={tWiz("guardianRelationshipPlaceholder")}
+                          label={t("wizard.guardianRelationshipLabel")}
+                          description={t("wizard.guardianRelationshipHint")}
+                          placeholder={t("wizard.guardianRelationshipPlaceholder")}
                           options={guardianRelationshipOptions}
                         />
                       </div>
                       <div className="min-w-0">
                         <FormInput
                           name="guardianEmail"
-                          label={tWiz("guardianEmail")}
-                          description={tWiz("guardianEmailHint")}
+                          label={t("wizard.guardianEmail")}
+                          description={t("wizard.guardianEmailHint")}
                           type="email"
                           autoComplete="email"
                         />
@@ -441,39 +457,39 @@ function PatientSelfRegisterInner() {
                   </div>
                 ) : null}
                 <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
-                  <p className="text-sm font-medium">{tWiz("emergencySection")}</p>
+                  <p className="text-sm font-medium">{t("wizard.emergencySection")}</p>
                   <div className="grid grid-cols-1 gap-4 @min-[40rem]/patient-register:grid-cols-2">
                     <div className="min-w-0">
-                      <FormInput name="emergencyContactName" label={tWiz("emergencyContactName")} />
+                      <FormInput name="emergencyContactName" label={t("wizard.emergencyContactName")} />
                     </div>
                     <div className="min-w-0">
-                      <FormPhoneNumber name="emergencyContactPhone" label={tWiz("emergencyContactPhone")} />
+                      <FormPhoneNumber name="emergencyContactPhone" label={t("wizard.emergencyContactPhone")} />
                     </div>
                   </div>
                 </div>
                 <div className="bg-muted/40 space-y-4 rounded-lg border p-4">
-                  <p className="text-sm font-medium">{tWiz("addressSection")}</p>
+                  <p className="text-sm font-medium">{t("wizard.addressSection")}</p>
                   <div className="grid grid-cols-1 gap-4 @min-[30rem]/patient-register:grid-cols-2">
                     <div className="min-w-0">
-                      <FormCep name="postalCode" label={tWiz("postalCode")} description={tWiz("postalCodeHint")} />
+                      <FormCep name="postalCode" label={t("wizard.postalCode")} description={t("wizard.postalCodeHint")} />
                     </div>
                     <div className="min-w-0">
-                      <FormInput name="addressLine" label={tWiz("addressLine")} autoComplete="street-address" />
+                      <FormInput name="addressLine" label={t("wizard.addressLine")} autoComplete="street-address" />
                     </div>
                     <div className="min-w-0">
-                      <FormInput name="addressNumber" label={tWiz("addressNumber")} />
+                      <FormInput name="addressNumber" label={t("wizard.addressNumber")} />
                     </div>
                     <div className="min-w-0">
-                      <FormInput name="addressComp" label={tWiz("addressComp")} />
+                      <FormInput name="addressComp" label={t("wizard.addressComp")} />
                     </div>
                     <div className="min-w-0">
-                      <FormInput name="neighborhood" label={tWiz("neighborhood")} />
+                      <FormInput name="neighborhood" label={t("wizard.neighborhood")} />
                     </div>
                     <div className="min-w-0">
-                      <FormInput name="city" label={tWiz("city")} autoComplete="address-level2" />
+                      <FormInput name="city" label={t("wizard.city")} autoComplete="address-level2" />
                     </div>
                     <div className="min-w-0">
-                      <FormInput name="state" label={tWiz("state")} maxLength={2} className="uppercase" />
+                      <FormInput name="state" label={t("wizard.state")} maxLength={2} className="uppercase" />
                     </div>
                   </div>
                 </div>
@@ -481,19 +497,19 @@ function PatientSelfRegisterInner() {
                   <div className="space-y-4">
                     <FormPassword
                       name="password"
-                      label={t("passwordStrength.passwordLabel")}
-                      description={t("passwordStrength.passwordHint")}
+                      label={t("selfRegister.passwordStrength.passwordLabel")}
+                      description={t("selfRegister.passwordStrength.passwordHint")}
                       autoComplete="new-password"
                     />
                     <FormPassword
                       name="confirmPassword"
-                      label={t("passwordStrength.confirmLabel")}
+                      label={t("selfRegister.passwordStrength.confirmLabel")}
                       autoComplete="new-password"
                     />
                   </div>
                   <div className="bg-muted/30 border-border/80 space-y-3 rounded-xl border p-4 shadow-sm">
                     <p className="text-muted-foreground text-xs font-semibold tracking-wide uppercase">
-                      {t("passwordStrength.requirementsTitle")}
+                      {t("selfRegister.passwordStrength.requirementsTitle")}
                     </p>
                     <PasswordStrengthIndicator
                       password={passwordWatched}
@@ -511,9 +527,9 @@ function PatientSelfRegisterInner() {
                     </div>
                     <div className="min-w-0 flex-1 space-y-1.5">
                       <h3 className="text-foreground text-base font-semibold leading-snug tracking-tight">
-                        {t("consent.sectionTitle")}
+                        {t("selfRegister.consent.sectionTitle")}
                       </h3>
-                      <p className="text-muted-foreground text-sm leading-relaxed">{t("consent.sectionDescription")}</p>
+                      <p className="text-muted-foreground text-sm leading-relaxed">{t("selfRegister.consent.sectionDescription")}</p>
                     </div>
                   </div>
                   <div className="space-y-3">
@@ -545,20 +561,20 @@ function PatientSelfRegisterInner() {
                               <span className="flex flex-wrap items-center gap-2">
                                 <span className="text-foreground inline-flex items-center gap-2 text-sm font-semibold">
                                   <FileText className="text-primary size-4 shrink-0" aria-hidden />
-                                  {t("consent.termsShortTitle")}
+                                  {t("selfRegister.consent.termsShortTitle")}
                                 </span>
                                 <span className="bg-muted text-muted-foreground rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-                                  {t("consent.requiredShort")}
+                                  {t("selfRegister.consent.requiredShort")}
                                 </span>
                               </span>
                               <span className="text-muted-foreground block text-sm leading-relaxed">
-                                {t.rich("consent.termsRich", {
+                                {t.rich("selfRegister.consent.termsRich", {
                                   terms: (chunks) => (
                                     <Link
                                       href="/legal/terms"
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      title={t("consent.openDocumentHint")}
+                                      title={t("selfRegister.consent.openDocumentHint")}
                                       className="text-primary inline-flex items-center gap-1.5 font-medium underline decoration-primary/35 underline-offset-[3px] transition-colors hover:decoration-primary"
                                       onClick={(e) => e.stopPropagation()}
                                     >
@@ -606,20 +622,20 @@ function PatientSelfRegisterInner() {
                               <span className="flex flex-wrap items-center gap-2">
                                 <span className="text-foreground inline-flex items-center gap-2 text-sm font-semibold">
                                   <Shield className="text-primary size-4 shrink-0" aria-hidden />
-                                  {t("consent.privacyShortTitle")}
+                                  {t("selfRegister.consent.privacyShortTitle")}
                                 </span>
                                 <span className="bg-muted text-muted-foreground rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide">
-                                  {t("consent.requiredShort")}
+                                  {t("selfRegister.consent.requiredShort")}
                                 </span>
                               </span>
                               <span className="text-muted-foreground block text-sm leading-relaxed">
-                                {t.rich("consent.privacyRich", {
+                                {t.rich("selfRegister.consent.privacyRich", {
                                   privacy: (chunks) => (
                                     <Link
                                       href="/legal/privacy"
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      title={t("consent.openDocumentHint")}
+                                      title={t("selfRegister.consent.openDocumentHint")}
                                       className="text-primary inline-flex items-center gap-1.5 font-medium underline decoration-primary/35 underline-offset-[3px] transition-colors hover:decoration-primary"
                                       onClick={(e) => e.stopPropagation()}
                                     >
@@ -643,8 +659,8 @@ function PatientSelfRegisterInner() {
                 </div>
                 <FormTextarea
                   name="caseDescription"
-                  label={tWiz("caseDescription")}
-                  description={tWiz("caseDescriptionHint")}
+                  label={t("wizard.caseDescription")}
+                  description={t("wizard.caseDescriptionHint")}
                   rows={3}
                 />
                 {submitError ? (
@@ -668,12 +684,12 @@ function PatientSelfRegisterInner() {
                   {form.formState.isSubmitting ? (
                     <>
                       <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-                      {t("submitting")}
+                      {t("selfRegister.submitting")}
                     </>
                   ) : (
                     <>
                       <Send className="size-4 shrink-0" aria-hidden />
-                      {t("submit")}
+                      {t("selfRegister.submit")}
                     </>
                   )}
                 </button>
@@ -689,10 +705,10 @@ function PatientSelfRegisterInner() {
           className="w-full border shadow-xl shadow-black/5 dark:shadow-black/20"
         >
           <CardHeader className="space-y-4 pb-4">
-            <CardTitle className="text-xl">{t("successTitle")}</CardTitle>
+            <CardTitle className="text-xl">{t("selfRegister.successTitle")}</CardTitle>
             <CardDescription className="space-y-4 text-base leading-relaxed">
-              <span className="text-foreground block font-medium">{t("successBody")}</span>
-              <span className="text-muted-foreground block text-sm leading-relaxed">{t("successContactHint")}</span>
+              <span className="text-foreground block font-medium">{t("selfRegister.successBody")}</span>
+              <span className="text-muted-foreground block text-sm leading-relaxed">{t("selfRegister.successContactHint")}</span>
             </CardDescription>
           </CardHeader>
         </Card>

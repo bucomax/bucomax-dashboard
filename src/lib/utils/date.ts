@@ -1,3 +1,12 @@
+/** Data de hoje no fuso local, formato `YYYY-MM-DD` (uso em `type="date"` / `max`). */
+export function todayIsoDateLocal(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function formatDateTime(iso: string, locale = "pt-BR"): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) {
