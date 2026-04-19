@@ -51,6 +51,16 @@ export const appPrismaRepository = {
     });
   },
 
+  /** Busca por ID (cuid) ou slug. */
+  async findByIdOrSlug(idOrSlug: string) {
+    // CUIDs start with "c" and are 25 chars; slugs are kebab-case
+    const isCuid = /^c[a-z0-9]{24}$/.test(idOrSlug);
+    if (isCuid) {
+      return this.findById(idOrSlug);
+    }
+    return this.findBySlug(idOrSlug);
+  },
+
   async create(data: {
     name: string;
     slug?: string;

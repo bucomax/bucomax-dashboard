@@ -23,7 +23,8 @@ import { Dialog, StandardDialogContent } from "@/shared/components/ui/dialog";
 import { Button } from "@/shared/components/ui/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { Switch } from "@/shared/components/ui/switch";
-import { Form, FormInput, FormSelect, FormTextarea } from "@/shared/components/forms";
+import { Form, FormInput, FormSearchableSelect, FormSelect, FormTextarea } from "@/shared/components/forms";
+import { FormColorPicker } from "@/shared/components/forms/form-color-picker";
 import { Field, FieldLabel } from "@/shared/components/ui/field";
 import { cn } from "@/lib/utils";
 
@@ -335,7 +336,7 @@ export function AdminAppWizardDialog({ open, onOpenChange, editApp, onSaved }: P
               <div>
                 {step > 1 && (
                   <Button type="button" variant="outline" size="sm" disabled={saving} onClick={goBack}>
-                    <ArrowLeft className="mr-1.5 size-3.5" />
+                    <ArrowLeft className="size-3.5" />
                     {tw("back")}
                   </Button>
                 )}
@@ -348,7 +349,7 @@ export function AdminAppWizardDialog({ open, onOpenChange, editApp, onSaved }: P
                   disabled={saving}
                   onClick={() => onOpenChange(false)}
                 >
-                  <X className="mr-1.5 size-3.5" />
+                  <X className="size-3.5" />
                   {tw("cancel")}
                 </Button>
                 {step < 3 ? (
@@ -358,7 +359,7 @@ export function AdminAppWizardDialog({ open, onOpenChange, editApp, onSaved }: P
                     onClick={step === 1 ? goToStep2 : goToStep3}
                   >
                     {tw("next")}
-                    <ArrowRight className="ml-1.5 size-3.5" />
+                    <ArrowRight className="size-3.5" />
                   </Button>
                 ) : (
                   <>
@@ -370,9 +371,9 @@ export function AdminAppWizardDialog({ open, onOpenChange, editApp, onSaved }: P
                       onClick={() => void handleSave(false)}
                     >
                       {saving ? (
-                        <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                        <Loader2 className="size-3.5 animate-spin" />
                       ) : (
-                        <Save className="mr-1.5 size-3.5" />
+                        <Save className="size-3.5" />
                       )}
                       {tw("saveDraft")}
                     </Button>
@@ -383,7 +384,7 @@ export function AdminAppWizardDialog({ open, onOpenChange, editApp, onSaved }: P
                       onClick={() => void handleSave(true)}
                     >
                       {saving ? (
-                        <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                        <Loader2 className="size-3.5 animate-spin" />
                       ) : null}
                       {tw("publishApp")}
                     </Button>
@@ -430,17 +431,17 @@ export function AdminAppWizardDialog({ open, onOpenChange, editApp, onSaved }: P
                     placeholder={tw("descriptionPlaceholder")}
                     rows={3}
                   />
-                  <FormSelect
+                  <FormSearchableSelect
                     name="category"
                     label={tw("category")}
                     options={categoryOptions}
+                    searchPlaceholder={tw("categorySearch")}
                   />
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <FormInput
+                    <FormColorPicker
                       name="accentColor"
                       label={tw("accentColor")}
-                      placeholder="#3B82F6"
-                      type="text"
+                      clearable
                     />
                     <FormInput name="developerName" label={tw("developerName")} />
                   </div>
@@ -473,7 +474,7 @@ export function AdminAppWizardDialog({ open, onOpenChange, editApp, onSaved }: P
               {/* =================== STEP 2 — Config & Pricing =================== */}
               {step === 2 && (
                 <>
-                  <FormSelect
+                  <FormSearchableSelect
                     name="renderMode"
                     label={tw("renderMode")}
                     options={renderModeOptions}
@@ -529,7 +530,7 @@ export function AdminAppWizardDialog({ open, onOpenChange, editApp, onSaved }: P
                   <hr className="my-2" />
                   <p className="text-sm font-medium">{tw("pricing")}</p>
 
-                  <FormSelect
+                  <FormSearchableSelect
                     name="pricingModel"
                     label={tw("pricingModel")}
                     options={pricingModelOptions}

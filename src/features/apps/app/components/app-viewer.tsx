@@ -60,7 +60,7 @@ export function AppViewer({ app }: Props) {
         <p className="text-sm text-muted-foreground">{app.tagline ?? app.name}</p>
         <a href={app.iframeBaseUrl} target="_blank" rel="noopener noreferrer">
           <Button>
-            <ExternalLink className="mr-1.5 size-4" />
+            <ExternalLink className="size-4" />
             {t("openExternal")}
           </Button>
         </a>
@@ -186,7 +186,7 @@ function IframeViewer({
             <p className="text-sm font-medium">{t("iframeError")}</p>
             <p className="text-xs text-muted-foreground">{t("iframeErrorHint")}</p>
             <Button size="sm" variant="outline" onClick={retry}>
-              <RefreshCw className="mr-1.5 size-3.5" />
+              <RefreshCw className="size-3.5" />
               {t("retry")}
             </Button>
           </div>

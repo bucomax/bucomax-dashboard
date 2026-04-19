@@ -7,6 +7,8 @@ export { FormInput, type FormInputProps } from "./form-input";
 export { FormPassword, type FormPasswordProps } from "./form-password";
 export { FormPhoneNumber, type FormPhoneNumberProps } from "./form-phone-number";
 export { FormSelect, type FormSelectProps, type FormSelectOption } from "./form-select";
+export { FormSearchableSelect, type FormSearchableSelectProps, type SearchableSelectOption } from "./form-searchable-select";
+export { FormColorPicker, type FormColorPickerProps } from "./form-color-picker";
 export { LabeledSelect, type LabeledSelectProps, type LabeledSelectOption } from "./labeled-select";
 export { FormTextarea, type FormTextareaProps } from "./form-textarea";
 export { PasswordStrengthIndicator } from "./password-strength-indicator";

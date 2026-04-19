@@ -16,6 +16,7 @@
     "db:migrate:deploy": "prisma migrate deploy --schema=packages/prisma/schema.prisma",
     "db:push": "prisma db push --schema=packages/prisma/schema.prisma",
     "db:seed": "prisma db seed",
+    "db:seed:whatsapp": "tsx packages/prisma/seed-whatsapp.ts",
     "db:purge:tenants-pathways": "tsx scripts/db-purge-keep-tenants-and-pathways.ts",
     "db:studio": "prisma studio --schema=packages/prisma/schema.prisma",
     "postinstall": "prisma generate --schema=packages/prisma/schema.prisma && patch-package",

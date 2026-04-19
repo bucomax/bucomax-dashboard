@@ -49,7 +49,7 @@ export function AppDeactivateDialog({ open, onOpenChange, appName, onConfirm }: 
                 disabled={loading}
                 onClick={() => onOpenChange(false)}
               >
-                <X className="mr-1.5 size-3.5" />
+                <X className="size-3.5" />
                 {t("cancel")}
               </Button>
               <Button
@@ -59,7 +59,7 @@ export function AppDeactivateDialog({ open, onOpenChange, appName, onConfirm }: 
                 disabled={loading}
                 onClick={() => void handleConfirm()}
               >
-                {loading && <Loader2 className="mr-1.5 size-3.5 animate-spin" />}
+                {loading && <Loader2 className="size-3.5 animate-spin" />}
                 {t("confirm")}
               </Button>
             </>

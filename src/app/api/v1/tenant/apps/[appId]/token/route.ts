@@ -39,8 +39,14 @@ export async function POST(request: Request, context: RouteContext) {
 
   const { appId } = await context.params;
 
-  // Verify app exists and is active for this tenant
-  const tenantApp = await appPrismaRepository.findTenantApp(tenantCtx.tenantId!, appId);
+  // Resolve app by ID or slug
+  const app = await appPrismaRepository.findByIdOrSlug(appId);
+  if (!app) {
+    return jsonError("NOT_FOUND", "App não encontrado.", 404);
+  }
+
+  // Verify app is active for this tenant
+  const tenantApp = await appPrismaRepository.findTenantApp(tenantCtx.tenantId!, app.id);
   if (!tenantApp || tenantApp.status !== "active") {
     return jsonError("NOT_FOUND", "App não ativo neste tenant.", 404);
   }
@@ -48,8 +54,8 @@ export async function POST(request: Request, context: RouteContext) {
   const token = await generateAppScopedToken({
     userId: auth.session!.user.id,
     tenantId: tenantCtx.tenantId!,
-    appId,
-    appSlug: tenantApp.app.slug,
+    appId: app.id,
+    appSlug: app.slug,
   });
 
   return jsonSuccess({ token, expiresIn: 900 });

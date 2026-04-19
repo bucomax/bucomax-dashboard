@@ -41,8 +41,8 @@ export async function POST(request: Request, context: RouteContext) {
 
   const { appId } = await context.params;
 
-  // Load app
-  const app = await appPrismaRepository.findById(appId);
+  // Load app by ID or slug
+  const app = await appPrismaRepository.findByIdOrSlug(appId);
   if (!app) {
     return jsonError("NOT_FOUND", "App não encontrado.", 404);
   }
@@ -61,7 +61,7 @@ export async function POST(request: Request, context: RouteContext) {
   // Load tenant app config (for auth header if needed)
   const tenantApp = await appPrismaRepository.findTenantApp(
     tenantCtx.tenantId!,
-    appId,
+    app.id,
   );
 
   let authHeader: string | undefined;

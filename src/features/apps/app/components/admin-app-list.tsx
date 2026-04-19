@@ -9,7 +9,8 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
-import { Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
+import { Eye, EyeOff, Pencil, Plus, Trash2, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export function AdminAppList() {
@@ -72,7 +73,7 @@ export function AdminAppList() {
               <CardDescription>{t("description")}</CardDescription>
             </div>
             <Button size="sm" onClick={openCreate}>
-              <Plus className="mr-1.5 size-3.5" />
+              <Plus className="size-3.5" />
               {t("newApp")}
             </Button>
           </div>
@@ -95,44 +96,89 @@ export function AdminAppList() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{app.name}</span>
-                      <Badge variant={app.isPublished ? "default" : "secondary"} className="text-xs">
+                      <Badge
+                        variant={app.isPublished ? "default" : "secondary"}
+                        className="text-xs"
+                      >
                         {app.isPublished ? t("published") : t("draft")}
                       </Badge>
                       <Badge variant="outline" className="text-xs">
                         {tCat(app.category)}
                       </Badge>
+                      {app.accentColor && (
+                        <span
+                          className="size-3 rounded-full border border-foreground/10"
+                          style={{ backgroundColor: app.accentColor }}
+                          title={app.accentColor}
+                        />
+                      )}
                     </div>
-                    {app.tagline && (
-                      <p className="text-xs text-muted-foreground truncate">{app.tagline}</p>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {app.tagline && (
+                        <p className="truncate text-xs text-muted-foreground">{app.tagline}</p>
+                      )}
+                      {(app as AppDto & { activeTenantCount?: number }).activeTenantCount != null &&
+                        (app as AppDto & { activeTenantCount?: number }).activeTenantCount! > 0 && (
+                          <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                            <Users className="size-3" />
+                            {(app as AppDto & { activeTenantCount?: number }).activeTenantCount}
+                          </span>
+                        )}
+                    </div>
                   </div>
 
                   <div className="flex shrink-0 gap-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      title={t("editApp")}
-                      onClick={() => openEdit(app)}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      title={app.isPublished ? t("unpublish") : t("publish")}
-                      onClick={() => void handleTogglePublish(app)}
-                    >
-                      {app.isPublished ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="text-destructive hover:text-destructive"
-                      title={t("deleteApp")}
-                      onClick={() => void handleDelete(app)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => openEdit(app)}
+                          />
+                        }
+                      >
+                        <Pencil className="size-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>{t("editApp")}</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => void handleTogglePublish(app)}
+                          />
+                        }
+                      >
+                        {app.isPublished ? (
+                          <EyeOff className="size-4" />
+                        ) : (
+                          <Eye className="size-4" />
+                        )}
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {app.isPublished ? t("unpublish") : t("publish")}
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => void handleDelete(app)}
+                          />
+                        }
+                      >
+                        <Trash2 className="size-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>{t("deleteApp")}</TooltipContent>
+                    </Tooltip>
                   </div>
                 </div>
               ))}

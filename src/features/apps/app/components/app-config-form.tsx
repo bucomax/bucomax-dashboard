@@ -154,9 +154,9 @@ export function AppConfigForm({ fields, onSubmit, submitting }: Props) {
       <div className="flex justify-end pt-2">
         <Button type="submit" size="sm" disabled={submitting}>
           {submitting ? (
-            <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+            <Loader2 className="size-3.5 animate-spin" />
           ) : (
-            <Save className="mr-1.5 size-3.5" />
+            <Save className="size-3.5" />
           )}
           {t("activate")}
         </Button>

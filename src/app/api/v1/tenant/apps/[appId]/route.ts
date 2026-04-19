@@ -29,12 +29,12 @@ export async function GET(request: Request, context: RouteContext) {
   if (memberErr) return memberErr;
 
   const { appId } = await context.params;
-  const app = await appPrismaRepository.findById(appId);
+  const app = await appPrismaRepository.findByIdOrSlug(appId);
   if (!app || !app.isPublished) {
     return jsonError("NOT_FOUND", "App não encontrado.", 404);
   }
 
-  const tenantApp = await appPrismaRepository.findTenantApp(tenantCtx.tenantId!, appId);
+  const tenantApp = await appPrismaRepository.findTenantApp(tenantCtx.tenantId!, app.id);
 
   // Build masked config summary
   let configSummary: Record<string, string> | null = null;
@@ -95,11 +95,16 @@ export async function POST(request: Request, context: RouteContext) {
     return jsonError("VALIDATION_ERROR", parsed.error.flatten().formErrors.join("; "), 422);
   }
 
+  // Resolve app by ID or slug
+  const app = await appPrismaRepository.findByIdOrSlug(appId);
+  if (!app || !app.isPublished) {
+    return jsonError("NOT_FOUND", "App não encontrado ou não publicado.", 404);
+  }
+
   // Encrypt secret fields before persisting
   let configToStore = parsed.data.config as Record<string, unknown> | undefined;
   if (configToStore) {
-    const app = await appPrismaRepository.findById(appId);
-    if (app?.configSchema && Array.isArray(app.configSchema)) {
+    if (app.configSchema && Array.isArray(app.configSchema)) {
       configToStore = encryptConfigSecrets(
         configToStore,
         app.configSchema as unknown as AppConfigField[],
@@ -109,7 +114,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   const result = await appPrismaRepository.activateApp(
     tenantCtx.tenantId!,
-    appId,
+    app.id,
     auth.session!.user.id,
     configToStore as Parameters<typeof appPrismaRepository.activateApp>[3],
   );
@@ -134,7 +139,11 @@ export async function DELETE(request: Request, context: RouteContext) {
   if (adminBlock) return adminBlock;
 
   const { appId } = await context.params;
-  const result = await appPrismaRepository.deactivateApp(tenantCtx.tenantId!, appId);
+  const appEntity = await appPrismaRepository.findByIdOrSlug(appId);
+  if (!appEntity) {
+    return jsonError("NOT_FOUND", "App não encontrado.", 404);
+  }
+  const result = await appPrismaRepository.deactivateApp(tenantCtx.tenantId!, appEntity.id);
 
   if (!result.ok) {
     return jsonError("NOT_FOUND", "App não está ativo neste tenant.", 404);

@@ -85,6 +85,7 @@
       "description": "Descrição",
       "descriptionPlaceholder": "Descreva o app em detalhes (suporta markdown)…",
       "category": "Categoria",
+      "categorySearch": "Buscar categoria…",
       "icon": "Ícone",
       "iconHint": "PNG, SVG ou WebP, 512×512 recomendado.",
       "screenshots": "Screenshots",
