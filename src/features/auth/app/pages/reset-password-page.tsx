@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
 import {
   Card,
   CardContent,
@@ -9,16 +10,18 @@ import {
 import { AuthSuspenseFallback } from "../components/auth-suspense-fallback";
 import { SetPasswordForm } from "../components/set-password-form";
 
-export function ResetPasswordPage() {
+export async function ResetPasswordPage() {
+  const t = await getTranslations("auth.setPassword");
+
   return (
     <Suspense fallback={<AuthSuspenseFallback />}>
       <Card className="w-full shadow-sm">
         <CardHeader>
-          <CardTitle>Redefinir senha</CardTitle>
-          <CardDescription>Use a nova senha no próximo login.</CardDescription>
+          <CardTitle>{t("resetTitle")}</CardTitle>
+          <CardDescription>{t("resetDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <SetPasswordForm successMessage="Senha alterada." />
+          <SetPasswordForm successMessage={t("successReset")} />
         </CardContent>
       </Card>
     </Suspense>

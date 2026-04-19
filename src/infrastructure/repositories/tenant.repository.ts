@@ -2,6 +2,7 @@ import type { Prisma } from "@prisma/client";
 import { TenantRole } from "@prisma/client";
 
 import type {
+  CreateTenantInput,
   ITenantRepository,
   TenantClinicProfilePatchInput,
   TenantNotificationPrefsRow,
@@ -105,14 +106,32 @@ export class TenantPrismaRepository implements ITenantRepository {
     });
   }
 
-  async createTenant(params: { name: string; slug: string }) {
+  async createTenant(params: CreateTenantInput) {
     try {
       const tenant = await prisma.tenant.create({
-        data: { name: params.name.trim(), slug: params.slug },
+        data: {
+          name: params.name.trim(),
+          slug: params.slug,
+          ...(params.taxId ? { taxId: params.taxId } : {}),
+          ...(params.phone ? { phone: params.phone } : {}),
+          ...(params.addressLine ? { addressLine: params.addressLine } : {}),
+          ...(params.city ? { city: params.city } : {}),
+          ...(params.postalCode ? { postalCode: params.postalCode } : {}),
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          taxId: true,
+          phone: true,
+          addressLine: true,
+          city: true,
+          postalCode: true,
+        },
       });
       return {
         ok: true as const,
-        tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
+        tenant,
       };
     } catch (e: unknown) {
       const isUnique =

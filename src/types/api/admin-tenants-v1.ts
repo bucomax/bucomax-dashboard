@@ -1,6 +1,15 @@
 export type CreateAdminTenantRequestBody = {
   name: string;
   slug: string;
+  taxId?: string | null;
+  phone?: string | null;
+  addressLine?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+  admin?: {
+    email: string;
+    name?: string | null;
+  } | null;
 };
 
 export type AdminTenantDto = {
@@ -26,5 +35,13 @@ export type PatchAdminTenantResponseData = {
 };
 
 export type CreateAdminTenantResponseData = {
-  tenant: AdminTenantDto;
+  tenant: AdminTenantDto & {
+    taxId: string | null;
+    phone: string | null;
+    addressLine: string | null;
+    city: string | null;
+    postalCode: string | null;
+  };
+  adminCreated: boolean;
+  adminEmail: string | null;
 };

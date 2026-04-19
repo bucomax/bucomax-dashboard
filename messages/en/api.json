@@ -106,6 +106,8 @@
     "validationPortalPasswordDigit": "Include at least one number.",
     "validationPortalPasswordSpecial": "Include at least one special character (!@#$%^&*…).",
     "validationPortalPasswordMismatch": "Passwords do not match.",
+    "validationInviteTokenMissing": "Incomplete link. Open the invite or reset from the email button (full URL).",
+    "validationInvitePreviewTokenRequired": "Provide the invite token in the URL (`token` query parameter).",
     "validationConsentTermsRequired": "You must accept the terms of use to continue.",
     "validationConsentPrivacyRequired": "You must accept the privacy notice to continue.",
     "patientPortalLoginInvalid": "Enter an 11-digit CPF or a valid email address.",

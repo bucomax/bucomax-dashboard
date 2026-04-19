@@ -106,6 +106,8 @@
     "validationPortalPasswordDigit": "Inclua pelo menos um número.",
     "validationPortalPasswordSpecial": "Inclua pelo menos um caractere especial (!@#$%^&*…).",
     "validationPortalPasswordMismatch": "As senhas não coincidem.",
+    "validationInviteTokenMissing": "Link incompleto. Abra o convite ou a redefinição pelo botão do e-mail (com o endereço completo).",
+    "validationInvitePreviewTokenRequired": "Informe o token do convite na URL (parâmetro token).",
     "validationConsentTermsRequired": "Aceite os termos de uso para continuar.",
     "validationConsentPrivacyRequired": "Aceite o aviso de privacidade (LGPD) para continuar.",
     "patientPortalLoginInvalid": "Informe um CPF com 11 dígitos ou um e-mail válido.",

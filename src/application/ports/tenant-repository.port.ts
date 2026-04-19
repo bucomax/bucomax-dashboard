@@ -17,8 +17,29 @@ export type TenantMembershipListRow = {
   linkedOpmeSupplierId: string | null;
 };
 
+export type CreateTenantInput = {
+  name: string;
+  slug: string;
+  taxId?: string | null;
+  phone?: string | null;
+  addressLine?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+};
+
+export type CreatedTenantRow = {
+  id: string;
+  name: string;
+  slug: string;
+  taxId: string | null;
+  phone: string | null;
+  addressLine: string | null;
+  city: string | null;
+  postalCode: string | null;
+};
+
 export type CreateTenantResult =
-  | { ok: true; tenant: { id: string; name: string; slug: string } }
+  | { ok: true; tenant: CreatedTenantRow }
   | { ok: false; code: "SLUG_CONFLICT" };
 
 export type TenantWhatsAppRow = {
@@ -85,7 +106,7 @@ export interface ITenantRepository {
 
   tenantExistsById(tenantId: string): Promise<boolean>;
   listTenantSummariesForSuperAdmin(): Promise<TenantSummaryRow[]>;
-  createTenant(params: { name: string; slug: string }): Promise<CreateTenantResult>;
+  createTenant(params: CreateTenantInput): Promise<CreateTenantResult>;
   updateTenantActive(tenantId: string, isActive: boolean): Promise<TenantSummaryRow | null>;
   listActiveTenantMembershipRows(tenantId: string): Promise<TenantMembershipListRow[]>;
 

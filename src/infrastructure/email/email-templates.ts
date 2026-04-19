@@ -146,8 +146,19 @@ export function getResetPasswordHtml(params: { name: string | null; resetUrl: st
 /**
  * Convite: administrador criou a conta — usuário define a senha no primeiro acesso.
  */
-export function getInviteSetPasswordHtml(params: { name: string | null; setPasswordUrl: string }): string {
-  const name = params.name || "Usuário";
+export function getInviteSetPasswordHtml(params: {
+  name: string | null;
+  setPasswordUrl: string;
+  tenantName: string;
+  tenantTaxIdDisplay: string | null;
+}): string {
+  const name = escapeHtmlText(params.name || "Usuário");
+  const tenantName = escapeHtmlText(params.tenantName);
+  const taxBlock = params.tenantTaxIdDisplay
+    ? `<p style="margin: 0 0 4px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+        <span style="font-weight: 600;">CNPJ:</span> ${escapeHtmlText(params.tenantTaxIdDisplay)}
+      </p>`
+    : "";
   const content = `
     <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND.text}; line-height: 1.3;">
       Você foi convidado para o Bucomax
@@ -155,8 +166,12 @@ export function getInviteSetPasswordHtml(params: { name: string | null; setPassw
     <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
       Olá, ${name}!
     </p>
-    <p style="margin: 0 0 8px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
-      Uma conta foi criada para você. Clique no botão abaixo para definir sua senha e começar.
+    <p style="margin: 0 0 4px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      <span style="font-weight: 600;">Clínica:</span> ${tenantName}
+    </p>
+    ${taxBlock}
+    <p style="margin: 16px 0 8px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      Uma conta foi criada para você neste espaço de trabalho. Clique no botão abaixo para definir sua senha e começar.
     </p>
     ${ctaButton(params.setPasswordUrl, "Definir senha")}
     <p style="margin: 16px 0 0; font-size: 13px; color: ${BRAND.textMuted}; line-height: 1.5;">

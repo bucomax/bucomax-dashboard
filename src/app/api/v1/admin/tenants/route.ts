@@ -45,11 +45,39 @@ export async function POST(request: Request) {
   const result = await runCreateTenant({
     name: parsed.data.name,
     slug: parsed.data.slug,
+    taxId: parsed.data.taxId ?? null,
+    phone: parsed.data.phone ?? null,
+    addressLine: parsed.data.addressLine ?? null,
+    city: parsed.data.city ?? null,
+    postalCode: parsed.data.postalCode ?? null,
+    admin: parsed.data.admin ?? null,
   });
 
   if (!result.ok) {
-    return jsonError("CONFLICT", apiT("errors.tenantSlugConflict"), 409);
+    switch (result.code) {
+      case "SLUG_CONFLICT":
+        return jsonError("CONFLICT", apiT("errors.tenantSlugConflict"), 409);
+      case "EMAIL_NOT_CONFIGURED":
+        return jsonError("SERVICE_UNAVAILABLE", apiT("errors.invitesNotConfigured"), 503);
+      case "EMAIL_DISABLED_ACCOUNT":
+        return jsonError("CONFLICT", apiT("errors.emailDisabledAccount"), 409);
+      case "USER_ALREADY_MEMBER":
+        return jsonError("CONFLICT", apiT("errors.userAlreadyMember"), 409);
+      case "EMAIL_SEND_FAILED":
+        return jsonError("EMAIL_SEND_FAILED", apiT("errors.emailSendFailedAfterUser"), 500);
+      case "TENANT_NOT_FOUND":
+        return jsonError("INTERNAL_ERROR", apiT("errors.internalError"), 500);
+      default:
+        return jsonError("INTERNAL_ERROR", apiT("errors.internalError"), 500);
+    }
   }
 
-  return jsonSuccess({ tenant: result.tenant }, { status: 201 });
+  return jsonSuccess(
+    {
+      tenant: result.tenant,
+      adminCreated: result.adminCreated,
+      adminEmail: result.adminEmail,
+    },
+    { status: 201 },
+  );
 }

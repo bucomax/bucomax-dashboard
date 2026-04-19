@@ -1,11 +1,14 @@
 import { AuthTokenPurpose, GlobalRole, TenantRole } from "@prisma/client";
 
+import { formatTaxDocumentDisplay } from "@/lib/validators/tax-document";
+
 import type {
   InviteExistingUserToTenantParams,
   InviteNewUserToTenantParams,
   IUserRepository,
   TenantMembershipRole,
 } from "@/application/ports/user-repository.port";
+import type { InviteSetPasswordPreviewDto } from "@/types/api/auth-v1";
 import { prisma } from "@/infrastructure/database/prisma";
 
 export class UserPrismaRepository implements IUserRepository {
@@ -320,6 +323,37 @@ export class UserPrismaRepository implements IUserRepository {
       where: { id: { in: userIds }, deletedAt: null },
       select: { id: true, name: true, email: true },
     });
+  }
+
+  async findInviteSetPasswordPreview(token: string): Promise<InviteSetPasswordPreviewDto | null> {
+    const row = await prisma.userAuthToken.findUnique({
+      where: { token },
+      include: {
+        user: { select: { name: true, email: true, deletedAt: true } },
+        tenant: { select: { name: true, taxId: true } },
+      },
+    });
+    if (!row) {
+      return null;
+    }
+    if (
+      row.purpose !== AuthTokenPurpose.INVITE_SET_PASSWORD ||
+      row.usedAt ||
+      row.expiresAt < new Date() ||
+      row.user.deletedAt
+    ) {
+      return null;
+    }
+    if (!row.tenantId || !row.tenant) {
+      return null;
+    }
+    const taxRaw = row.tenant.taxId?.trim();
+    return {
+      userName: row.user.name?.trim() || null,
+      userEmail: row.user.email,
+      tenantName: row.tenant.name.trim(),
+      tenantTaxIdDisplay: taxRaw ? formatTaxDocumentDisplay(taxRaw) : null,
+    };
   }
 }
 

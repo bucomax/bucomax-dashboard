@@ -1,3 +1,5 @@
+import type { InviteSetPasswordPreviewDto } from "@/types/api/auth-v1";
+
 export type TenantMembershipRole = "tenant_admin" | "tenant_user";
 
 export type UserForTenantInviteRow = {
@@ -104,4 +106,9 @@ export interface IUserRepository {
   findManyForStageAssigneeSummaries(
     userIds: string[],
   ): Promise<Array<{ id: string; name: string | null; email: string }>>;
+
+  /**
+   * Metadados para tela de convite / e-mail (apenas token `INVITE_SET_PASSWORD` válido e não expirado).
+   */
+  findInviteSetPasswordPreview(token: string): Promise<InviteSetPasswordPreviewDto | null>;
 }

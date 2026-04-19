@@ -7,6 +7,7 @@ import { isEmailConfigured, sendEmail, buildInviteSetPasswordUrl } from "@/infra
 import { tenantPrismaRepository } from "@/infrastructure/repositories/tenant.repository";
 import { userPrismaRepository } from "@/infrastructure/repositories/user.repository";
 import { normalizeEmail } from "@/lib/utils/email";
+import { formatTaxDocumentDisplay } from "@/lib/validators/tax-document";
 import { adminInviteSchema } from "@/lib/validators/auth";
 
 export type InviteTenantMemberInput = z.infer<typeof adminInviteSchema>;
@@ -32,18 +33,33 @@ export type InviteTenantMemberSuccess =
       emailDispatched: boolean;
     };
 
+function buildInviteEmailSubject(clinicName: string): string {
+  const name = clinicName.trim();
+  if (!name) {
+    return "Bucomax — Defina sua senha";
+  }
+  const max = 88;
+  const shortened = name.length > max ? `${name.slice(0, max - 1)}…` : name;
+  return `Bucomax — ${shortened} — Defina sua senha`;
+}
+
 async function sendInviteSetPasswordEmail(
   emailNorm: string,
   name: string | null | undefined,
   token: string,
+  tenant: { name: string; taxId: string | null },
 ): Promise<{ error?: Error }> {
   const setPasswordUrl = buildInviteSetPasswordUrl(token);
+  const taxRaw = tenant.taxId?.trim();
+  const tenantTaxIdDisplay = taxRaw ? formatTaxDocumentDisplay(taxRaw) : null;
   return sendEmail({
     to: emailNorm,
-    subject: "Bucomax — Defina sua senha",
+    subject: buildInviteEmailSubject(tenant.name),
     html: getInviteSetPasswordHtml({
       name: name?.trim() || null,
       setPasswordUrl,
+      tenantName: tenant.name.trim(),
+      tenantTaxIdDisplay,
     }),
   });
 }
@@ -54,18 +70,15 @@ async function sendInviteSetPasswordEmail(
 export async function runInviteTenantMember(input: InviteTenantMemberInput): Promise<
   { ok: true; data: InviteTenantMemberSuccess } | { ok: false; code: InviteTenantMemberErrorCode }
 > {
-  if (!isEmailConfigured()) {
-    return { ok: false, code: "EMAIL_NOT_CONFIGURED" };
-  }
-
   const { email, name, tenantId, role } = input;
   const emailNorm = normalizeEmail(email);
   const rolePort: TenantMembershipRole = role;
 
-  const tenantExists = await tenantPrismaRepository.tenantExistsById(tenantId);
-  if (!tenantExists) {
+  const tenant = await tenantPrismaRepository.findById(tenantId);
+  if (!tenant) {
     return { ok: false, code: "TENANT_NOT_FOUND" };
   }
+  const tenantForEmail = { name: tenant.name, taxId: tenant.taxId };
 
   const existing = await userPrismaRepository.findUserForTenantInvite(emailNorm, tenantId);
 
@@ -80,6 +93,9 @@ export async function runInviteTenantMember(input: InviteTenantMemberInput): Pro
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
     const needsInviteEmail = existing.passwordHash === null;
+    if (needsInviteEmail && !isEmailConfigured()) {
+      return { ok: false, code: "EMAIL_NOT_CONFIGURED" };
+    }
     const trimmedName = name?.trim();
 
     await userPrismaRepository.inviteExistingUserToTenant({
@@ -103,7 +119,7 @@ export async function runInviteTenantMember(input: InviteTenantMemberInput): Pro
       };
     }
 
-    const { error } = await sendInviteSetPasswordEmail(emailNorm, name, token);
+    const { error } = await sendInviteSetPasswordEmail(emailNorm, name, token, tenantForEmail);
     if (error) {
       console.error("Erro ao enviar convite:", error);
       return { ok: false, code: "EMAIL_SEND_FAILED" };
@@ -119,6 +135,10 @@ export async function runInviteTenantMember(input: InviteTenantMemberInput): Pro
     };
   }
 
+  if (!isEmailConfigured()) {
+    return { ok: false, code: "EMAIL_NOT_CONFIGURED" };
+  }
+
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
 
@@ -131,7 +151,7 @@ export async function runInviteTenantMember(input: InviteTenantMemberInput): Pro
     expiresAt,
   });
 
-  const { error } = await sendInviteSetPasswordEmail(emailNorm, name, token);
+  const { error } = await sendInviteSetPasswordEmail(emailNorm, name, token, tenantForEmail);
   if (error) {
     console.error("Erro ao enviar convite:", error);
     return { ok: false, code: "EMAIL_SEND_FAILED" };

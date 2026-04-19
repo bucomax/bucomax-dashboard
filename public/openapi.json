@@ -188,6 +188,67 @@
         }
       }
     },
+    "/api/v1/auth/invite-preview": {
+      "get": {
+        "summary": "Metadados do convite (definir senha)",
+        "description": "Público. Valida `token` não vazio. Resposta sempre `200`: `data.preview` é `null` se o token for inválido, expirado ou já utilizado (anti-enumeração).",
+        "tags": ["Auth"],
+        "parameters": [
+          {
+            "name": "token",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "minLength": 1 },
+            "description": "Token hexadecimal do link de convite (`INVITE_SET_PASSWORD`)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope de sucesso; `preview` pode ser null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["success", "data", "meta"],
+                  "properties": {
+                    "success": { "const": true },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "timestamp": { "type": "string", "format": "date-time" }
+                      }
+                    },
+                    "data": {
+                      "type": "object",
+                      "required": ["preview"],
+                      "properties": {
+                        "preview": {
+                          "oneOf": [
+                            { "type": "null" },
+                            {
+                              "type": "object",
+                              "required": ["userName", "userEmail", "tenantName", "tenantTaxIdDisplay"],
+                              "properties": {
+                                "userName": { "type": "string", "nullable": true },
+                                "userEmail": { "type": "string", "format": "email" },
+                                "tenantName": { "type": "string" },
+                                "tenantTaxIdDisplay": { "type": "string", "nullable": true }
+                              }
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": { "description": "Token ausente na query (`VALIDATION_ERROR`)" },
+          "429": { "description": "Rate limit (bucket auth)" }
+        }
+      }
+    },
     "/api/v1/auth/context": {
       "post": {
         "summary": "Define tenant ativo",
@@ -230,16 +291,30 @@
                 "required": ["name", "slug"],
                 "properties": {
                   "name": { "type": "string" },
-                  "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" }
+                  "slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+                  "taxId": { "type": "string", "maxLength": 32 },
+                  "phone": { "type": "string", "maxLength": 32 },
+                  "addressLine": { "type": "string", "maxLength": 255 },
+                  "city": { "type": "string", "maxLength": 120 },
+                  "postalCode": { "type": "string", "maxLength": 32 },
+                  "admin": {
+                    "type": "object",
+                    "required": ["email"],
+                    "properties": {
+                      "email": { "type": "string", "format": "email" },
+                      "name": { "type": "string", "maxLength": 120 }
+                    }
+                  }
                 }
               }
             }
           }
         },
         "responses": {
-          "201": { "description": "Criado" },
+          "201": { "description": "Criado (tenant com campos de clínica; adminCreated e adminEmail quando aplicável)" },
           "403": { "description": "Não é super_admin" },
-          "409": { "description": "Slug duplicado" },
+          "409": { "description": "Slug duplicado ou conflito de convite (email desativado, já membro)" },
+          "503": { "description": "Convites por email não configurados (quando necessário)" },
           "401": { "description": "Não autenticado" }
         }
       }

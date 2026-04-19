@@ -11,7 +11,7 @@ import {
   patchAdminTenant,
 } from "@/features/settings/app/services/admin-tenants.service";
 import { setActiveTenant } from "@/shared/services/tenant.service";
-import type { AdminTenantListItemDto } from "@/types/api/admin-tenants-v1";
+import type { AdminTenantListItemDto, CreateAdminTenantRequestBody } from "@/types/api/admin-tenants-v1";
 
 export function useSuperAdminTenants() {
   const t = useTranslations("settings.tenants");
@@ -83,16 +83,22 @@ export function useSuperAdminTenants() {
   );
 
   const createTenant = useCallback(
-    async (input: { name: string; slug: string }) => {
+    async (input: CreateAdminTenantRequestBody) => {
       setCreating(true);
       try {
         const response = await createAdminTenant({
           name: input.name.trim(),
           slug: input.slug.trim(),
+          taxId: input.taxId,
+          phone: input.phone,
+          addressLine: input.addressLine,
+          city: input.city,
+          postalCode: input.postalCode,
+          admin: input.admin,
         });
         await reload();
         await switchTenant(response.tenant.id);
-        return response.tenant;
+        return response;
       } finally {
         setCreating(false);
       }

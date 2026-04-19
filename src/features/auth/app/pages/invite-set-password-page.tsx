@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { getTranslations } from "next-intl/server";
 import {
   Card,
   CardContent,
@@ -7,20 +8,20 @@ import {
   CardTitle,
 } from "@/shared/components/ui/card";
 import { AuthSuspenseFallback } from "../components/auth-suspense-fallback";
-import { SetPasswordForm } from "../components/set-password-form";
+import { InviteSetPasswordShell } from "../components/invite-set-password-shell";
 
-export function InviteSetPasswordPage() {
+export async function InviteSetPasswordPage() {
+  const t = await getTranslations("auth.setPassword");
+
   return (
     <Suspense fallback={<AuthSuspenseFallback />}>
       <Card className="w-full shadow-sm">
         <CardHeader>
-          <CardTitle>Definir senha</CardTitle>
-          <CardDescription>
-            Você foi convidado para o Bucomax. Crie sua senha para continuar.
-          </CardDescription>
+          <CardTitle>{t("inviteTitle")}</CardTitle>
+          <CardDescription>{t("inviteDescription")}</CardDescription>
         </CardHeader>
         <CardContent>
-          <SetPasswordForm successMessage="Conta criada." />
+          <InviteSetPasswordShell successMessage={t("successInvite")} />
         </CardContent>
       </Card>
     </Suspense>

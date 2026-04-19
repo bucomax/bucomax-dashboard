@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+import { zodApiMsg } from "@/lib/api/zod-i18n";
+import { portalPasswordSchema } from "@/lib/validators/patient-portal-auth";
+
 export const loginSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(1, "Informe a senha"),
@@ -11,7 +14,7 @@ export const forgotPasswordSchema = z.object({
 
 export const resetPasswordSchema = z.object({
   token: z.string().min(1, "Token é obrigatório"),
-  newPassword: z.string().min(8, "Senha deve ter no mínimo 8 caracteres"),
+  newPassword: portalPasswordSchema,
 });
 
 export const adminInviteSchema = z.object({
@@ -21,7 +24,13 @@ export const adminInviteSchema = z.object({
   role: z.enum(["tenant_admin", "tenant_user"]),
 });
 
-/** Formulário client (apenas `newPassword`; `token` vem da URL). */
-export const setPasswordFormSchema = z.object({
-  newPassword: z.string().min(8, "Senha deve ter no mínimo 8 caracteres"),
-});
+/** Formulário client (convite / reset); `token` vem da URL. Mesmas regras do portal (senha forte). */
+export const setPasswordFormSchema = z
+  .object({
+    newPassword: portalPasswordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: zodApiMsg("errors.validationPortalPasswordMismatch"),
+    path: ["confirmPassword"],
+  });
