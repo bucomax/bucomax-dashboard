@@ -16,6 +16,7 @@ async function loadMessages(locale: string) {
         notifications: (await import("../../messages/pt-BR/notifications.json")).default,
         patientPortal: (await import("../../messages/pt-BR/patientPortal.json")).default,
         legal: (await import("../../messages/pt-BR/legal.json")).default,
+        apps: (await import("../../messages/pt-BR/apps.json")).default,
       };
     case "en":
       return {
@@ -30,6 +31,7 @@ async function loadMessages(locale: string) {
         notifications: (await import("../../messages/en/notifications.json")).default,
         patientPortal: (await import("../../messages/en/patientPortal.json")).default,
         legal: (await import("../../messages/en/legal.json")).default,
+        apps: (await import("../../messages/en/apps.json")).default,
       };
     default:
       return {
@@ -44,6 +46,7 @@ async function loadMessages(locale: string) {
         notifications: (await import("../../messages/pt-BR/notifications.json")).default,
         patientPortal: (await import("../../messages/pt-BR/patientPortal.json")).default,
         legal: (await import("../../messages/pt-BR/legal.json")).default,
+        apps: (await import("../../messages/pt-BR/apps.json")).default,
       };
   }
 }

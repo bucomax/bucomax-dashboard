@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bucomax App PoC</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: system-ui, sans-serif; background: #fafafa; color: #333; padding: 24px; }
+    h1 { font-size: 1.25rem; margin-bottom: 8px; }
+    .subtitle { color: #666; font-size: 0.875rem; margin-bottom: 24px; }
+    .card { background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .card h2 { font-size: 0.875rem; font-weight: 600; margin-bottom: 8px; color: #8B5CF6; }
+    pre { background: #f5f5f5; padding: 12px; border-radius: 8px; font-size: 0.75rem; overflow-x: auto; white-space: pre-wrap; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+    button { padding: 8px 16px; border-radius: 8px; border: 1px solid #ddd; background: #fff; cursor: pointer; font-size: 0.8125rem; transition: all 0.15s; }
+    button:hover { background: #f0f0f0; border-color: #ccc; }
+    button.primary { background: #8B5CF6; color: #fff; border-color: #8B5CF6; }
+    button.primary:hover { background: #7C3AED; }
+    .status { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 500; }
+    .status.connected { background: #D1FAE5; color: #065F46; }
+    .status.waiting { background: #FEF3C7; color: #92400E; }
+    .log { max-height: 200px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <h1>Chatbot IA — PoC <span class="status waiting" id="status">Aguardando init</span></h1>
+  <p class="subtitle">Esta página simula um app externo integrado via iframe ao Bucomax.</p>
+
+  <div class="card">
+    <h2>Contexto recebido (bucomax:init)</h2>
+    <pre id="initPayload">— aguardando —</pre>
+  </div>
+
+  <div class="card">
+    <h2>Log de mensagens</h2>
+    <pre id="log" class="log"></pre>
+  </div>
+
+  <div class="card">
+    <h2>Ações de teste (Iframe → Host)</h2>
+    <div class="actions">
+      <button class="primary" onclick="sendToast('success', 'Operação concluída!')">Toast sucesso</button>
+      <button onclick="sendToast('error', 'Algo deu errado.')">Toast erro</button>
+      <button onclick="sendToast('info', 'Informação do chatbot.')">Toast info</button>
+      <button onclick="sendResize(600)">Resize 600px</button>
+      <button onclick="sendResize(400)">Resize 400px</button>
+      <button onclick="sendNavigate('/dashboard')">Navegar /dashboard</button>
+      <button onclick="requestToken()">Solicitar token</button>
+    </div>
+  </div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    const initEl = document.getElementById('initPayload');
+    const statusEl = document.getElementById('status');
+    let parentOrigin = '*';
+
+    function log(msg) {
+      const ts = new Date().toLocaleTimeString();
+      logEl.textContent += `[${ts}] ${msg}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    // Signal ready to host
+    window.parent.postMessage({ type: 'bucomax:ready' }, '*');
+    log('Sent bucomax:ready');
+
+    // Listen for host messages
+    window.addEventListener('message', (event) => {
+      const data = event.data;
+      if (!data || typeof data.type !== 'string' || !data.type.startsWith('bucomax:')) return;
+
+      parentOrigin = event.origin;
+      log(`Received ${data.type} from ${event.origin}`);
+
+      if (data.type === 'bucomax:init') {
+        initEl.textContent = JSON.stringify(data.payload, null, 2);
+        statusEl.textContent = 'Conectado';
+        statusEl.className = 'status connected';
+        log(`Init: tenant=${data.payload.tenantId}, user=${data.payload.userId}, locale=${data.payload.locale}`);
+        if (data.payload.token) {
+          log(`Token recebido (${data.payload.token.substring(0, 20)}...)`);
+        }
+      }
+
+      if (data.type === 'bucomax:theme') {
+        log(`Theme changed to: ${data.payload?.theme}`);
+      }
+    });
+
+    function sendToast(variant, message) {
+      window.parent.postMessage({ type: 'bucomax:toast', payload: { variant, message } }, parentOrigin);
+      log(`Sent toast: ${variant} — "${message}"`);
+    }
+
+    function sendResize(height) {
+      window.parent.postMessage({ type: 'bucomax:resize', payload: { height } }, parentOrigin);
+      log(`Sent resize: ${height}px`);
+    }
+
+    function sendNavigate(path) {
+      window.parent.postMessage({ type: 'bucomax:navigate', payload: { path } }, parentOrigin);
+      log(`Sent navigate: ${path}`);
+    }
+
+    function requestToken() {
+      window.parent.postMessage({ type: 'bucomax:token-request' }, parentOrigin);
+      log('Sent token-request');
+    }
+  </script>
+</body>
+</html>

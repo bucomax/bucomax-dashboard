@@ -123,6 +123,7 @@ model User {
   deletedAt                         DateTime?
   createdAt                         DateTime                      @default(now())
   updatedAt                         DateTime                      @updatedAt
+  activatedTenantApps               TenantApp[]                   @relation("TenantAppActivatedBy")
 }
 
 model UserAuthToken {
@@ -220,6 +221,7 @@ model Tenant {
   patientSelfRegisterInvites PatientSelfRegisterInvite[]
   auditEvents                AuditEvent[]
   channelDispatches          ChannelDispatch[]
+  tenantApps                 TenantApp[]
 }
 
 /**
@@ -616,6 +618,8 @@ model FileAsset {
   sha256Hash                  String?
   createdAt                   DateTime                     @default(now())
   stageDocuments              StageDocument[]
+  appIcons                    App[]                        @relation("AppIcon")
+  appScreenshots              AppScreenshot[]              @relation("AppScreenshot")
 
   @@index([tenantId])
   @@index([clientId])
@@ -727,4 +731,147 @@ model ChannelDispatch {
   @@index([stageTransitionId])
   @@index([externalMessageId])
   @@index([clientId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Apps Marketplace
+// ---------------------------------------------------------------------------
+
+enum AppCategory {
+  communication
+  ai
+  scheduling
+  clinical
+  financial
+  integration
+}
+
+enum AppRenderMode {
+  iframe
+  internal
+  external_link
+}
+
+enum AppPricingModel {
+  free
+  flat
+  per_seat
+  usage_based
+}
+
+enum AppBillingInterval {
+  monthly
+  yearly
+}
+
+enum TenantAppStatus {
+  pending_config
+  active
+  suspended
+  inactive
+}
+
+enum SubscriptionStatus {
+  none
+  trialing
+  active_subscription
+  past_due
+  canceled
+  unpaid
+  suspended_subscription
+}
+
+/**
+ * Catálogo global de apps integráveis ao dashboard.
+ * Gerenciado exclusivamente por super_admin.
+ */
+model App {
+  id              String            @id @default(cuid())
+  slug            String            @unique
+  name            String
+  tagline         String?
+  description     String?           @db.Text
+
+  // === Identidade visual ===
+  iconFileId      String?
+  iconFile        FileAsset?        @relation("AppIcon", fields: [iconFileId], references: [id], onDelete: SetNull)
+  screenshots     AppScreenshot[]
+  accentColor     String?
+  developerName   String?
+  developerUrl    String?
+
+  // === Configuração técnica ===
+  category        AppCategory       @default(integration)
+  renderMode      AppRenderMode     @default(iframe)
+  iframeBaseUrl   String?           @db.Text
+  internalRoute   String?
+  requiresConfig  Boolean           @default(false)
+  configSchema    Json?
+
+  // === Catálogo ===
+  isPublished     Boolean           @default(false)
+  isFeatured      Boolean           @default(false)
+  sortOrder       Int               @default(0)
+
+  // === Billing ===
+  pricingModel      AppPricingModel    @default(free)
+  priceInCents      Int?
+  priceCurrency     String             @default("BRL")
+  billingInterval   AppBillingInterval @default(monthly)
+  trialDays         Int                @default(0)
+  externalProductId String?
+
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  tenantApps      TenantApp[]
+
+  @@index([isPublished, sortOrder])
+}
+
+/**
+ * Screenshot / foto do app funcionando (galeria estilo App Store).
+ */
+model AppScreenshot {
+  id        String    @id @default(cuid())
+  appId     String
+  app       App       @relation(fields: [appId], references: [id], onDelete: Cascade)
+  fileId    String
+  file      FileAsset @relation("AppScreenshot", fields: [fileId], references: [id], onDelete: Cascade)
+  caption   Json?
+  sortOrder Int       @default(0)
+
+  @@index([appId, sortOrder])
+}
+
+/**
+ * Ativação de um app por tenant (instância).
+ */
+model TenantApp {
+  id              String          @id @default(cuid())
+  tenantId        String
+  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  appId           String
+  app             App             @relation(fields: [appId], references: [id], onDelete: Cascade)
+  status          TenantAppStatus @default(pending_config)
+  configEncrypted Json?
+  activatedAt     DateTime?
+  activatedById   String?
+  activatedBy     User?           @relation("TenantAppActivatedBy", fields: [activatedById], references: [id], onDelete: SetNull)
+  deactivatedAt   DateTime?
+
+  // === Billing / Assinatura ===
+  externalSubscriptionId String?
+  subscriptionStatus     SubscriptionStatus @default(none)
+  trialStartedAt         DateTime?
+  trialEndsAt            DateTime?
+  currentPeriodEnd       DateTime?
+  cancelReason           String?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([tenantId, appId])
+  @@index([tenantId, status])
+  @@index([externalSubscriptionId])
 }

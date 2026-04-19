@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminAppList } from "@/features/apps/app/components/admin-app-list";
 import { PathwayStagesSettingsPanel } from "@/features/pathways/app/components/pathway-stages-settings-panel";
 import { ClinicSettingsCard } from "@/features/settings/app/components/clinic-settings-card";
 import { OpmeSuppliersCard } from "@/features/settings/app/components/opme-suppliers-card";
@@ -7,7 +8,6 @@ import { SuperAdminTenantsCard } from "@/features/settings/app/components/super-
 import { TenantNotificationsCard } from "@/features/settings/app/components/tenant-notifications-card";
 import { UserSettingsPanel } from "@/features/settings/app/components/user-settings-panel";
 import { UsersManagementPanel } from "@/features/settings/app/components/users-management-panel";
-import { WhatsAppSettingsCard } from "@/features/settings/app/components/whatsapp-settings-card";
 import {
   sectionFromHash,
   type SettingsSectionId,
@@ -15,10 +15,10 @@ import {
 import { cn } from "@/lib/utils";
 import {
   Bell,
+  Blocks,
   Building2,
   ClipboardList,
   Factory,
-  MessageCircle,
   Shield,
   User,
   Users,
@@ -35,10 +35,10 @@ const NAV_DEFS: NavDef[] = [
   { id: "account", icon: User },
   { id: "clinic", icon: Building2 },
   { id: "notifications", icon: Bell },
-  { id: "whatsapp", icon: MessageCircle, tenantAdminOnly: true },
   { id: "team", icon: Users, tenantAdminOnly: true },
   { id: "opme", icon: Factory },
   { id: "phases", icon: ClipboardList },
+  { id: "apps", icon: Blocks, superAdminOnly: true },
   { id: "admin", icon: Shield, superAdminOnly: true },
 ];
 
@@ -134,14 +134,14 @@ export function SettingsPageLayout() {
         return <ClinicSettingsCard />;
       case "notifications":
         return <TenantNotificationsCard />;
-      case "whatsapp":
-        return <WhatsAppSettingsCard />;
       case "team":
         return <UsersManagementPanel />;
       case "opme":
         return <OpmeSuppliersCard />;
       case "phases":
         return <PathwayStagesSettingsPanel className="mt-0" />;
+      case "apps":
+        return <AdminAppList />;
       case "admin":
         return <SuperAdminTenantsCard />;
       default:

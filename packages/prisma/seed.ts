@@ -1,4 +1,4 @@
-import { GlobalRole, PrismaClient } from "@prisma/client";
+import { AppCategory, AppRenderMode, AppPricingModel, AppBillingInterval, GlobalRole, PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 import { tenants } from "./seed/data";
@@ -46,6 +46,101 @@ async function main() {
       data: { activeTenantId: firstTenantId },
     });
   }
+
+  // ── Seed Apps ──────────────────────────────────────────────────────────
+  await prisma.app.deleteMany({
+    where: { slug: { in: ["whatsapp-business", "ai-chatbot", "scheduling-pro"] } },
+  });
+
+  const seedApps = [
+    {
+      slug: "whatsapp-business",
+      name: "WhatsApp Business",
+      tagline: "Envio automático de mensagens e documentos via WhatsApp.",
+      description:
+        "Integração com a API do WhatsApp Business para envio de mensagens, documentos e notificações automáticas na transição de etapas.",
+      category: AppCategory.communication,
+      renderMode: AppRenderMode.internal,
+      internalRoute: "/dashboard/apps/whatsapp-business",
+      accentColor: "#25D366",
+      developerName: "Bucomax",
+      requiresConfig: false,
+      configSchema: [
+        {
+          key: "phoneNumberId",
+          label: { "pt-BR": "ID do número", en: "Phone Number ID" },
+          type: "text",
+          required: true,
+          placeholder: "123456789012345",
+        },
+        {
+          key: "accessToken",
+          label: { "pt-BR": "Token de acesso", en: "Access Token" },
+          type: "secret",
+          required: true,
+          helpText: {
+            "pt-BR": "Token permanente da API do WhatsApp Business.",
+            en: "Permanent token from WhatsApp Business API.",
+          },
+        },
+      ],
+      isPublished: true,
+      isFeatured: true,
+      sortOrder: 1,
+      pricingModel: AppPricingModel.flat,
+      priceInCents: 9900,
+      priceCurrency: "BRL",
+      billingInterval: AppBillingInterval.monthly,
+      trialDays: 14,
+    },
+    {
+      slug: "ai-chatbot",
+      name: "Chatbot IA",
+      tagline: "Atendimento inteligente com IA para triagem de pacientes.",
+      description:
+        "Chatbot com inteligência artificial para triagem inicial, coleta de dados e encaminhamento automático de pacientes.",
+      category: AppCategory.ai,
+      renderMode: AppRenderMode.iframe,
+      iframeBaseUrl: "http://localhost:3000/app-poc/index.html",
+      accentColor: "#8B5CF6",
+      developerName: "Bucomax",
+      requiresConfig: false,
+      isPublished: true,
+      isFeatured: true,
+      sortOrder: 2,
+      pricingModel: AppPricingModel.usage_based,
+      priceInCents: 50,
+      priceCurrency: "BRL",
+      billingInterval: AppBillingInterval.monthly,
+      trialDays: 7,
+    },
+    {
+      slug: "scheduling-pro",
+      name: "Agendamento Pro",
+      tagline: "Agendamento online integrado ao fluxo do paciente.",
+      description:
+        "Sistema de agendamento que se integra à jornada do paciente, permitindo marcar consultas diretamente do painel.",
+      category: AppCategory.scheduling,
+      renderMode: AppRenderMode.external_link,
+      iframeBaseUrl: "https://scheduling.example.com",
+      accentColor: "#F59E0B",
+      developerName: "ScheduleTech",
+      developerUrl: "https://scheduletech.example.com",
+      requiresConfig: false,
+      isPublished: true,
+      isFeatured: false,
+      sortOrder: 3,
+      pricingModel: AppPricingModel.free,
+      billingInterval: AppBillingInterval.monthly,
+      trialDays: 0,
+    },
+  ];
+
+  for (const appData of seedApps) {
+    await prisma.app.create({ data: appData as Parameters<typeof prisma.app.create>[0]["data"] });
+  }
+
+  console.log("Seed Apps:", seedApps.map((a) => a.slug));
 
   console.log("Seed OK:", {
     password: DEV_PASSWORD,

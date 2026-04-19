@@ -9,6 +9,7 @@ import type notifications from "../../messages/pt-BR/notifications.json";
 import type pathways from "../../messages/pt-BR/pathways.json";
 import type patientPortal from "../../messages/pt-BR/patientPortal.json";
 import type settings from "../../messages/pt-BR/settings.json";
+import type apps from "../../messages/pt-BR/apps.json";
 
 // Tipos alinhados a `messages/pt-BR/*.json` (paridade com `en/` é manual).
 
@@ -24,6 +25,7 @@ type Messages = {
   notifications: typeof notifications;
   patientPortal: typeof patientPortal;
   legal: typeof legal;
+  apps: typeof apps;
 };
 
 declare module "next-intl" {

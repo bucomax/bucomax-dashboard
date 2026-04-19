@@ -2086,10 +2086,253 @@
           "200": { "description": "Cookie limpo" }
         }
       }
+    },
+
+    "/api/v1/admin/apps": {
+      "get": {
+        "summary": "Lista todos os apps (admin)",
+        "tags": ["Apps (admin)"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Lista de apps", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "apps": { "type": "array", "items": { "$ref": "#/components/schemas/AppDto" } } } } } } } } },
+          "403": { "description": "Apenas super_admin" }
+        }
+      },
+      "post": {
+        "summary": "Cria novo app (admin)",
+        "tags": ["Apps (admin)"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateAppBody" } } } },
+        "responses": {
+          "201": { "description": "App criado", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "app": { "$ref": "#/components/schemas/AppDto" } } } } } } } },
+          "403": { "description": "Apenas super_admin" },
+          "422": { "description": "Erro de validação" }
+        }
+      }
+    },
+    "/api/v1/admin/apps/{appId}": {
+      "parameters": [{ "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "get": {
+        "summary": "Detalhe do app (admin)",
+        "tags": ["Apps (admin)"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Detalhe do app" },
+          "404": { "description": "App não encontrado" }
+        }
+      },
+      "patch": {
+        "summary": "Atualiza app (admin)",
+        "tags": ["Apps (admin)"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/CreateAppBody" } } } },
+        "responses": {
+          "200": { "description": "App atualizado" },
+          "422": { "description": "Erro de validação" }
+        }
+      },
+      "delete": {
+        "summary": "Exclui app (admin)",
+        "tags": ["Apps (admin)"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "App excluído" },
+          "409": { "description": "App com ativações em tenants" }
+        }
+      }
+    },
+
+    "/api/v1/tenant/apps": {
+      "get": {
+        "summary": "Catálogo de apps publicados (com status do tenant)",
+        "tags": ["Apps (tenant)"],
+        "security": [{ "cookieAuth": [] }],
+        "parameters": [
+          { "name": "category", "in": "query", "schema": { "type": "string", "enum": ["communication", "ai", "scheduling", "clinical", "financial", "integration"] } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "Catálogo com seções featured e por categoria" }
+        }
+      }
+    },
+    "/api/v1/tenant/apps/active": {
+      "get": {
+        "summary": "Apps ativos do tenant (para sidebar)",
+        "tags": ["Apps (tenant)"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Lista de apps ativos com dados mínimos para sidebar" }
+        }
+      }
+    },
+    "/api/v1/tenant/apps/{appId}": {
+      "parameters": [{ "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "get": {
+        "summary": "Detalhe do app com status do tenant",
+        "tags": ["Apps (tenant)"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "App com tenantApp status e configSummary mascarado" },
+          "404": { "description": "App não encontrado ou não publicado" }
+        }
+      },
+      "post": {
+        "summary": "Ativar app no tenant (campos secret são criptografados automaticamente)",
+        "tags": ["Apps (tenant)"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "content": { "application/json": { "schema": { "type": "object", "properties": { "config": { "type": "object", "description": "Campos de configuração conforme App.configSchema" } } } } } },
+        "responses": {
+          "201": { "description": "App ativado" },
+          "404": { "description": "App não encontrado" }
+        }
+      },
+      "delete": {
+        "summary": "Desativar app no tenant",
+        "tags": ["Apps (tenant)"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "App desativado" },
+          "404": { "description": "App não ativo neste tenant" }
+        }
+      }
+    },
+    "/api/v1/tenant/apps/{appId}/token": {
+      "parameters": [{ "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "post": {
+        "summary": "Gera token scoped de curta duração para iframe app",
+        "description": "JWT HS256 com validade de 15 minutos contendo userId, tenantId, appId e appSlug. Usado pelo iframe para autenticar chamadas à API do Bucomax.",
+        "tags": ["Apps (tenant)"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Token gerado",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "token": { "type": "string" }, "expiresIn": { "type": "integer", "example": 900 } } } } } } }
+          },
+          "404": { "description": "App não ativo neste tenant" }
+        }
+      }
+    },
+    "/api/v1/tenant/apps/{appId}/test": {
+      "parameters": [{ "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "post": {
+        "summary": "Testa conexão com o app externo",
+        "description": "Chama metadata.healthCheckUrl do app. Usa credenciais decriptadas (apiKey) como Bearer token se disponível. Requer tenant_admin ou super_admin.",
+        "tags": ["Apps (tenant)"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Resultado do teste",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "status": { "type": "string", "enum": ["ok", "error"] }, "httpStatus": { "type": "integer", "nullable": true }, "latencyMs": { "type": "integer" }, "error": { "type": "string", "nullable": true } } } } } } }
+          },
+          "422": { "description": "App não suporta teste de conexão" }
+        }
+      }
+    },
+    "/api/v1/admin/apps/{appId}/icon": {
+      "parameters": [{ "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "post": {
+        "summary": "Presign ou registra upload de ícone do app",
+        "description": "Etapa 1 (presign): envia { fileName, mimeType }. Etapa 2 (register): envia { key, fileName, mimeType, sizeBytes }.",
+        "tags": ["Apps (admin)"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Presign URL ou ícone registrado" }
+        }
+      },
+      "delete": {
+        "summary": "Remove ícone do app",
+        "tags": ["Apps (admin)"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Ícone removido" }
+        }
+      }
+    },
+    "/api/v1/admin/apps/{appId}/screenshots": {
+      "parameters": [{ "name": "appId", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "post": {
+        "summary": "Presign, registra ou reordena screenshots do app",
+        "description": "Aceita 3 formatos: presign { fileName, mimeType }, register { key, fileName, mimeType, sizeBytes, caption? }, reorder { order: string[] }. Máximo 8 screenshots.",
+        "tags": ["Apps (admin)"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "Operação realizada" },
+          "201": { "description": "Screenshot registrado" },
+          "422": { "description": "Limite excedido ou validação" }
+        }
+      },
+      "delete": {
+        "summary": "Remove screenshot do app",
+        "tags": ["Apps (admin)"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "type": "object", "required": ["screenshotId"], "properties": { "screenshotId": { "type": "string" } } } } } },
+        "responses": {
+          "200": { "description": "Screenshot removido" },
+          "404": { "description": "Screenshot não encontrado" }
+        }
+      }
+    },
+    "/api/v1/webhooks/apps/{appSlug}": {
+      "parameters": [{ "name": "appSlug", "in": "path", "required": true, "schema": { "type": "string" } }],
+      "post": {
+        "summary": "Webhook de entrada de app externo",
+        "description": "Recebe eventos de apps externos. Requer header X-Webhook-Signature com HMAC-SHA256 do body usando App.metadata.webhookSecret.",
+        "tags": ["Webhooks"],
+        "parameters": [
+          { "name": "X-Webhook-Signature", "in": "header", "required": true, "schema": { "type": "string" }, "description": "sha256=<hmac hex>" }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["eventId", "eventType", "tenantId"], "properties": { "eventId": { "type": "string" }, "eventType": { "type": "string" }, "tenantId": { "type": "string" }, "data": { "type": "object" }, "timestamp": { "type": "string", "format": "date-time" } } } } }
+        },
+        "responses": {
+          "200": { "description": "Evento recebido", "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "data": { "type": "object", "properties": { "received": { "type": "boolean" } } } } } } } },
+          "401": { "description": "Assinatura inválida" },
+          "403": { "description": "App não ativo no tenant" },
+          "404": { "description": "App não encontrado" }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "AppDto": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "slug": { "type": "string" },
+          "name": { "type": "string" },
+          "tagline": { "type": "string", "nullable": true },
+          "description": { "type": "string", "nullable": true },
+          "category": { "type": "string", "enum": ["communication", "ai", "scheduling", "clinical", "financial", "integration"] },
+          "renderMode": { "type": "string", "enum": ["iframe", "internal", "external_link"] },
+          "isPublished": { "type": "boolean" },
+          "isFeatured": { "type": "boolean" },
+          "accentColor": { "type": "string", "nullable": true },
+          "pricingModel": { "type": "string", "enum": ["free", "flat", "per_seat", "usage_based"] }
+        }
+      },
+      "CreateAppBody": {
+        "type": "object",
+        "required": ["name", "category", "renderMode"],
+        "properties": {
+          "name": { "type": "string", "minLength": 2, "maxLength": 128 },
+          "slug": { "type": "string" },
+          "tagline": { "type": "string" },
+          "description": { "type": "string" },
+          "category": { "type": "string", "enum": ["communication", "ai", "scheduling", "clinical", "financial", "integration"] },
+          "renderMode": { "type": "string", "enum": ["iframe", "internal", "external_link"] },
+          "accentColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+          "iframeBaseUrl": { "type": "string", "format": "uri" },
+          "internalRoute": { "type": "string" },
+          "requiresConfig": { "type": "boolean" },
+          "isFeatured": { "type": "boolean" },
+          "pricingModel": { "type": "string", "enum": ["free", "flat", "per_seat", "usage_based"] },
+          "priceInCents": { "type": "integer" },
+          "trialDays": { "type": "integer" }
+        }
+      },
       "NotificationDto": {
         "type": "object",
         "properties": {

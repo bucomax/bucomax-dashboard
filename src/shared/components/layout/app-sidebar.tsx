@@ -40,6 +40,8 @@ import {
 import { useTranslations } from "next-intl";
 import { signOut } from "next-auth/react";
 import { useEffect } from "react";
+import { useActiveApps } from "@/features/apps/app/hooks/use-active-apps";
+import { AppIcon } from "@/features/apps/app/components/app-icon";
 
 type NavItem = {
   href: string;
@@ -97,6 +99,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const tBrand = useTranslations("global");
   const tShell = useTranslations("dashboard.shell");
   const loginCallback = "/login";
+  const { apps: activeApps } = useActiveApps();
 
   function closeMobileNav() {
     if (isMobile) setOpenMobile(false);
@@ -143,6 +146,32 @@ export function AppSidebar({ user }: AppSidebarProps) {
             </SidebarGroupContent>
           </SidebarGroup>
         ))}
+
+        {activeApps.length > 0 && (
+          <SidebarGroup>
+            <SidebarGroupLabel>{t("nav.appsGroup")}</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {activeApps.map((app) => {
+                  const href = `/dashboard/apps/${app.slug}`;
+                  const isActive = pathname.startsWith(href);
+                  return (
+                    <SidebarMenuItem key={app.slug}>
+                      <SidebarMenuButton
+                        tooltip={app.name}
+                        isActive={isActive}
+                        render={<Link href={href} onClick={closeMobileNav} />}
+                      >
+                        <AppIcon iconUrl={app.iconUrl} accentColor={app.accentColor} size="xs" />
+                        <span>{app.name}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter className="p-2 group-data-[collapsible=icon]:hidden">
