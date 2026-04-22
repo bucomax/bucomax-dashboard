@@ -4,7 +4,7 @@ export function resolveNotificationUrl(type: string, metadata: Record<string, un
     return null;
   }
 
-  if (type === "patient_portal_file_pending") {
+  if (type === "patient_portal_file_pending" || type === "patient_portal_link_sent") {
     return `/dashboard/clients/${clientId}?tab=files`;
   }
 

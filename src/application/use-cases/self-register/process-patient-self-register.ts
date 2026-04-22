@@ -304,6 +304,7 @@ export async function runCompletePatientSelfRegister(
 
   if (patientEmail) {
     notifyPatientSelfRegisterWelcome({
+      tenantId,
       patientEmail,
       patientName,
       clinicName,

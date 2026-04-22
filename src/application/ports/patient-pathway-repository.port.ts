@@ -38,6 +38,13 @@ export interface IPatientPathwayRepository {
     patientPathwayId: string,
     pathwayStageId: string,
   ): Promise<number>;
+  /** Itens com `requiredForTransition: true` na etapa. */
+  countRequiredChecklistItemsOnStage(pathwayStageId: string): Promise<number>;
+  /** Obrigatórios concluídos (nesta etapa) para o paciente. */
+  countCompletedRequiredChecklistItemsOnStage(
+    patientPathwayId: string,
+    pathwayStageId: string,
+  ): Promise<number>;
   findPatientPathwayForChecklistCompleteNotification(
     patientPathwayId: string,
   ): Promise<unknown | null>;

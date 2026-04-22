@@ -18,6 +18,7 @@ const TYPE_TO_TENANT_FLAG: Record<NotificationType, keyof Pick<
   new_patient: "notifyNewPatients",
   checklist_complete: null,
   patient_portal_file_pending: "notifyDocumentDelivery",
+  patient_portal_link_sent: "notifyDocumentDelivery",
 };
 
 async function isTenantFlagEnabled(tenantId: string, flag: string): Promise<boolean> {

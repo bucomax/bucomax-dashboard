@@ -1,8 +1,11 @@
 import { getPatientSelfRegisterWelcomeHtml } from "@/infrastructure/email/email-templates";
-import { isEmailConfigured, sendEmail } from "@/infrastructure/email/resend.client";
+import { canSendEmailForTenant } from "@/infrastructure/email/email-availability";
+import { resolveTenantSender } from "@/infrastructure/email/resolve-tenant-sender";
+import { sendEmail } from "@/infrastructure/email/resend.client";
 import { getPublicAppUrl } from "@/lib/config/urls";
 
 type NotifyParams = {
+  tenantId: string;
   patientEmail: string;
   patientName: string;
   clinicName: string;
@@ -14,7 +17,7 @@ type NotifyParams = {
  * Falha silenciosa se Resend não estiver configurado (mesmo padrão dos outros envios).
  */
 export async function notifyPatientSelfRegisterWelcome(params: NotifyParams): Promise<void> {
-  if (!isEmailConfigured()) {
+  if (!(await canSendEmailForTenant(params.tenantId))) {
     return;
   }
 
@@ -40,8 +43,10 @@ export async function notifyPatientSelfRegisterWelcome(params: NotifyParams): Pr
     `— Bucomax`,
   ].join("\n");
 
+  const { from, useSmtp } = await resolveTenantSender(params.tenantId);
   await sendEmail({
     to,
+    from,
     subject,
     html: getPatientSelfRegisterWelcomeHtml({
       patientName: params.patientName,
@@ -49,5 +54,7 @@ export async function notifyPatientSelfRegisterWelcome(params: NotifyParams): Pr
       portalLoginUrl,
     }),
     text,
+    tenantId: params.tenantId,
+    useSmtp,
   });
 }

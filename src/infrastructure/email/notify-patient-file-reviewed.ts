@@ -1,6 +1,8 @@
 import { prisma } from "@/infrastructure/database/prisma";
 import { getFileReviewResultPatientHtml } from "@/infrastructure/email/email-templates";
-import { isEmailConfigured, sendEmail } from "@/infrastructure/email/resend.client";
+import { canSendEmailForTenant } from "@/infrastructure/email/email-availability";
+import { resolveTenantSender } from "@/infrastructure/email/resolve-tenant-sender";
+import { sendEmail } from "@/infrastructure/email/resend.client";
 import { decryptTenantSecret } from "@/infrastructure/crypto/tenant-secret";
 import { sendTextMessage } from "@/infrastructure/whatsapp/whatsapp-cloud-client";
 import { getPublicAppUrl } from "@/lib/config/urls";
@@ -47,6 +49,7 @@ export async function notifyPatientFileReviewed(params: NotifyParams): Promise<v
 
   if (!client || !tenant) return;
 
+  const { from, useSmtp } = await resolveTenantSender(tenantId);
   const base = getPublicAppUrl().replace(/\/$/, "");
   const portalUrl = `${base}/${encodeURIComponent(tenant.slug)}/patient`;
 
@@ -62,7 +65,7 @@ export async function notifyPatientFileReviewed(params: NotifyParams): Promise<v
   }
 
   // --- E-mail ---
-  if (isEmailConfigured() && emailRecipients.size > 0) {
+  if ((await canSendEmailForTenant(tenantId)) && emailRecipients.size > 0) {
     const isApproved = decision === "approve";
     const subject = isApproved
       ? `Bucomax — Documento aprovado: ${fileName}`
@@ -81,7 +84,7 @@ export async function notifyPatientFileReviewed(params: NotifyParams): Promise<v
       : `Seu documento "${fileName}" precisa de ajustes. ${rejectReason ? `Motivo: ${rejectReason}. ` : ""}Acesse: ${portalUrl}`;
 
     for (const to of emailRecipients) {
-      sendEmail({ to, subject, html, text }).catch((err) =>
+      sendEmail({ to, from, subject, html, text, tenantId, useSmtp }).catch((err) =>
         console.error("[notify-file-reviewed] email failed:", err),
       );
     }

@@ -1,54 +1,14 @@
 /**
- * Cliente Resend — transacional (recuperação de senha, convites).
- * @see https://resend.com/docs
+ * Envio transacional (Resend API e/ou SMTP por tenant) e helpers de URL.
  */
 
-import { Resend } from "resend";
 import { getPublicAppUrl } from "@/lib/config/urls";
 
-const apiKey = process.env.RESEND_API_KEY;
-const fromEmail = process.env.EMAIL_FROM ?? "Bucomax <onboarding@resend.dev>";
+export { sendEmail } from "@/infrastructure/email/transactional-mail.client";
 
-let client: Resend | null = null;
-
-function getClient(): Resend {
-  if (!apiKey) {
-    throw new Error("RESEND_API_KEY não configurada.");
-  }
-  if (!client) {
-    client = new Resend(apiKey);
-  }
-  return client;
-}
-
+/** E-mail da plataforma pode ser enviado (chave Resend no ambiente). */
 export function isEmailConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY);
-}
-
-export async function sendEmail(params: {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-}): Promise<{ id?: string; error?: Error }> {
-  try {
-    const resend = getClient();
-    const { data, error } = await resend.emails.send({
-      from: fromEmail,
-      to: [params.to],
-      subject: params.subject,
-      html: params.html,
-      text: params.text,
-    });
-    if (error) {
-      console.error("Resend error:", error);
-      return { error: new Error(error.message) };
-    }
-    return { id: data?.id };
-  } catch (err) {
-    console.error("Erro ao enviar email:", err);
-    return { error: err instanceof Error ? err : new Error(String(err)) };
-  }
 }
 
 const appUrl = () => getPublicAppUrl().replace(/\/$/, "");

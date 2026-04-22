@@ -128,6 +128,25 @@ export class PatientPathwayPrismaRepository implements IPatientPathwayRepository
     });
   }
 
+  async countRequiredChecklistItemsOnStage(pathwayStageId: string) {
+    return prisma.pathwayStageChecklistItem.count({
+      where: { pathwayStageId, requiredForTransition: true },
+    });
+  }
+
+  async countCompletedRequiredChecklistItemsOnStage(
+    patientPathwayId: string,
+    pathwayStageId: string,
+  ) {
+    return prisma.patientPathwayChecklistItem.count({
+      where: {
+        patientPathwayId,
+        completedAt: { not: null },
+        checklistItem: { pathwayStageId, requiredForTransition: true },
+      },
+    });
+  }
+
   async findPatientPathwayForChecklistCompleteNotification(patientPathwayId: string) {
     return prisma.patientPathway.findUnique({
       where: { id: patientPathwayId },
@@ -331,7 +350,7 @@ export class PatientPathwayPrismaRepository implements IPatientPathwayRepository
     return prisma.patientPathway.findFirst({
       where: { id: patientPathwayId, tenantId },
       include: {
-        client: { select: { id: true, name: true, phone: true, assignedToUserId: true } },
+        client: { select: { id: true, name: true, email: true, phone: true, assignedToUserId: true } },
         currentStage: { select: { id: true, name: true, stageKey: true } },
       },
     });
@@ -372,6 +391,13 @@ export class PatientPathwayPrismaRepository implements IPatientPathwayRepository
     return prisma.patientPathway.findFirst({
       where: { clientId, completedAt: null },
       select: { id: true },
+    });
+  }
+
+  async findActiveAssigneeByClientId(tenantId: string, clientId: string) {
+    return prisma.patientPathway.findFirst({
+      where: { tenantId, clientId, completedAt: null },
+      select: { id: true, currentStageAssigneeUserId: true },
     });
   }
 }

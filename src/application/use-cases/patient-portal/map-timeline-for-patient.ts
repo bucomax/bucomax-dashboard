@@ -50,6 +50,9 @@ function sanitizeAuditPayloadForPatient(
           ? { stageTransitionId: payload.stageTransitionId }
           : {}),
       };
+    case "TENANT_EMAIL_DOMAIN_CONFIGURED":
+    case "TENANT_EMAIL_DOMAIN_REMOVED":
+      return {};
     default:
       return {};
   }

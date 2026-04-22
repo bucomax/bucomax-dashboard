@@ -28,7 +28,17 @@ function escapeHtmlText(s: string): string {
     .replace(/"/g, "&quot;");
 }
 
-function baseLayout(content: string, preheader?: string): string {
+type BaseLayoutOptions = { preheader?: string; brandName?: string };
+
+function baseLayout(content: string, preheaderOrOptions?: string | BaseLayoutOptions): string {
+  const options: BaseLayoutOptions =
+    preheaderOrOptions === undefined
+      ? {}
+      : typeof preheaderOrOptions === "string"
+        ? { preheader: preheaderOrOptions }
+        : preheaderOrOptions;
+  const preheader = options.preheader;
+  const brandLabel = escapeHtmlText(options.brandName?.trim() || "Bucomax");
   const base = getPublicAppUrl();
   return `
 <!DOCTYPE html>
@@ -37,7 +47,7 @@ function baseLayout(content: string, preheader?: string): string {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="dark">
-  <title>Bucomax</title>
+  <title>${brandLabel}</title>
   ${preheader ? `<style type="text/css">#preheader { display: none !important; }</style>` : ""}
 </head>
 <body style="margin: 0; padding: 0; background-color: ${BRAND.pageBg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
@@ -48,7 +58,7 @@ function baseLayout(content: string, preheader?: string): string {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 560px; background-color: ${BRAND.cardBg}; border-radius: 12px; overflow: hidden; border: 1px solid ${BRAND.border};">
           <tr>
             <td style="background-color: ${BRAND.headerBg}; padding: 24px 32px; text-align: center; border-bottom: 1px solid ${BRAND.border};">
-              <a href="${base}" style="text-decoration: none; color: ${BRAND.primary}; font-size: 22px; font-weight: 700;">Bucomax</a>
+              <a href="${base}" style="text-decoration: none; color: ${BRAND.primary}; font-size: 22px; font-weight: 700;">${brandLabel}</a>
             </td>
           </tr>
           <tr>
@@ -59,7 +69,7 @@ function baseLayout(content: string, preheader?: string): string {
           <tr>
             <td style="padding: 20px 32px; background-color: ${BRAND.cardBg}; border-top: 1px solid ${BRAND.border};">
               <p style="margin: 0; font-size: 12px; color: ${BRAND.textMuted}; text-align: center;">
-                Bucomax — plataforma clínica multi-tenant
+                ${brandLabel} — plataforma clínica multi-tenant
               </p>
               <p style="margin: 8px 0 0; font-size: 12px; color: ${BRAND.textMuted}; text-align: center;">
                 <a href="${base}" style="color: ${BRAND.link}; text-decoration: underline;">Abrir aplicação</a>
@@ -184,7 +194,10 @@ export function getInviteSetPasswordHtml(params: {
       Este link expira em 48 horas. Se você não esperava este convite, ignore este e-mail.
     </p>
   `;
-  return baseLayout(content, `Defina sua senha — convite Bucomax`);
+  return baseLayout(content, {
+    preheader: "Defina sua senha — convite Bucomax",
+    brandName: params.tenantName,
+  });
 }
 
 /**
@@ -225,7 +238,10 @@ export function getPatientSelfRegisterWelcomeHtml(params: {
       Se você não realizou este cadastro, ignore este e-mail ou entre em contato com a clínica.
     </p>
   `;
-  return baseLayout(content, `Cadastro recebido — ${escapeHtmlText(params.clinicName)}`);
+  return baseLayout(content, {
+    preheader: `Cadastro recebido — ${escapeHtmlText(params.clinicName)}`,
+    brandName: params.clinicName,
+  });
 }
 
 /** Equipe da clínica: paciente concluiu auto-cadastro pelo link/QR (mesmo padrão visual dos demais e-mails transacionais). */
@@ -263,7 +279,10 @@ export function getPatientSelfRegisteredStaffHtml(params: {
       Este aviso foi enviado porque você é membro da equipe desta clínica no Bucomax. Se não deveria recebê-lo, ignore esta mensagem.
     </p>
   `;
-  return baseLayout(content, `Novo paciente em ${escapeHtmlText(params.clinicName)} — Bucomax`);
+  return baseLayout(content, {
+    preheader: `Novo paciente em ${escapeHtmlText(params.clinicName)} — Bucomax`,
+    brandName: params.clinicName,
+  });
 }
 
 /** Paciente: acesso ao portal da jornada (magic link). */
@@ -300,7 +319,10 @@ export function getPatientPortalMagicLinkHtml(params: {
       ${reuseNote} Se você não solicitou este acesso, ignore este e-mail.
     </p>
   `;
-  return baseLayout(content, `Acesso ao portal — ${escapeHtmlText(params.clinicName)}`);
+  return baseLayout(content, {
+    preheader: `Acesso ao portal — ${escapeHtmlText(params.clinicName)}`,
+    brandName: params.clinicName,
+  });
 }
 
 /** Paciente: código para entrar no portal com CPF (OTP). */
@@ -329,7 +351,10 @@ export function getPatientPortalOtpHtml(params: {
       Se você não pediu este código, ignore este e-mail.
     </p>
   `;
-  return baseLayout(content, `Código do portal — ${escapeHtmlText(params.clinicName)}`);
+  return baseLayout(content, {
+    preheader: `Código do portal — ${escapeHtmlText(params.clinicName)}`,
+    brandName: params.clinicName,
+  });
 }
 
 /** Paciente: resultado da revisao de arquivo enviado pelo portal (aprovado ou rejeitado). */
@@ -376,7 +401,7 @@ export function getFileReviewResultPatientHtml(params: {
       ${title}
     </h1>
     <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
-      Ola, ${greeting}!
+      Olá, ${greeting}!
     </p>
     ${statusBlock}
     ${ctaButton(params.portalUrl, ctaLabel)}
@@ -390,5 +415,190 @@ export function getFileReviewResultPatientHtml(params: {
       Este e-mail foi enviado porque voce enviou um documento pelo portal da clinica no Bucomax. Se nao reconhece esta acao, ignore esta mensagem.
     </p>
   `;
-  return baseLayout(content, preheader);
+  return baseLayout(content, { preheader, brandName: params.clinicName });
+}
+
+/** Paciente: nova etapa na jornada (transição). */
+export function getStageTransitionPatientHtml(params: {
+  patientName: string;
+  clinicName: string;
+  stageName: string;
+  patientMessage: string | null;
+  documents: { fileName: string }[];
+  portalUrl: string;
+}): string {
+  const greeting =
+    escapeHtmlText(params.patientName.trim().split(/\s+/)[0] || params.patientName.trim());
+  const clinic = escapeHtmlText(params.clinicName);
+  const stage = escapeHtmlText(params.stageName);
+  const msg =
+    params.patientMessage?.trim() ?
+      `<p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+        ${escapeHtmlText(params.patientMessage.trim())}
+      </p>`
+    : "";
+  const docBlock =
+    params.documents.length > 0 ?
+      `<p style="margin: 0 0 8px; font-size: 14px; font-weight: 600; color: ${BRAND.text};">
+        Documentos desta etapa:
+      </p>
+      <ul style="margin: 0 0 16px; padding-left: 20px; color: ${BRAND.textMuted}; font-size: 14px; line-height: 1.6;">
+        ${params.documents.map((d) => `<li>${escapeHtmlText(d.fileName)}</li>`).join("")}
+      </ul>`
+    : "";
+  const content = `
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND.text}; line-height: 1.3;">
+      Você avançou na jornada
+    </h1>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      Olá, ${greeting}!
+    </p>
+    <p style="margin: 0 0 8px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      A equipe da <strong>${clinic}</strong> registrou sua entrada na etapa <strong>${stage}</strong>.
+    </p>
+    ${msg}
+    ${docBlock}
+    ${ctaButton(params.portalUrl, "Abrir portal do paciente")}
+    <p style="margin: 16px 0 0; font-size: 13px; color: ${BRAND.textMuted}; line-height: 1.5;">
+      Ou copie o link:
+    </p>
+    <p style="margin: 4px 0 0; font-size: 12px; color: ${BRAND.textMuted}; word-break: break-all;">
+      <a href="${params.portalUrl}" style="color: ${BRAND.link}; text-decoration: underline;">${params.portalUrl}</a>
+    </p>
+    <p style="margin: 24px 0 0; padding-top: 20px; border-top: 1px solid ${BRAND.border}; font-size: 12px; color: ${BRAND.textMuted}; line-height: 1.5;">
+      Este e-mail foi enviado porque sua jornada na clínica foi atualizada no Bucomax.
+    </p>
+  `;
+  return baseLayout(content, {
+    preheader: `Nova etapa: ${stage} — ${clinic}`,
+    brandName: params.clinicName,
+  });
+}
+
+/** Staff: alerta de SLA (atenção ou crítico). */
+export function getSlaAlertStaffHtml(params: {
+  staffName: string | null;
+  patientName: string;
+  stageName: string;
+  daysInStage: number;
+  slaThresholdDays: number;
+  clinicName: string;
+  severity: "warning" | "danger";
+  patientUrl: string;
+}): string {
+  const who = escapeHtmlText(params.staffName?.trim() || "Olá");
+  const patient = escapeHtmlText(params.patientName);
+  const stage = escapeHtmlText(params.stageName);
+  const clinic = escapeHtmlText(params.clinicName);
+  const isDanger = params.severity === "danger";
+  const badgeColor = isDanger ? "#ef4444" : "#f59e0b";
+  const badgeLabel = isDanger ? "Alerta crítico" : "Atenção";
+  const content = `
+    <p style="margin: 0 0 12px;">
+      <span style="display: inline-block; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; color: #000; background-color: ${badgeColor};">
+        ${badgeLabel}
+      </span>
+    </p>
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND.text}; line-height: 1.3;">
+      SLA da etapa
+    </h1>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      ${who},
+    </p>
+    <p style="margin: 0 0 8px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      <strong>${patient}</strong> está há <strong>${params.daysInStage}</strong> dia(s) na etapa <strong>${stage}</strong>
+      (limite de alerta: <strong>${params.slaThresholdDays}</strong> dia(s)).
+    </p>
+    <p style="margin: 0 0 16px; font-size: 14px; color: ${BRAND.textMuted}; line-height: 1.6;">
+      Clínica: ${clinic}
+    </p>
+    ${ctaButton(params.patientUrl, "Abrir ficha do paciente")}
+    <p style="margin: 16px 0 0; font-size: 13px; color: ${BRAND.textMuted}; line-height: 1.5;">
+      Ou copie o link:
+    </p>
+    <p style="margin: 4px 0 0; font-size: 12px; color: ${BRAND.textMuted}; word-break: break-all;">
+      <a href="${params.patientUrl}" style="color: ${BRAND.link}; text-decoration: underline;">${params.patientUrl}</a>
+    </p>
+  `;
+  return baseLayout(content, {
+    preheader: `${badgeLabel}: ${patient} — ${stage}`,
+    brandName: params.clinicName,
+  });
+}
+
+/** Staff: checklist da etapa concluído (itens obrigatórios). */
+export function getChecklistCompleteStaffHtml(params: {
+  staffName: string | null;
+  patientName: string;
+  stageName: string;
+  totalRequiredItems: number;
+  clinicName: string;
+  patientUrl: string;
+}): string {
+  const who = escapeHtmlText(params.staffName?.trim() || "Olá");
+  const patient = escapeHtmlText(params.patientName);
+  const stage = escapeHtmlText(params.stageName);
+  const clinic = escapeHtmlText(params.clinicName);
+  const n = params.totalRequiredItems;
+  const content = `
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND.text}; line-height: 1.3;">
+      Checklist completo
+    </h1>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      ${who},
+    </p>
+    <p style="margin: 0 0 8px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      Todos os <strong>${n}</strong> itens obrigatórios da etapa <strong>${stage}</strong> foram concluídos para <strong>${patient}</strong>.
+    </p>
+    <p style="margin: 0 0 16px; font-size: 14px; color: ${BRAND.textMuted}; line-height: 1.6;">
+      Clínica: ${clinic}
+    </p>
+    ${ctaButton(params.patientUrl, "Abrir ficha do paciente")}
+    <p style="margin: 16px 0 0; font-size: 13px; color: ${BRAND.textMuted}; line-height: 1.5;">
+      Ou copie o link:
+    </p>
+    <p style="margin: 4px 0 0; font-size: 12px; color: ${BRAND.textMuted}; word-break: break-all;">
+      <a href="${params.patientUrl}" style="color: ${BRAND.link}; text-decoration: underline;">${params.patientUrl}</a>
+    </p>
+  `;
+  return baseLayout(content, {
+    preheader: `Checklist completo: ${patient} — ${stage}`,
+    brandName: params.clinicName,
+  });
+}
+
+/** Staff: documento enviado pelo portal aguardando revisão. */
+export function getFilePendingReviewStaffHtml(params: {
+  staffName: string | null;
+  patientName: string;
+  fileName: string;
+  clinicName: string;
+  reviewUrl: string;
+}): string {
+  const who = escapeHtmlText(params.staffName?.trim() || "Olá");
+  const patient = escapeHtmlText(params.patientName);
+  const file = escapeHtmlText(params.fileName);
+  const clinic = escapeHtmlText(params.clinicName);
+  const content = `
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: ${BRAND.text}; line-height: 1.3;">
+      Documento para revisar
+    </h1>
+    <p style="margin: 0 0 16px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      ${who},
+    </p>
+    <p style="margin: 0 0 8px; font-size: 15px; color: ${BRAND.text}; line-height: 1.6;">
+      <strong>${patient}</strong> enviou o arquivo <strong>${file}</strong> pela clínica <strong>${clinic}</strong>.
+    </p>
+    ${ctaButton(params.reviewUrl, "Revisar documento")}
+    <p style="margin: 16px 0 0; font-size: 13px; color: ${BRAND.textMuted}; line-height: 1.5;">
+      Ou copie o link:
+    </p>
+    <p style="margin: 4px 0 0; font-size: 12px; color: ${BRAND.textMuted}; word-break: break-all;">
+      <a href="${params.reviewUrl}" style="color: ${BRAND.link}; text-decoration: underline;">${params.reviewUrl}</a>
+    </p>
+  `;
+  return baseLayout(content, {
+    preheader: `Novo documento: ${file} — ${clinic}`,
+    brandName: params.clinicName,
+  });
 }

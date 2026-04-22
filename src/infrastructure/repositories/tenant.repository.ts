@@ -1,5 +1,4 @@
-import type { Prisma } from "@prisma/client";
-import { TenantRole } from "@prisma/client";
+import { Prisma, TenantRole } from "@prisma/client";
 
 import type {
   CreateTenantInput,
@@ -326,6 +325,139 @@ export class TenantPrismaRepository implements ITenantRepository {
     return prisma.tenant.findFirst({
       where: { whatsappPhoneNumberId: phoneNumberId, whatsappEnabled: true },
       select: { id: true },
+    });
+  }
+
+  async findTenantEmailDomainInternal(tenantId: string) {
+    return prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        emailOutboundMode: true,
+        emailEnabled: true,
+        emailFromName: true,
+        emailFromAddress: true,
+        emailResendDomainId: true,
+        emailDomainName: true,
+        emailDomainStatus: true,
+        emailDomainDnsRecords: true,
+        emailDomainVerifiedAt: true,
+      },
+    });
+  }
+
+  async updateTenantEmailDomainAfterSetup(
+    tenantId: string,
+    data: {
+      emailResendDomainId: string;
+      emailDomainName: string;
+      emailDomainStatus: string;
+      emailDomainDnsRecords: Prisma.InputJsonValue;
+      emailFromName: string;
+      emailFromAddress: string;
+      emailEnabled: boolean;
+      emailOutboundMode: import("@prisma/client").EmailOutboundMode;
+    },
+  ) {
+    return prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        emailResendDomainId: data.emailResendDomainId,
+        emailDomainName: data.emailDomainName,
+        emailDomainStatus: data.emailDomainStatus,
+        emailDomainDnsRecords: data.emailDomainDnsRecords,
+        emailFromName: data.emailFromName,
+        emailFromAddress: data.emailFromAddress,
+        emailEnabled: data.emailEnabled,
+        emailOutboundMode: data.emailOutboundMode,
+        emailDomainVerifiedAt: null,
+      },
+    });
+  }
+
+  async updateTenantEmailDomainFromVerify(
+    tenantId: string,
+    data: {
+      emailDomainStatus: string;
+      emailDomainDnsRecords: Prisma.InputJsonValue;
+      emailDomainVerifiedAt: Date | null;
+    },
+  ) {
+    return prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        emailDomainStatus: data.emailDomainStatus,
+        emailDomainDnsRecords: data.emailDomainDnsRecords,
+        emailDomainVerifiedAt: data.emailDomainVerifiedAt,
+      },
+    });
+  }
+
+  async patchTenantEmailDomainSettings(
+    tenantId: string,
+    data: {
+      emailOutboundMode?: import("@prisma/client").EmailOutboundMode;
+      smtpEnabled?: boolean;
+      emailEnabled?: boolean;
+      emailFromName?: string | null;
+      emailFromAddress?: string | null;
+    },
+  ) {
+    return prisma.tenant.update({
+      where: { id: tenantId },
+      data,
+    });
+  }
+
+  async clearTenantEmailDomain(tenantId: string) {
+    return prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        emailOutboundMode: "platform",
+        emailEnabled: false,
+        emailFromName: null,
+        emailFromAddress: null,
+        emailResendDomainId: null,
+        emailDomainName: null,
+        emailDomainStatus: null,
+        emailDomainDnsRecords: Prisma.JsonNull,
+        emailDomainVerifiedAt: null,
+      },
+    });
+  }
+
+  async findTenantSmtpForSettings(tenantId: string) {
+    return prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        smtpEnabled: true,
+        smtpHost: true,
+        smtpPort: true,
+        smtpSecure: true,
+        smtpUser: true,
+        smtpPasswordEnc: true,
+        smtpFromName: true,
+        smtpFromAddress: true,
+      },
+    });
+  }
+
+  async patchTenantSmtpSettings(
+    tenantId: string,
+    data: {
+      emailOutboundMode?: import("@prisma/client").EmailOutboundMode;
+      smtpEnabled?: boolean;
+      smtpHost?: string | null;
+      smtpPort?: number | null;
+      smtpSecure?: boolean;
+      smtpUser?: string | null;
+      smtpPasswordEnc?: string | null;
+      smtpFromName?: string | null;
+      smtpFromAddress?: string | null;
+    },
+  ) {
+    return prisma.tenant.update({
+      where: { id: tenantId },
+      data,
     });
   }
 }

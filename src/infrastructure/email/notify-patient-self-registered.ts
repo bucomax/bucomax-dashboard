@@ -1,7 +1,9 @@
 import { prisma } from "@/infrastructure/database/prisma";
 import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
 import { getPatientSelfRegisteredStaffHtml } from "@/infrastructure/email/email-templates";
-import { isEmailConfigured, sendEmail } from "@/infrastructure/email/resend.client";
+import { canSendEmailForTenant } from "@/infrastructure/email/email-availability";
+import { resolveTenantSender } from "@/infrastructure/email/resolve-tenant-sender";
+import { sendEmail } from "@/infrastructure/email/resend.client";
 import { getPublicAppUrl } from "@/lib/config/urls";
 
 type NotifyParams = {
@@ -37,9 +39,11 @@ export async function notifyStaffPatientSelfRegistered(params: NotifyParams): Pr
   });
 
   /** E-mail: mesmo layout dos outros templates Bucomax (`email-templates.ts`). */
-  if (!isEmailConfigured()) {
+  if (!(await canSendEmailForTenant(tenantId))) {
     return;
   }
+
+  const { from, useSmtp } = await resolveTenantSender(tenantId);
 
   const memberships = await prisma.tenantMembership.findMany({
     where: { tenantId },
@@ -56,6 +60,7 @@ export async function notifyStaffPatientSelfRegistered(params: NotifyParams): Pr
     recipients.map((user) =>
       sendEmail({
         to: user.email,
+        from,
         subject: `Bucomax — Novo paciente: ${patientName}`,
         html: getPatientSelfRegisteredStaffHtml({
           staffName: user.name,
@@ -64,6 +69,8 @@ export async function notifyStaffPatientSelfRegistered(params: NotifyParams): Pr
           openPatientUrl,
         }),
         text: `${patientName} concluiu o cadastro em ${clinicName}. Abra: ${openPatientUrl}`,
+        tenantId,
+        useSmtp,
       }),
     ),
   );

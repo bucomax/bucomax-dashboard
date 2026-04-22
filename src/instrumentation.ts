@@ -35,4 +35,12 @@ export async function register() {
   if (wppWorker) {
     console.log("[instrumentation] BullMQ WhatsApp dispatch worker started");
   }
+
+  const { startEmailDispatchWorker } = await import(
+    "@/infrastructure/queue/email-dispatch-worker"
+  );
+  const emailWorker = startEmailDispatchWorker();
+  if (emailWorker) {
+    console.log("[instrumentation] BullMQ email dispatch worker started");
+  }
 }

@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { notifyActiveAppsMenuInvalidated } from "@/features/apps/app/lib/invalidate-active-apps";
 import { getAdminApps, deleteApp, publishApp } from "@/features/apps/app/services/admin-apps.service";
+import { AdminAppStorePreviewDialog } from "@/features/apps/app/components/admin-app-store-preview-dialog";
 import { AdminAppWizardDialog } from "@/features/apps/app/components/admin-app-wizard-dialog";
 import { AppIcon } from "@/features/apps/app/components/app-icon";
 import type { AppDto } from "@/types/api/apps-v1";
@@ -10,7 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/sha
 import { Badge } from "@/shared/components/ui/badge";
 import { Skeleton } from "@/shared/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/shared/components/ui/tooltip";
-import { Eye, EyeOff, Pencil, Plus, Trash2, Users } from "lucide-react";
+import { Eye, EyeOff, Pencil, Plus, Store, Trash2, Users } from "lucide-react";
 import { useTranslations } from "next-intl";
 
 export function AdminAppList() {
@@ -22,6 +24,7 @@ export function AdminAppList() {
   // Wizard dialog state
   const [wizardOpen, setWizardOpen] = useState(false);
   const [editingApp, setEditingApp] = useState<AppDto | null>(null);
+  const [previewApp, setPreviewApp] = useState<AppDto | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -134,6 +137,22 @@ export function AdminAppList() {
                           <Button
                             size="icon"
                             variant="ghost"
+                            onClick={() => setPreviewApp(app)}
+                            aria-label={t("preview.view")}
+                          />
+                        }
+                      >
+                        <Store className="size-4" />
+                      </TooltipTrigger>
+                      <TooltipContent>{t("preview.viewTooltip")}</TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            size="icon"
+                            variant="ghost"
                             onClick={() => openEdit(app)}
                           />
                         }
@@ -191,7 +210,18 @@ export function AdminAppList() {
         open={wizardOpen}
         onOpenChange={setWizardOpen}
         editApp={editingApp}
-        onSaved={() => void refresh()}
+        onSaved={() => {
+          notifyActiveAppsMenuInvalidated();
+          void refresh();
+        }}
+      />
+
+      <AdminAppStorePreviewDialog
+        app={previewApp}
+        open={previewApp != null}
+        onOpenChange={(o) => {
+          if (!o) setPreviewApp(null);
+        }}
       />
     </>
   );

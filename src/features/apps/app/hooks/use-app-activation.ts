@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { notifyActiveAppsMenuInvalidated } from "@/features/apps/app/lib/invalidate-active-apps";
 import { activateApp, deactivateApp } from "@/features/apps/app/services/apps.service";
 
 export function useAppActivation(onSuccess?: () => void) {
@@ -12,6 +13,7 @@ export function useAppActivation(onSuccess?: () => void) {
       setActivating(true);
       try {
         await activateApp(appId, config);
+        notifyActiveAppsMenuInvalidated();
         onSuccess?.();
       } finally {
         setActivating(false);
@@ -25,6 +27,7 @@ export function useAppActivation(onSuccess?: () => void) {
       setDeactivating(true);
       try {
         await deactivateApp(appId);
+        notifyActiveAppsMenuInvalidated();
         onSuccess?.();
       } finally {
         setDeactivating(false);

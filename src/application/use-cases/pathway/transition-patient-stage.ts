@@ -6,7 +6,10 @@ import { recordAuditEvent, AuditEventType } from "@/infrastructure/audit/record-
 import { pathwayPrismaRepository } from "@/infrastructure/repositories/pathway.repository";
 import { patientPathwayPrismaRepository } from "@/infrastructure/repositories/patient-pathway.repository";
 import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
+import { enqueueEmailDispatch } from "@/infrastructure/email/email-dispatch-emitter";
 import { enqueueWhatsAppDispatch } from "@/infrastructure/whatsapp/whatsapp-dispatch-emitter";
+import { getPublicAppUrl } from "@/lib/config/urls";
+import { tenantPrismaRepository } from "@/infrastructure/repositories/tenant.repository";
 import {
   buildStageDispatchStub,
   getStageDocumentBundle,
@@ -111,6 +114,7 @@ export async function runTransitionPatientStage(params: {
     transitionId: string;
     documents: StageDocumentBundleItem[];
   } | null = null;
+  let stageDocumentBundle: StageDocumentBundleItem[] = [];
 
   try {
     const txResult = await patientPathwayPrismaRepository.runInTransaction(async (txRaw) => {
@@ -202,6 +206,7 @@ export async function runTransitionPatientStage(params: {
       blockedPending = txResult.pending;
     } else {
       updated = txResult.patientPathway;
+      stageDocumentBundle = txResult.documents;
       if (txResult.documents.length > 0 && pp.client.phone) {
         whatsappEnqueue = {
           transitionId: txResult.transitionId,
@@ -241,6 +246,32 @@ export async function runTransitionPatientStage(params: {
       stageName: toStage.name,
     },
   }).catch((err) => console.error("[notification] stage_transition emit failed:", err));
+
+  const clientEmail = pp.client.email?.trim();
+  if (clientEmail) {
+    const tenantRow = await tenantPrismaRepository.findTenantNameAndSlugById(tenantId);
+    const clinicName = tenantRow?.name?.trim() || "Clínica";
+    const slug = tenantRow?.slug?.trim() ?? "";
+    if (slug) {
+      const portalUrl = `${getPublicAppUrl()}/${encodeURIComponent(slug)}/patient/login`;
+      enqueueEmailDispatch(
+        {
+          kind: "stage_transition_patient",
+          tenantId,
+          to: clientEmail,
+          data: {
+            patientName: pp.client.name,
+            stageName: toStage.name,
+            patientMessage: toStage.patientMessage ?? null,
+            documents: stageDocumentBundle.map((d) => ({ fileName: d.file.fileName })),
+            portalUrl,
+            clinicName,
+          },
+        },
+        { jobId: `email|st|${tenantId}|${pp.id}|${toStage.id}`.replace(/:/g, "_") },
+      ).catch((err) => console.error("[email] stage_transition patient enqueue failed:", err));
+    }
+  }
 
   if (whatsappEnqueue) {
     enqueueWhatsAppDispatch({

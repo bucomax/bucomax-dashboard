@@ -3,7 +3,9 @@ import { z } from "zod";
 
 import type { TenantMembershipRole } from "@/application/ports/user-repository.port";
 import { getInviteSetPasswordHtml } from "@/infrastructure/email/email-templates";
-import { isEmailConfigured, sendEmail, buildInviteSetPasswordUrl } from "@/infrastructure/email/resend.client";
+import { canSendEmailForTenant } from "@/infrastructure/email/email-availability";
+import { resolveTenantSender } from "@/infrastructure/email/resolve-tenant-sender";
+import { sendEmail, buildInviteSetPasswordUrl } from "@/infrastructure/email/resend.client";
 import { tenantPrismaRepository } from "@/infrastructure/repositories/tenant.repository";
 import { userPrismaRepository } from "@/infrastructure/repositories/user.repository";
 import { normalizeEmail } from "@/lib/utils/email";
@@ -47,13 +49,15 @@ async function sendInviteSetPasswordEmail(
   emailNorm: string,
   name: string | null | undefined,
   token: string,
-  tenant: { name: string; taxId: string | null },
+  tenant: { name: string; taxId: string | null; id: string },
 ): Promise<{ error?: Error }> {
   const setPasswordUrl = buildInviteSetPasswordUrl(token);
   const taxRaw = tenant.taxId?.trim();
   const tenantTaxIdDisplay = taxRaw ? formatTaxDocumentDisplay(taxRaw) : null;
+  const { from, useSmtp } = await resolveTenantSender(tenant.id);
   return sendEmail({
     to: emailNorm,
+    from,
     subject: buildInviteEmailSubject(tenant.name),
     html: getInviteSetPasswordHtml({
       name: name?.trim() || null,
@@ -61,6 +65,8 @@ async function sendInviteSetPasswordEmail(
       tenantName: tenant.name.trim(),
       tenantTaxIdDisplay,
     }),
+    tenantId: tenant.id,
+    useSmtp,
   });
 }
 
@@ -78,7 +84,7 @@ export async function runInviteTenantMember(input: InviteTenantMemberInput): Pro
   if (!tenant) {
     return { ok: false, code: "TENANT_NOT_FOUND" };
   }
-  const tenantForEmail = { name: tenant.name, taxId: tenant.taxId };
+  const tenantForEmail = { id: tenant.id, name: tenant.name, taxId: tenant.taxId };
 
   const existing = await userPrismaRepository.findUserForTenantInvite(emailNorm, tenantId);
 
@@ -93,7 +99,7 @@ export async function runInviteTenantMember(input: InviteTenantMemberInput): Pro
     const token = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
     const needsInviteEmail = existing.passwordHash === null;
-    if (needsInviteEmail && !isEmailConfigured()) {
+    if (needsInviteEmail && !(await canSendEmailForTenant(tenantId))) {
       return { ok: false, code: "EMAIL_NOT_CONFIGURED" };
     }
     const trimmedName = name?.trim();
@@ -135,7 +141,7 @@ export async function runInviteTenantMember(input: InviteTenantMemberInput): Pro
     };
   }
 
-  if (!isEmailConfigured()) {
+  if (!(await canSendEmailForTenant(tenantId))) {
     return { ok: false, code: "EMAIL_NOT_CONFIGURED" };
   }
 

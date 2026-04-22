@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   ExternalLink,
   FileUp,
+  Link2,
   UserPlus,
 } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -23,6 +24,7 @@ const TYPE_ICONS: Record<string, typeof Bell> = {
   new_patient: UserPlus,
   checklist_complete: ClipboardCheck,
   patient_portal_file_pending: FileUp,
+  patient_portal_link_sent: Link2,
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -32,6 +34,7 @@ const TYPE_COLORS: Record<string, string> = {
   new_patient: "text-green-500",
   checklist_complete: "text-emerald-500",
   patient_portal_file_pending: "text-cyan-500",
+  patient_portal_link_sent: "text-sky-500",
 };
 
 type NotificationItemProps = {

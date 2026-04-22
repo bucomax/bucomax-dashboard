@@ -13,13 +13,15 @@ type InfoTooltipProps = {
   children: ReactNode;
   /** Classes extras no botão (ex.: alinhar com `FieldLabel`). */
   triggerClassName?: string;
+  /** Classes no painel do popover (ex.: `max-w-md` para textos longos). */
+  popupClassName?: string;
 };
 
 /**
  * Ícone (i) com dica em popover: toque abre no celular; hover no desktop (`openOnHover`),
  * conforme recomendação do Base UI (tooltips não funcionam em touch).
  */
-export function InfoTooltip({ ariaLabel, children, triggerClassName }: InfoTooltipProps) {
+export function InfoTooltip({ ariaLabel, children, triggerClassName, popupClassName }: InfoTooltipProps) {
   return (
     <PopoverPrimitive.Root modal={false}>
       <PopoverPrimitive.Trigger
@@ -43,6 +45,7 @@ export function InfoTooltip({ ariaLabel, children, triggerClassName }: InfoToolt
             className={cn(
               "z-50 max-w-sm origin-(--transform-origin) rounded-md bg-foreground px-3 py-2 text-left text-sm leading-relaxed text-balance text-background shadow-md ring-1 ring-background/10 outline-none",
               "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+              popupClassName,
             )}
           >
             {children}

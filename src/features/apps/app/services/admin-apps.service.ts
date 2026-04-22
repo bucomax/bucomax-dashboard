@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/api/http-client";
+import { notifyActiveAppsMenuInvalidated } from "@/features/apps/app/lib/invalidate-active-apps";
 import type { ApiEnvelope } from "@/shared/types/api/v1";
 import type {
   AdminAppDetailResponseData,
@@ -56,6 +57,7 @@ export async function publishApp(appId: string, isPublished: boolean): Promise<A
     { toastSuccessMessage: isPublished ? "App publicado." : "App despublicado." },
   );
   if (!res.data.success) throw new Error(res.data.error.message);
+  notifyActiveAppsMenuInvalidated();
   return res.data.data.app;
 }
 

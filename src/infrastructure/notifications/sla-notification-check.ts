@@ -1,6 +1,7 @@
 import type { NotificationType } from "@prisma/client";
 import { prisma } from "@/infrastructure/database/prisma";
 import { resolvePathwayNotificationTargetUserIds } from "@/application/use-cases/notification/resolve-notification-targets";
+import { enqueueEmailDispatch } from "@/infrastructure/email/email-dispatch-emitter";
 import { notificationEmitter } from "./notification-emitter";
 import { computeSlaHealthStatus } from "@/domain/pathway/sla-health";
 
@@ -19,6 +20,13 @@ type SlaCheckInput = {
  */
 export async function checkAndEmitSlaNotifications(input: SlaCheckInput): Promise<void> {
   const now = new Date();
+
+  const tenantRow = await prisma.tenant.findUnique({
+    where: { id: input.tenantId },
+    select: { name: true, notifyCriticalAlerts: true },
+  });
+  if (!tenantRow) return;
+  const clinicName = tenantRow.name?.trim() || "Clínica";
 
   const patients = await prisma.patientPathway.findMany({
     where: {
@@ -95,5 +103,29 @@ export async function checkAndEmitSlaNotifications(input: SlaCheckInput): Promis
         daysInStage,
       },
     }).catch((err) => console.error("[notification] sla emit failed:", err));
+
+    if (tenantRow.notifyCriticalAlerts && targetUserIds.length > 0) {
+      const slaThresholdDays =
+        status === "danger"
+          ? (pp.currentStage.alertCriticalDays ?? daysInStage)
+          : (pp.currentStage.alertWarningDays ?? daysInStage);
+      enqueueEmailDispatch(
+        {
+          kind: "sla_alert",
+          tenantId: input.tenantId,
+          data: {
+            severity: status === "danger" ? "danger" : "warning",
+            patientName: pp.client.name,
+            stageName: pp.currentStage.name,
+            daysInStage,
+            slaThresholdDays,
+            clientId: pp.clientId,
+            targetUserIds,
+            clinicName,
+          },
+        },
+        { jobId: `email|sla|${input.tenantId}|${pp.id}|${pp.currentStage.id}`.replace(/:/g, "_") },
+      ).catch((err) => console.error("[email] sla alert enqueue failed:", err));
+    }
   }
 }

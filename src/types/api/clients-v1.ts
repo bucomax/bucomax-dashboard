@@ -265,7 +265,9 @@ export type ClientTimelineAuditEventType =
   | "WHATSAPP_DISPATCH_DELIVERED"
   | "WHATSAPP_DISPATCH_READ"
   | "WHATSAPP_DISPATCH_FAILED"
-  | "WHATSAPP_PATIENT_CONFIRMED";
+  | "WHATSAPP_PATIENT_CONFIRMED"
+  | "TENANT_EMAIL_DOMAIN_CONFIGURED"
+  | "TENANT_EMAIL_DOMAIN_REMOVED";
 
 /** Transição legada na timeline (inclui instância da jornada). */
 export type ClientTimelineLegacyTransitionDto = ClientDetailTransitionDto & {

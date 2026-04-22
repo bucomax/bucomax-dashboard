@@ -31,6 +31,7 @@ enum NotificationType {
   new_patient
   checklist_complete
   patient_portal_file_pending
+  patient_portal_link_sent
 }
 
 /** Eventos de auditoria agregados na linha do tempo do paciente (LGPD: payload sem conteúdo clínico). */
@@ -66,6 +67,8 @@ enum AuditEventType {
   WHATSAPP_DISPATCH_READ
   WHATSAPP_DISPATCH_FAILED
   WHATSAPP_PATIENT_CONFIRMED
+  TENANT_EMAIL_DOMAIN_CONFIGURED
+  TENANT_EMAIL_DOMAIN_REMOVED
 }
 
 /** Validação na ficha quando o paciente envia arquivo pelo portal. */
@@ -176,6 +179,12 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+enum EmailOutboundMode {
+  platform
+  smtp
+  resend_domain
+}
+
 model Tenant {
   id                         String                      @id @default(cuid())
   name                       String
@@ -206,6 +215,35 @@ model Tenant {
   /** ISO timestamp of last successful API health check. */
   whatsappVerifiedAt         DateTime?
 
+  // === E-mail: modo de envio (qual configuração vale o remetente) ===
+  /**
+   * `platform` = remetente padrão da aplicação;
+   * `smtp` = servidor SMTP do tenant;
+   * `resend_domain` = domínio verificado (DNS) via provedor de envio.
+   */
+  emailOutboundMode          EmailOutboundMode           @default(platform)
+
+  // === E-mail (Resend / domínio próprio) ===
+  emailEnabled               Boolean                     @default(false)
+  emailFromName              String?
+  emailFromAddress           String?
+  emailResendDomainId        String?
+  emailDomainName            String?
+  emailDomainStatus          String?
+  emailDomainDnsRecords      Json?
+  emailDomainVerifiedAt      DateTime?
+
+  // === E-mail: SMTP do próprio tenant (Gmail, Microsoft 365, etc.) — tem prioridade sobre domínio Resend. ===
+  smtpEnabled                Boolean                     @default(false)
+  smtpHost                   String?
+  smtpPort                   Int?                        @default(587)
+  smtpSecure                 Boolean                     @default(false)
+  smtpUser                   String?
+  /** AES-256-GCM; mesma chave `WHATSAPP_ENCRYPTION_KEY`. */
+  smtpPasswordEnc            String?                     @db.Text
+  smtpFromName               String?
+  smtpFromAddress            String?
+
   createdAt                  DateTime                    @default(now())
   updatedAt                  DateTime                    @updatedAt
   memberships                TenantMembership[]
@@ -221,6 +259,7 @@ model Tenant {
   patientSelfRegisterInvites PatientSelfRegisterInvite[]
   auditEvents                AuditEvent[]
   channelDispatches          ChannelDispatch[]
+  emailDispatchLogs          EmailDispatchLog[]
   tenantApps                 TenantApp[]
 }
 
@@ -676,6 +715,7 @@ model Notification {
 
 enum DispatchChannel {
   WHATSAPP
+  EMAIL
 }
 
 enum DispatchStatus {
@@ -731,6 +771,36 @@ model ChannelDispatch {
   @@index([stageTransitionId])
   @@index([externalMessageId])
   @@index([clientId, createdAt])
+}
+
+/**
+ * Rastreio de envios transacionais Resend (fora de ChannelDispatch, que exige transição de etapa).
+ * `resendMessageId` vem da API; webhooks (Svix) atualizam status.
+ */
+enum EmailDispatchLogStatus {
+  SENT
+  DELIVERED
+  BOUNCED
+  COMPLAINED
+  OPENED
+  FAILED
+}
+
+model EmailDispatchLog {
+  id                 String                 @id @default(cuid())
+  tenantId           String
+  tenant             Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  resendMessageId    String                 @unique
+  jobKind            String
+  /** SHA-256 (hex) do e-mail do destinatário em minúsculas, para auditoria sem PII em texto. */
+  recipientEmailHash String
+  status             EmailDispatchLogStatus  @default(SENT)
+  lastResendEventType String?
+  lastResendEventAt  DateTime?
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+
+  @@index([tenantId, createdAt])
 }
 
 // ---------------------------------------------------------------------------

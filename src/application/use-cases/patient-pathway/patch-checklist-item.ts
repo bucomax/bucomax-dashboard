@@ -1,8 +1,10 @@
 import { AuditEventType } from "@prisma/client";
+import { resolvePathwayNotificationTargetUserIds } from "@/application/use-cases/notification/resolve-notification-targets";
+import { enqueueEmailDispatch } from "@/infrastructure/email/email-dispatch-emitter";
 import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
 import { auditEventPrismaRepository } from "@/infrastructure/repositories/audit-event.repository";
 import { patientPathwayPrismaRepository } from "@/infrastructure/repositories/patient-pathway.repository";
-import { resolvePathwayNotificationTargetUserIds } from "@/application/use-cases/notification/resolve-notification-targets";
+import { tenantPrismaRepository } from "@/infrastructure/repositories/tenant.repository";
 import { patchPatientChecklistItemBodySchema } from "@/lib/validators/patient-pathway-checklist";
 import type { z } from "zod";
 
@@ -67,46 +69,73 @@ export async function runPatchPatientChecklistItem(params: {
   const p = progress as { checklistItemId: string; completedAt: Date | null };
 
   if (parsed.completed) {
-    const totalItems = await patientPathwayPrismaRepository.countChecklistItemsOnStage(
+    const requiredCount = await patientPathwayPrismaRepository.countRequiredChecklistItemsOnStage(
       patientPathway.currentStageId,
     );
-    const completedItems = await patientPathwayPrismaRepository.countCompletedChecklistItemsOnStage(
-      patientPathway.id,
-      patientPathway.currentStageId,
-    );
-
-    if (totalItems > 0 && completedItems >= totalItems) {
-      const pp = await patientPathwayPrismaRepository.findPatientPathwayForChecklistCompleteNotification(
-        patientPathway.id,
-      );
-      if (pp && typeof pp === "object") {
-        const row = pp as {
-          tenantId: string;
-          clientId: string;
-          currentStageAssigneeUserId: string | null;
-          client: { name: string };
-          currentStage: { name: string };
-        };
-        const checklistTargets = await resolvePathwayNotificationTargetUserIds({
-          tenantId,
-          type: "checklist_complete",
-          currentStageAssigneeUserId: row.currentStageAssigneeUserId,
-        });
-        notificationEmitter
-          .emit({
+    if (requiredCount > 0) {
+      const completedRequired =
+        await patientPathwayPrismaRepository.countCompletedRequiredChecklistItemsOnStage(
+          patientPathway.id,
+          patientPathway.currentStageId,
+        );
+      if (completedRequired >= requiredCount) {
+        const pp = await patientPathwayPrismaRepository.findPatientPathwayForChecklistCompleteNotification(
+          patientPathway.id,
+        );
+        if (pp && typeof pp === "object") {
+          const row = pp as {
+            tenantId: string;
+            clientId: string;
+            currentStageAssigneeUserId: string | null;
+            client: { name: string };
+            currentStage: { name: string };
+          };
+          const checklistTargets = await resolvePathwayNotificationTargetUserIds({
             tenantId,
             type: "checklist_complete",
-            title: `Checklist completo: ${row.client.name}`,
-            body: `Todos os itens da etapa "${row.currentStage.name}" foram concluídos.`,
-            targetUserIds: checklistTargets,
-            correlationId: `${patientPathway.id}:${patientPathway.currentStageId}`,
-            metadata: {
-              clientId: row.clientId,
-              patientPathwayId: patientPathway.id,
-              stageName: row.currentStage.name,
-            },
-          })
-          .catch((err) => console.error("[notification] checklist_complete emit failed:", err));
+            currentStageAssigneeUserId: row.currentStageAssigneeUserId,
+          });
+          const stageLabel = row.currentStage.name;
+          const body = `Todos os ${requiredCount} itens obrigatórios da etapa "${stageLabel}" foram concluídos.`;
+          notificationEmitter
+            .emit({
+              tenantId,
+              type: "checklist_complete",
+              title: `Checklist completo: ${row.client.name}`,
+              body,
+              targetUserIds: checklistTargets,
+              correlationId: `${patientPathway.id}:${patientPathway.currentStageId}`,
+              metadata: {
+                clientId: row.clientId,
+                patientPathwayId: patientPathway.id,
+                stageName: row.currentStage.name,
+                requiredItemsCompleted: requiredCount,
+              },
+            })
+            .catch((err) => console.error("[notification] checklist_complete emit failed:", err));
+
+          const tenant = await tenantPrismaRepository.findTenantNameAndSlugById(tenantId);
+          const clinicName = tenant?.name?.trim() || "Clínica";
+          if (checklistTargets.length > 0) {
+            enqueueEmailDispatch(
+              {
+                kind: "checklist_complete_staff",
+                tenantId,
+                data: {
+                  patientName: row.client.name,
+                  stageName: row.currentStage.name,
+                  totalRequiredItems: requiredCount,
+                  clientId: row.clientId,
+                  targetUserIds: checklistTargets,
+                  clinicName,
+                },
+              },
+              { jobId: `email|cl|${tenantId}|${patientPathway.id}|${patientPathway.currentStageId}`.replace(/:/g, "_") },
+            ).catch((err) =>
+              console.error("[email] checklist_complete staff enqueue failed:", err),
+            );
+          }
+        }
       }
     }
   }

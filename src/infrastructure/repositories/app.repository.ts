@@ -216,7 +216,7 @@ export const appPrismaRepository = {
 
   async listActiveTenantApps(tenantId: string) {
     return prisma.tenantApp.findMany({
-      where: { tenantId, status: "active" },
+      where: { tenantId, status: "active", app: { isPublished: true } },
       include: { app: { include: { iconFile: true } } },
       orderBy: { app: { sortOrder: "asc" } },
     });

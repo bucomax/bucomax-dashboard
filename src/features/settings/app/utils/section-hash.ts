@@ -2,6 +2,7 @@ export type SettingsSectionId =
   | "account"
   | "clinic"
   | "notifications"
+  | "email"
   | "team"
   | "opme"
   | "phases"
@@ -12,6 +13,7 @@ const HASH_TO_SECTION: Record<string, SettingsSectionId> = {
   account: "account",
   clinic: "clinic",
   notifications: "notifications",
+  email: "email",
   team: "team",
   opme: "opme",
   phases: "phases",

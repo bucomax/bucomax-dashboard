@@ -1071,6 +1071,107 @@
         }
       }
     },
+    "/api/v1/tenant/email-domain": {
+      "get": {
+        "summary": "Estado do domínio de e-mail do tenant (Resend): DNS, from, verificação",
+        "tags": ["Tenant"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "`emailDomain` (DTO) ou equivalente" },
+          "400": { "description": "Tenant não selecionado" },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Apenas tenant admin" },
+          "404": { "description": "Tenant não encontrado" }
+        }
+      },
+      "post": {
+        "summary": "Registra domínio no Resend e inicia configuração DNS",
+        "tags": ["Tenant"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["domainName", "fromName", "localPart"],
+                "properties": {
+                  "domainName": { "type": "string" },
+                  "fromName": { "type": "string" },
+                  "localPart": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "`emailDomain`" },
+          "400": { "description": "JSON inválido" },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Apenas tenant admin" },
+          "404": { "description": "Tenant não encontrado" },
+          "409": { "description": "Domínio já configurado ou duplicado no Resend" },
+          "502": { "description": "Falha no Resend" },
+          "503": { "description": "Resend não configurado no ambiente" }
+        }
+      },
+      "patch": {
+        "summary": "Atualiza from (nome/endereço) após o domínio verificado",
+        "tags": ["Tenant"],
+        "security": [{ "cookieAuth": [] }],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "emailEnabled": { "type": "boolean" },
+                  "fromName": { "type": "string" },
+                  "fromAddress": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "`emailDomain`" },
+          "400": { "description": "Tenant não selecionado ou JSON inválido" },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Apenas tenant admin" },
+          "404": { "description": "Tenant não encontrado" },
+          "412": { "description": "Domínio ainda não verificado" },
+          "422": { "description": "Endereço from não bate com o domínio" }
+        }
+      },
+      "delete": {
+        "summary": "Remove domínio de e-mail do tenant e do Resend",
+        "tags": ["Tenant"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "`emailDomain`" },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Apenas tenant admin" },
+          "404": { "description": "Tenant não encontrado" },
+          "502": { "description": "Falha no Resend" }
+        }
+      }
+    },
+    "/api/v1/tenant/email-domain/verify": {
+      "post": {
+        "summary": "Solicita re-verificação de DNS / status do domínio no Resend",
+        "tags": ["Tenant"],
+        "security": [{ "cookieAuth": [] }],
+        "responses": {
+          "200": { "description": "`emailDomain` atualizado" },
+          "401": { "description": "Não autenticado" },
+          "403": { "description": "Apenas tenant admin" },
+          "404": { "description": "Tenant não encontrado" },
+          "412": { "description": "Nenhum domínio configurado" },
+          "502": { "description": "Falha no Resend" },
+          "503": { "description": "Resend não configurado no ambiente" }
+        }
+      }
+    },
     "/api/v1/webhooks/whatsapp": {
       "get": {
         "summary": "Verificação do webhook Meta (hub.challenge)",
@@ -1091,6 +1192,19 @@
         "responses": {
           "200": { "description": "OK (processamento assíncrono)" },
           "401": { "description": "Assinatura inválida" }
+        }
+      }
+    },
+    "/api/v1/webhooks/resend": {
+      "post": {
+        "summary": "Callback Resend (Svix): entrega, bounce, abertura — atualiza EmailDispatchLog",
+        "description": "Corpo JSON bruto e headers `svix-id`, `svix-timestamp`, `svix-signature`. `RESEND_WEBHOOK_SECRET` obrigatório.",
+        "tags": ["Webhooks"],
+        "responses": {
+          "200": { "description": "OK" },
+          "400": { "description": "Headers Svix ausentes" },
+          "401": { "description": "Assinatura inválida" },
+          "503": { "description": "Segredo de webhook não configurado" }
         }
       }
     },

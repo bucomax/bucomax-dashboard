@@ -8,15 +8,17 @@ SaaS multi-tenant de orquestração de jornadas clínicas (cirurgia bucomaxilofa
 
 ## Stack
 
-- **Runtime:** Node.js, Next.js 16 (App Router), React 19, TypeScript (strict)
-- **DB:** PostgreSQL + Prisma ORM (schema em `packages/prisma/schema.prisma`)
+- **Runtime:** Node.js, Next.js 16.x (App Router), React 19, TypeScript (strict)
+- **DB:** PostgreSQL 16 + Prisma ORM 6.x (schema em `packages/prisma/schema.prisma`)
 - **Storage:** Google Cloud Storage (presign v4, tenant-scoped keys)
-- **Queue/Realtime:** BullMQ + Redis (opcional — fallback inline Prisma)
+- **Queue/Realtime:** BullMQ + Redis 7 (opcional — fallback inline Prisma)
 - **Auth:** NextAuth v4 (JWT strategy, CredentialsProvider)
 - **UI:** Tailwind CSS 4, shadcn/ui, @xyflow/react (editor de fluxos), react-hook-form + Zod
+- **HTTP Client:** Axios via `apiClient` (`src/lib/api/http-client.ts`)
 - **State:** Zustand (client), React Query (server state)
 - **i18n:** next-intl (pt-BR / en)
-- **Email:** Resend API
+- **E-mail:** Resend API (plataforma) e/ou **SMTP por tenant** (Gmail, Microsoft 365, etc.; prioridade no remetente)
+- **Infra local:** Docker Compose (PostgreSQL 16 + Redis 7)
 
 ## Documentação obrigatória
 
@@ -55,6 +57,9 @@ packages/prisma → schema, migrations, seed
 - Queries **sempre** filtram por `tenantId` do contexto autenticado.
 - **Nunca** aceitar `tenantId` do body/query como verdade — derivar do JWT + `TenantMembership`.
 - `super_admin` pode atuar cross-tenant com regra explícita e auditoria (§5.5 da arquitetura).
+- `TenantMembership.restrictedToAssignedOnly` — `tenant_user` só vê pacientes atribuídos a si.
+- `TenantMembership.linkedOpmeSupplierId` — `tenant_user` só vê pacientes daquele fornecedor OPME.
+- Lógica de visibilidade em `src/lib/auth/client-visibility.ts`.
 
 ## RBAC
 
@@ -138,6 +143,13 @@ src/features/<nome>/app/
 - `StageDocument` → documento vinculado à etapa
 - `PatientPathway` → instância da jornada do paciente
 - `StageTransition` → registro histórico de mudança de etapa
+- `App` → integração do marketplace (catálogo global, `super_admin` gerencia)
+- `TenantApp` → ativação de app por tenant (status, config encriptada, billing)
+- `PatientPortalLinkToken` → magic link para acesso do paciente
+- `PatientPortalOtpChallenge` → autenticação OTP do portal do paciente
+- `PatientSelfRegisterInvite` → link QR para auto-cadastro do paciente
+- `PatientNote` → nota clínica/operacional por paciente
+- `OpmeSupplier` → fornecedor OPME vinculado a pacientes
 
 ### Ordem operacional
 1. Cadastrar `Client` (paciente)
@@ -163,7 +175,16 @@ npm run db:seed          # seed de desenvolvimento
 npm run db:studio        # Prisma Studio
 npm run lint             # ESLint
 npx tsc --noEmit         # type check
+docker compose up -d     # PostgreSQL 16 + Redis 7 local
+npm run test:e2e         # Playwright E2E
+npm run stress:all       # Load + security battery
 ```
+
+## Testes
+
+- **E2E:** Playwright (`e2e/`, `playwright.config.ts`) — `npm run test:e2e`
+- **Load/Security:** Scripts autocannon em `scripts/load-and-security/` — `npm run stress:all`
+- **Unit tests:** prioridade futura — ainda não configurados.
 
 ## Regras de conduta
 

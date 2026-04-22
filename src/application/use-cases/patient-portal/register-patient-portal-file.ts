@@ -3,6 +3,10 @@ import { AuditEventType, Prisma, type PatientPortalFileReviewStatus } from "@pri
 import { auditEventPrismaRepository } from "@/infrastructure/repositories/audit-event.repository";
 import { clientPrismaRepository } from "@/infrastructure/repositories/client.repository";
 import { fileAssetPrismaRepository } from "@/infrastructure/repositories/file-asset.repository";
+import { patientPathwayPrismaRepository } from "@/infrastructure/repositories/patient-pathway.repository";
+import { tenantPrismaRepository } from "@/infrastructure/repositories/tenant.repository";
+import { resolvePathwayNotificationTargetUserIds } from "@/application/use-cases/notification/resolve-notification-targets";
+import { enqueueEmailDispatch } from "@/infrastructure/email/email-dispatch-emitter";
 import { notificationEmitter } from "@/infrastructure/notifications/notification-emitter";
 import {
   computeSha256HexForGcsObjectKey,
@@ -93,6 +97,18 @@ export async function runRegisterPatientPortalFile(params: {
       (await clientPrismaRepository.findClientNameById(tenantId, clientId)) ??
       t("notifications.patientPortalFallbackPatientName");
 
+    const ppRow = await patientPathwayPrismaRepository.findActiveAssigneeByClientId(
+      tenantId,
+      clientId,
+    );
+    const targetUserIds = await resolvePathwayNotificationTargetUserIds({
+      tenantId,
+      type: "patient_portal_file_pending",
+      currentStageAssigneeUserId: ppRow?.currentStageAssigneeUserId ?? null,
+    });
+    const tenant = await tenantPrismaRepository.findTenantNameAndSlugById(tenantId);
+    const clinicName = tenant?.name?.trim() || "Clínica";
+
     notificationEmitter
       .emit({
         tenantId,
@@ -102,10 +118,35 @@ export async function runRegisterPatientPortalFile(params: {
           patientName,
           fileName: asset.fileName,
         }),
-        metadata: { clientId, fileAssetId: asset.id },
+        targetUserIds,
+        metadata: {
+          clientId,
+          fileAssetId: asset.id,
+          ...(ppRow ? { patientPathwayId: ppRow.id } : {}),
+        },
         correlationId: asset.id,
       })
       .catch((err) => console.error("[registerPatientPortalFile] notification emit failed:", err));
+
+    if (targetUserIds.length > 0) {
+      enqueueEmailDispatch(
+        {
+          kind: "file_pending_review_staff",
+          tenantId,
+          data: {
+            patientName,
+            fileName: asset.fileName,
+            clientId,
+            fileAssetId: asset.id,
+            targetUserIds,
+            clinicName,
+          },
+        },
+        { jobId: `email|fpr|${tenantId}|${asset.id}`.replace(/:/g, "_") },
+      ).catch((err) =>
+        console.error("[registerPatientPortalFile] staff email enqueue failed:", err),
+      );
+    }
 
     return {
       ok: true,

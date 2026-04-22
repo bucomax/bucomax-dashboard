@@ -8,6 +8,7 @@ import {
   requireSessionOr401,
 } from "@/lib/auth/guards";
 import { notifyPatientFileReviewed } from "@/infrastructure/email/notify-patient-file-reviewed";
+import { emitFileReviewDecidedStaffNotification } from "@/infrastructure/notifications/emit-file-review-staff-notice";
 import { patchClientFileReviewBodySchema } from "@/lib/validators/patient-portal-files";
 import type { RouteCtx } from "@/types/api/route-context";
 
@@ -29,6 +30,7 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
 
   const client = await findTenantClientVisibleToSession(auth.session!, tenantId, clientId, {
     id: true,
+    name: true,
   });
   if (!client) {
     return jsonError("NOT_FOUND", apiT("errors.patientNotFound"), 404);
@@ -71,6 +73,18 @@ export async function PATCH(request: Request, ctx: RouteCtx) {
     decision: parsed.data.decision,
     rejectReason: parsed.data.decision === "reject" ? parsed.data.rejectReason : undefined,
   }).catch((err) => console.error("[file-review] notify patient failed:", err));
+
+  const clientName = client.name?.trim() || "Paciente";
+  emitFileReviewDecidedStaffNotification({
+    tenantId,
+    clientId,
+    clientName,
+    fileId: result.fileId,
+    fileName: result.fileName,
+    decision: parsed.data.decision,
+    rejectReason: parsed.data.decision === "reject" ? parsed.data.rejectReason : undefined,
+    actorUserId: userId,
+  }).catch((err) => console.error("[file-review] staff notification failed:", err));
 
   return jsonSuccess({
     fileId: result.fileId,

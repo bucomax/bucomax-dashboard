@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { getActiveApps } from "@/features/apps/app/services/apps.service";
+import { ACTIVE_APPS_INVALIDATE_EVENT } from "@/features/apps/app/lib/invalidate-active-apps";
 import type { ActiveAppDto } from "@/types/api/apps-v1";
 
 export function useActiveApps() {
@@ -21,6 +22,14 @@ export function useActiveApps() {
 
   useEffect(() => {
     void refresh();
+  }, [refresh]);
+
+  useEffect(() => {
+    const onInvalidate = () => {
+      void refresh();
+    };
+    window.addEventListener(ACTIVE_APPS_INVALIDATE_EVENT, onInvalidate);
+    return () => window.removeEventListener(ACTIVE_APPS_INVALIDATE_EVENT, onInvalidate);
   }, [refresh]);
 
   return { apps, loading, refresh };

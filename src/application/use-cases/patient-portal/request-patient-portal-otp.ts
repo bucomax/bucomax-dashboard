@@ -4,7 +4,9 @@ import {
   PATIENT_PORTAL_OTP_TTL_MS,
 } from "@/lib/constants/patient-portal";
 import { getPatientPortalOtpHtml } from "@/infrastructure/email/email-templates";
-import { isEmailConfigured, sendEmail } from "@/infrastructure/email/resend.client";
+import { canSendEmailForTenant } from "@/infrastructure/email/email-availability";
+import { resolveTenantSender } from "@/infrastructure/email/resolve-tenant-sender";
+import { sendEmail } from "@/infrastructure/email/resend.client";
 import { notifyPatientPortalOtpByWebhook } from "@/infrastructure/notifications/patient-portal-otp-wpp";
 import { patientPortalOtpPrismaRepository } from "@/infrastructure/repositories/patient-portal-otp.repository";
 import { digitsOnlyPhone } from "@/lib/validators/phone";
@@ -47,8 +49,9 @@ export async function runRequestPatientPortalOtp(params: {
   const hasWebhook = Boolean(process.env.PATIENT_PORTAL_OTP_NOTIFY_URL?.trim());
   const phoneDigits = client.phone?.replace(/\D/g, "") ?? "";
   const guardianPhoneDigits = client.isMinor ? digitsOnlyPhone(client.guardianPhone ?? "") : "";
+  const canEmail = await canSendEmailForTenant(tenant.id);
   const emailReady =
-    isEmailConfigured() &&
+    canEmail &&
     (Boolean(email) ||
       (client.isMinor &&
         Boolean(guardianEmail) &&
@@ -81,6 +84,7 @@ export async function runRequestPatientPortalOtp(params: {
   const clinicName = tenant.name;
 
   if (emailReady) {
+    const { from, useSmtp } = await resolveTenantSender(tenant.id);
     const subject = `${clinicName} — Código do portal do paciente (Bucomax)`;
     const html = getPatientPortalOtpHtml({
       patientName: client.name,
@@ -99,7 +103,15 @@ export async function runRequestPatientPortalOtp(params: {
       toList.push(guardianEmail);
     }
     for (const to of toList) {
-      const { error } = await sendEmail({ to, subject, html, text });
+      const { error } = await sendEmail({
+        to,
+        from,
+        subject,
+        html,
+        text,
+        tenantId: tenant.id,
+        useSmtp,
+      });
       if (error) {
         console.error("[patient-portal] OTP email failed:", error);
       }

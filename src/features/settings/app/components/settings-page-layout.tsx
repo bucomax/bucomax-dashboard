@@ -5,6 +5,7 @@ import { PathwayStagesSettingsPanel } from "@/features/pathways/app/components/p
 import { ClinicSettingsCard } from "@/features/settings/app/components/clinic-settings-card";
 import { OpmeSuppliersCard } from "@/features/settings/app/components/opme-suppliers-card";
 import { SuperAdminTenantsCard } from "@/features/settings/app/components/super-admin-tenants-card";
+import { EmailSettingsCard } from "@/features/settings/app/components/email-settings-card";
 import { TenantNotificationsCard } from "@/features/settings/app/components/tenant-notifications-card";
 import { UserSettingsPanel } from "@/features/settings/app/components/user-settings-panel";
 import { UsersManagementPanel } from "@/features/settings/app/components/users-management-panel";
@@ -19,6 +20,7 @@ import {
   Building2,
   ClipboardList,
   Factory,
+  Mail,
   Shield,
   User,
   Users,
@@ -35,6 +37,7 @@ const NAV_DEFS: NavDef[] = [
   { id: "account", icon: User },
   { id: "clinic", icon: Building2 },
   { id: "notifications", icon: Bell },
+  { id: "email", icon: Mail, tenantAdminOnly: true },
   { id: "team", icon: Users, tenantAdminOnly: true },
   { id: "opme", icon: Factory },
   { id: "phases", icon: ClipboardList },
@@ -134,6 +137,8 @@ export function SettingsPageLayout() {
         return <ClinicSettingsCard />;
       case "notifications":
         return <TenantNotificationsCard />;
+      case "email":
+        return <EmailSettingsCard />;
       case "team":
         return <UsersManagementPanel />;
       case "opme":

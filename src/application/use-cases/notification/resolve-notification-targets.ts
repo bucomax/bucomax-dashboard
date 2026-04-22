@@ -23,6 +23,7 @@ async function isMemberOfTenant(tenantId: string, userId: string): Promise<boole
  *
  * - Com `currentStageAssigneeUserId` válido no tenant: normalmente só o responsável da etapa.
  * - `sla_critical`: responsável + todos os `tenant_admin` (deduplicado).
+ * - `patient_portal_file_pending` / `patient_portal_link_sent` / `checklist_complete`: responsável + admins.
  * - Sem assignee ou ID inválido: todos os membros (comportamento legado).
  */
 export async function resolvePathwayNotificationTargetUserIds(args: {
@@ -40,6 +41,14 @@ export async function resolvePathwayNotificationTargetUserIds(args: {
     return allMembers;
   }
   if (args.type === "sla_critical") {
+    const admins = await listTenantAdminUserIds(args.tenantId);
+    return uniqueUserIds([assigneeId, ...admins]);
+  }
+  if (
+    args.type === "patient_portal_file_pending" ||
+    args.type === "patient_portal_link_sent" ||
+    args.type === "checklist_complete"
+  ) {
     const admins = await listTenantAdminUserIds(args.tenantId);
     return uniqueUserIds([assigneeId, ...admins]);
   }
