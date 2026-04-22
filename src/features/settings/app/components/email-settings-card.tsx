@@ -4,6 +4,10 @@ import { Copy, Info, Loader2, Mail, RefreshCw, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
+import {
+  EmailEventsInfoCallout,
+  EmailEventsInfoDialog,
+} from "@/features/settings/app/components/email-events-info-dialog";
 import { useEmailDomainSettings } from "@/features/settings/app/hooks/use-email-domain-settings";
 import { TenantSmtpSettingsBlock } from "@/features/settings/app/components/tenant-smtp-settings-block";
 import { toast } from "@/lib/toast";
@@ -65,6 +69,7 @@ export function EmailSettingsCard() {
   const [localPart, setLocalPart] = useState("notificacoes");
   const [draftFrom, setDraftFrom] = useState("");
   const [draftName, setDraftName] = useState("");
+  const [eventsInfoOpen, setEventsInfoOpen] = useState(false);
 
   useEffect(() => {
     setDraftFrom(ed.fromAddress ?? "");
@@ -187,6 +192,9 @@ export function EmailSettingsCard() {
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        <EmailEventsInfoCallout onOpen={() => setEventsInfoOpen(true)} />
+        <EmailEventsInfoDialog open={eventsInfoOpen} onOpenChange={setEventsInfoOpen} />
+
         {mode !== "platform" && (
           <p className="text-muted-foreground text-sm">{t("fallbackGlobal")}</p>
         )}
